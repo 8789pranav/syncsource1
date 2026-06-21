@@ -1,0 +1,1374 @@
+     1→// HRMS — Industry-grade HR Management System schema
+     2→// Multi-tenant foundation. Phase 1: single default tenant (TENANT_ID in lib/db.ts).
+     3→
+     4→generator client {
+     5→  provider = "prisma-client-js"
+     6→}
+     7→
+     8→datasource db {
+     9→  provider = "sqlite"
+    10→  url      = env("DATABASE_URL")
+    11→}
+    12→
+    13→// ============================================================
+    14→// TENANT / ORGANIZATION FOUNDATION
+    15→// ============================================================
+    16→
+    17→model Tenant {
+    18→  id            String   @id @default(cuid())
+    19→  code          String   @unique
+    20→  name          String
+    21→  legalName     String?
+    22→  logoUrl       String?
+    23→  brandColor    String   @default("#10b981")
+    24→  country       String   @default("India")
+    25→  currency      String   @default("INR")
+    26→  timezone      String   @default("Asia/Kolkata")
+    27→  dateFormat    String   @default("DD/MM/YYYY")
+    28→  financialYear String   @default("Apr-Mar")
+    29→  status        String   @default("Active") // Active | Trial | Suspended | Expired
+    30→  createdAt     DateTime @default(now())
+    31→  updatedAt     DateTime @updatedAt
+    32→
+    33→  entities      Entity[]
+    34→  branches      Branch[]
+    35→  departments   Department[]
+    36→  designations  Designation[]
+    37→  grades        Grade[]
+    38→  locations     Location[]
+    39→  employees     Employee[]
+    40→  leaveTypes    LeaveType[]
+    41→  leavePolicies LeavePolicy[]
+    42→  shifts        Shift[]
+    43→  rosters       Roster[]
+    44→  holidays      Holiday[]
+    45→  assets        Asset[]
+    46→  assetCategories AssetCategory[]
+    47→  formSchemas   FormSchema[]
+    48→  workflows     Workflow[]
+    49→  announcements Announcement[]
+    50→  auditLogs     AuditLog[]
+    51→}
+    52→
+    53→// ============================================================
+    54→// ORGANIZATION STRUCTURE
+    55→// ============================================================
+    56→
+    57→model Entity {
+    58→  id          String   @id @default(cuid())
+    59→  tenantId    String
+    60→  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+    61→  code        String
+    62→  legalName   String
+    63→  tradeName   String?
+    64→  pan         String?
+    65→  gstin       String?
+    66→  tan         String?
+    67→  pfNumber    String?
+    68→  esiNumber   String?
+    69→  address     String?
+    70→  city        String?
+    71→  state       String?
+    72→  country     String   @default("India")
+    73→  currency    String   @default("INR")
+    74→  payrollApplicable  Boolean @default(true)
+    75→  attendanceApplicable Boolean @default(true)
+    76→  leaveApplicable    Boolean @default(true)
+    77→  status      String   @default("Active")
+    78→  effectiveDate DateTime?
+    79→  createdAt   DateTime @default(now())
+    80→  updatedAt   DateTime @updatedAt
+    81→
+    82→  employees   Employee[]
+    83→  branches    Branch[]
+    84→  departments Department[]
+    85→
+    86→  @@unique([tenantId, code])
+    87→}
+    88→
+    89→model Branch {
+    90→  id          String   @id @default(cuid())
+    91→  tenantId    String
+    92→  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+    93→  entityId    String?
+    94→  entity      Entity?  @relation(fields: [entityId], references: [id])
+    95→  code        String
+    96→  name        String
+    97→  address     String?
+    98→  city        String?
+    99→  state       String?
+   100→  country     String?
+   101→  lat         Float?
+   102→  lng         Float?
+   103→  branchHeadId String?
+   104→  workingDays String   @default("Mon,Tue,Wed,Thu,Fri")
+   105→  status      String   @default("Active")
+   106→  createdAt   DateTime @default(now())
+   107→  updatedAt   DateTime @updatedAt
+   108→
+   109→  employees   Employee[]
+   110→
+   111→  @@unique([tenantId, code])
+   112→}
+   113→
+   114→model Department {
+   115→  id            String   @id @default(cuid())
+   116→  tenantId      String
+   117→  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   118→  entityId      String?
+   119→  entity        Entity?  @relation(fields: [entityId], references: [id])
+   120→  parentId      String?
+   121→  code          String
+   122→  name          String
+   123→  departmentHeadId String?
+   124→  costCenterId  String?
+   125→  status        String   @default("Active")
+   126→  createdAt     DateTime @default(now())
+   127→  updatedAt     DateTime @updatedAt
+   128→
+   129→  employees     Employee[]
+   130→  children      Department[] @relation("DeptHierarchy")
+   131→  parent        Department?  @relation("DeptHierarchy", fields: [parentId], references: [id])
+   132→
+   133→  @@unique([tenantId, code])
+   134→}
+   135→
+   136→model Designation {
+   137→  id            String   @id @default(cuid())
+   138→  tenantId      String
+   139→  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   140→  code          String
+   141→  name          String
+   142→  gradeId       String?
+   143→  grade         Grade?   @relation(fields: [gradeId], references: [id])
+   144→  level         Int?
+   145→  departmentId  String?
+   146→  jobDescription String?
+   147→  status        String   @default("Active")
+   148→  createdAt     DateTime @default(now())
+   149→  updatedAt     DateTime @updatedAt
+   150→
+   151→  employees     Employee[]
+   152→
+   153→  @@unique([tenantId, code])
+   154→}
+   155→
+   156→model Grade {
+   157→  id              String   @id @default(cuid())
+   158→  tenantId        String
+   159→  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   160→  code            String
+   161→  name            String
+   162→  hierarchyLevel  Int
+   163→  minSalary       Float?
+   164→  maxSalary       Float?
+   165→  leaveEligibility Float?
+   166→  approvalAuthority Boolean @default(false)
+   167→  status          String   @default("Active")
+   168→  createdAt       DateTime @default(now())
+   169→  updatedAt       DateTime @updatedAt
+   170→
+   171→  employees       Employee[]
+   172→  designations    Designation[]
+   173→
+   174→  @@unique([tenantId, code])
+   175→}
+   176→
+   177→model Location {
+   178→  id            String   @id @default(cuid())
+   179→  tenantId      String
+   180→  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   181→  code          String
+   182→  name          String
+   183→  address       String?
+   184→  city          String?
+   185→  state         String?
+   186→  country       String?
+   187→  geoFenceRadius Float?
+   188→  timezone      String?
+   189→  attendanceMode String  @default("Web")
+   190→  status        String   @default("Active")
+   191→  createdAt     DateTime @default(now())
+   192→  updatedAt     DateTime @updatedAt
+   193→
+   194→  employees     Employee[]
+   195→
+   196→  @@unique([tenantId, code])
+   197→}
+   198→
+   199→// ============================================================
+   200→// EMPLOYEE MASTER
+   201→// ============================================================
+   202→
+   203→model Employee {
+   204→  id              String   @id @default(cuid())
+   205→  tenantId        String
+   206→  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   207→  employeeCode    String
+   208→  firstName       String
+   209→  middleName      String?
+   210→  lastName        String?
+   211→  displayName     String?
+   212→  gender          String?  // Male | Female | Other
+   213→  dateOfBirth     DateTime?
+   214→  maritalStatus   String?
+   215→  bloodGroup      String?
+   216→  nationality     String   @default("Indian")
+   217→  religion        String?
+   218→  category        String?  // General | OBC | SC | ST
+   219→  profilePhotoUrl String?
+   220→  personalEmail   String?
+   221→  officialEmail   String?
+   222→  mobileNumber    String?
+   223→  alternateNumber String?
+   224→
+   225→  // Identity documents
+   226→  passportNumber  String?
+   227→  drivingLicense  String?
+   228→  voterId         String?
+   229→  physicallyDisabled Boolean @default(false)
+   230→  disabilityDetails String?
+   231→
+   232→  // Employment
+   233→  dateOfJoining   DateTime?
+   234→  employmentType  String   @default("Full-time") // Full-time | Part-time | Contract | Intern | Consultant | Apprentice | Temporary
+   235→  workerType      String   @default("Permanent")
+   236→  jobType         String?  // On-roll | Off-roll
+   237→  probationStatus String?  // On Probation | Confirmed | Extended | Not Confirmed
+   238→  probationStartDate DateTime?
+   239→  probationEndDate DateTime?
+   240→  confirmationDate DateTime?
+   241→  noticePeriod    Int?     // days
+   242→  noticePeriodStartDate DateTime?
+   243→  lastWorkingDate DateTime?
+   244→  employeeStatus   String  @default("Active") // Active | On Notice | Resigned | Terminated | Absconded | Retired | Inactive | Alumni
+   245→  workMode        String   @default("Work from office") // Work from office | Work from home | Hybrid | Field work
+   246→  businessUnit    String?
+   247→  costCenter      String?
+   248→
+   249→  entityId        String?
+   250→  entity          Entity?  @relation(fields: [entityId], references: [id])
+   251→  branchId        String?
+   252→  branch          Branch?  @relation(fields: [branchId], references: [id])
+   253→  departmentId    String?
+   254→  department      Department? @relation(fields: [departmentId], references: [id])
+   255→  designationId   String?
+   256→  designation     Designation? @relation(fields: [designationId], references: [id])
+   257→  gradeId         String?
+   258→  grade           Grade?   @relation(fields: [gradeId], references: [id])
+   259→  locationId      String?
+   260→  location        Location? @relation(fields: [locationId], references: [id])
+   261→  reportingManagerId String?
+   262→  functionalManagerId String?
+   263→  hrManagerId     String?
+   264→
+   265→  // Policy assignments
+   266→  leavePolicyId       String?
+   267→  attendancePolicyId  String?
+   268→  payrollPolicyId     String?
+   269→  shiftPolicyId       String?
+   270→  holidayCalendarId   String?
+   271→
+   272→  // Bank
+   273→  bankName        String?
+   274→  accountHolderName String?
+   275→  accountNumber   String?
+   276→  accountType     String?  // Savings | Current | Salary
+   277→  ifscCode        String?
+   278→  branchName      String?
+   279→  upiId           String?
+   280→
+   281→  // Statutory
+   282→  panNumber       String?
+   283→  aadhaarNumber   String?
+   284→  uanNumber       String?
+   285→  pfNumber        String?
+   286→  esiNumber       String?
+   287→  ptLocation      String?
+   288→  pfApplicable    Boolean  @default(true)
+   289→  esiApplicable   Boolean  @default(false)
+   290→  ptApplicable    Boolean  @default(true)
+   291→  lwfApplicability String?
+   292→  gratuityApplicability String?
+   293→  taxRegime       String?  // Old | New
+   294→  tdsDeclarationStatus String? // Pending | Submitted | Verified
+   295→
+   296→  // Address
+   297→  currentAddress  String?
+   298→  currentAddressLine2 String?
+   299→  currentCity     String?
+   300→  currentState    String?
+   301→  currentCountry  String?
+   302→  currentPincode  String?
+   303→  currentLandmark String?
+   304→  permanentAddress String?
+   305→  permanentAddressLine2 String?
+   306→  permanentCity   String?
+   307→  permanentState  String?
+   308→  permanentCountry String?
+   309→  permanentPincode String?
+   310→  sameAsCurrent   Boolean  @default(false)
+   311→
+   312→  // Emergency contact
+   313→  emergencyContactName    String?
+   314→  emergencyContactRelation String?
+   315→  emergencyContactPhone   String?
+   316→  emergencyContactAltPhone String?
+   317→  emergencyContactEmail   String?
+   318→  emergencyContactAddress String?
+   319→  communicationPreference String? // Email | SMS | WhatsApp
+   320→
+   321→  // Dynamic / custom data
+   322→  customData      String?  // JSON string of custom fields
+   323→
+   324→  // Compensation
+   325→  ctc             Float?
+   326→  basicSalary     Float?
+   327→  hra             Float?
+   328→  specialAllowance Float?
+   329→  conveyanceAllowance Float?
+   330→  medicalAllowance Float?
+   331→  bonusAmount     Float?
+   332→  pfEmployee      Float?
+   333→  pfEmployer      Float?
+   334→  esiAmount       Float?
+   335→  professionalTax Float?
+   336→  tdsAmount       Float?
+   337→  grossSalary     Float?
+   338→  netSalary       Float?
+   339→
+   340→  // Exit
+   341→  resignationDate DateTime?
+   342→  resignationReason String?
+   343→  exitStatus      String?  // Not initiated | Resignation submitted | Manager approved | HR approved | Clearance pending | FnF pending | Exit completed
+   344→
+   345→  createdAt       DateTime @default(now())
+   346→  updatedAt       DateTime @updatedAt
+   347→
+   348→  leaveApplications  LeaveApplication[]
+   349→  leaveBalances      LeaveBalance[]
+   350→  shiftAssignments   ShiftAssignment[]
+   351→  rosterEntries      RosterEntry[]
+   352→  attendance         Attendance[]
+   353→  assetAssignments   AssetAssignment[]
+   354→  assetRequests      AssetRequest[]
+   355→  profileUpdateRequests ProfileUpdateRequest[]
+   356→
+   357→  // Employee profile sub-records (Phase 2 — Employee module expansion)
+   358→  familyMembers      EmployeeFamilyMember[]
+   359→  educationRecords   EmployeeEducation[]
+   360→  experienceRecords  EmployeeExperience[]
+   361→  bankHistory        EmployeeBankDetail[]
+   362→  statutoryDetails   EmployeeStatutoryDetail[]
+   363→  documents          EmployeeDocument[]
+   364→  compensationHistory EmployeeCompensationHistory[]
+   365→  notes              EmployeeNote[]
+   366→  timelineEvents     EmployeeTimelineEvent[]
+   367→  auditLogs          EmployeeAuditLog[]
+   368→  statusHistory      EmployeeStatusHistory[]
+   369→  transferHistory    EmployeeTransferHistory[]
+   370→  promotionHistory   EmployeePromotionHistory[]
+   371→  probationReviews   EmployeeProbation[]
+   372→  exitRecords        EmployeeExit[]
+   373→  loginAccess        EmployeeLoginAccess[]
+   374→  roleMappings       EmployeeRoleMapping[]
+   375→  customFieldValues  EmployeeCustomFieldValue[]
+   376→  formSubmissions    EmployeeFormSubmission[]
+   377→  skills             EmployeeSkill[]
+   378→  certifications     EmployeeCertification[]
+   379→  trainings          EmployeeTraining[]
+   380→  performanceGoals   EmployeePerformanceGoal[]
+   381→  performanceReviews EmployeePerformanceReview[]
+   382→  expenses           EmployeeExpense[]
+   383→  helpdeskTickets    EmployeeHelpdeskTicket[]
+   384→  letters            EmployeeLetter[]
+   385→  requests           EmployeeRequest[]
+   386→
+   387→  @@unique([tenantId, employeeCode])
+   388→}
+   389→
+   390→model ProfileUpdateRequest {
+   391→  id          String   @id @default(cuid())
+   392→  tenantId    String
+   393→  employeeId  String
+   394→  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   395→  fieldChanges String  // JSON string
+   396→  status      String   @default("Pending") // Pending | Approved | Rejected
+   397→  reason      String?
+   398→  requestedAt DateTime @default(now())
+   399→  reviewedAt  DateTime?
+   400→  reviewedBy  String?
+   401→}
+   402→
+   403→// ============================================================
+   404→// EMPLOYEE PROFILE SUB-RECORDS (Phase 2 — Employee module)
+   405→// ============================================================
+   406→
+   407→model EmployeeFamilyMember {
+   408→  id            String   @id @default(cuid())
+   409→  tenantId      String
+   410→  employeeId    String
+   411→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   412→  name          String
+   413→  relationship  String?  // Spouse | Son | Daughter | Father | Mother | Brother | Sister | Other
+   414→  gender        String?
+   415→  dateOfBirth   DateTime?
+   416→  mobileNumber  String?
+   417→  occupation    String?
+   418→  isDependent   Boolean  @default(false)
+   419→  isNominee     Boolean  @default(false)
+   420→  nomineePercentage Float?
+   421→  insuranceApplicable Boolean @default(false)
+   422→  createdAt     DateTime @default(now())
+   423→  updatedAt     DateTime @updatedAt
+   424→}
+   425→
+   426→model EmployeeEducation {
+   427→  id            String   @id @default(cuid())
+   428→  tenantId      String
+   429→  employeeId    String
+   430→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   431→  qualification String?  // 10th | 12th | Diploma | UG | PG | PhD | Certification
+   432→  degree        String?
+   433→  specialization String?
+   434→  institute     String?
+   435→  university    String?
+   436→  yearOfPassing Int?
+   437→  percentage    Float?
+   438→  cgpa          Float?
+   439→  educationType String?  // Full-time | Part-time | Distance | Online
+   440→  isHighest     Boolean  @default(false)
+   441→  certificateUrl String?
+   442→  createdAt     DateTime @default(now())
+   443→  updatedAt     DateTime @updatedAt
+   444→}
+   445→
+   446→model EmployeeExperience {
+   447→  id            String   @id @default(cuid())
+   448→  tenantId      String
+   449→  employeeId    String
+   450→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   451→  companyName   String
+   452→  designation   String?
+   453→  department    String?
+   454→  startDate     DateTime?
+   455→  endDate       DateTime?
+   456→  totalYears    Float?
+   457→  reasonForLeaving String?
+   458→  previousSalary Float?
+   459→  managerName   String?
+   460→  managerContact String?
+   461→  experienceLetterUrl String?
+   462→  relievingLetterUrl String?
+   463→  lastPayslipUrl String?
+   464→  verificationStatus String? // Pending | Verified | Not Verified
+   465→  createdAt     DateTime @default(now())
+   466→  updatedAt     DateTime @updatedAt
+   467→}
+   468→
+   469→model EmployeeBankDetail {
+   470→  id            String   @id @default(cuid())
+   471→  tenantId      String
+   472→  employeeId    String
+   473→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   474→  bankName      String
+   475→  accountHolderName String?
+   476→  accountNumber String
+   477→  ifscCode      String?
+   478→  branchName    String?
+   479→  accountType   String?  // Savings | Current | Salary
+   480→  upiId         String?
+   481→  chequeUrl     String?
+   482→  isActive      Boolean  @default(true)
+   483→  verified      Boolean  @default(false)
+   484→  effectiveDate DateTime @default(now())
+   485→  endDate       DateTime?
+   486→  createdAt     DateTime @default(now())
+   487→  updatedAt     DateTime @updatedAt
+   488→}
+   489→
+   490→model EmployeeStatutoryDetail {
+   491→  id            String   @id @default(cuid())
+   492→  tenantId      String
+   493→  employeeId    String
+   494→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   495→  panNumber     String?
+   496→  aadhaarNumber String?
+   497→  uanNumber     String?
+   498→  pfNumber      String?
+   499→  esiNumber     String?
+   500→  ptLocation    String?
+   501→  lwfApplicability String?
+   502→  gratuityApplicability String?
+   503→  pfApplicable  Boolean  @default(true)
+   504→  esiApplicable Boolean  @default(false)
+   505→  ptApplicable  Boolean  @default(true)
+   506→  taxRegime     String?  // Old | New
+   507→  tdsDeclarationStatus String?
+   508→  nomineeDetails String? // JSON
+   509→  documentUrl   String?
+   510→  effectiveDate DateTime @default(now())
+   511→  createdAt     DateTime @default(now())
+   512→  updatedAt     DateTime @updatedAt
+   513→}
+   514→
+   515→model EmployeeDocument {
+   516→  id            String   @id @default(cuid())
+   517→  tenantId      String
+   518→  employeeId    String
+   519→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   520→  name          String
+   521→  category      String?  // Identity | Address | Education | Experience | Bank | Joining | Payroll | Company Letter | Exit | Other
+   522→  documentType  String?  // Aadhaar | PAN | Passport | Photo | Resume | Offer letter | etc.
+   523→  fileUrl       String?
+   524→  fileExt       String?  // pdf | jpg | png
+   525→  fileSize      Int?
+   526→  status        String   @default("Pending") // Pending | Uploaded | Approved | Rejected | Expired | Expiring soon
+   527→  expiryDate    DateTime?
+   528→  uploadedAt    DateTime @default(now())
+   529→  approvedAt    DateTime?
+   530→  approvedBy    String?
+   531→  remarks       String?
+   532→  visibleToEmployee Boolean @default(true)
+   533→  createdAt     DateTime @default(now())
+   534→  updatedAt     DateTime @updatedAt
+   535→}
+   536→
+   537→model EmployeeCompensationHistory {
+   538→  id            String   @id @default(cuid())
+   539→  tenantId      String
+   540→  employeeId    String
+   541→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   542→  effectiveDate DateTime
+   543→  oldCtc        Float?
+   544→  newCtc        Float?
+   545→  oldBasic      Float?
+   546→  newBasic      Float?
+   547→  oldHra        Float?
+   548→  newHra        Float?
+   549→  incrementPercent Float?
+   550→  revisionReason String? // Annual appraisal | Promotion | Off-cycle | Joining
+   551→  promotionMapping String?
+   552→  approvedBy    String?
+   553→  status        String   @default("Approved") // Draft | Approved | Rejected
+   554→  letterUrl     String?
+   555→  createdAt     DateTime @default(now())
+   556→  updatedAt     DateTime @updatedAt
+   557→}
+   558→
+   559→model EmployeeNote {
+   560→  id            String   @id @default(cuid())
+   561→  tenantId      String
+   562→  employeeId    String
+   563→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   564→  category      String   @default("General") // General | Performance | Disciplinary | Medical | HR discussion | Manager feedback | Exit discussion
+   565→  body          String
+   566→  isPrivate     Boolean  @default(false)
+   567→  visibleToManager Boolean @default(false)
+   568→  attachmentUrl String?
+   569→  createdBy     String?  // user name
+   570→  createdAt     DateTime @default(now())
+   571→  updatedAt     DateTime @updatedAt
+   572→}
+   573→
+   574→model EmployeeTimelineEvent {
+   575→  id            String   @id @default(cuid())
+   576→  tenantId      String
+   577→  employeeId    String
+   578→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   579→  eventType     String   // Created | Joined | Profile updated | Document uploaded | Leave approved | Attendance regularized | Salary revised | Promoted | Transferred | Manager changed | Probation confirmed | Asset assigned | Resignation submitted | Exit completed | Status changed
+   580→  title         String
+   581→  description   String?
+   582→  eventDate     DateTime @default(now())
+   583→  actorId       String?
+   584→  actorName     String?
+   585→  metadata      String?  // JSON
+   586→  createdAt     DateTime @default(now())
+   587→}
+   588→
+   589→model EmployeeAuditLog {
+   590→  id            String   @id @default(cuid())
+   591→  tenantId      String
+   592→  employeeId    String
+   593→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   594→  module        String?  // Personal | Job | Bank | Statutory | Document | etc.
+   595→  field         String?
+   596→  oldValue      String?
+   597→  newValue      String?
+   598→  action        String?  // Create | Update | Delete
+   599→  changedBy     String?
+   600→  reason        String?
+   601→  ipAddress     String?
+   602→  userAgent     String?
+   603→  approvalRef   String?
+   604→  createdAt     DateTime @default(now())
+   605→}
+   606→
+   607→model EmployeeStatusHistory {
+   608→  id            String   @id @default(cuid())
+   609→  tenantId      String
+   610→  employeeId    String
+   611→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   612→  oldStatus     String?
+   613→  newStatus     String
+   614→  effectiveDate DateTime @default(now())
+   615→  reason        String?
+   616→  changedBy     String?
+   617→  createdAt     DateTime @default(now())
+   618→}
+   619→
+   620→model EmployeeTransferHistory {
+   621→  id            String   @id @default(cuid())
+   622→  tenantId      String
+   623→  employeeId    String
+   624→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   625→  oldDepartment String?
+   626→  newDepartment String?
+   627→  oldLocation   String?
+   628→  newLocation   String?
+   629→  oldManager    String?
+   630→  newManager    String?
+   631→  oldEntity     String?
+   632→  newEntity     String?
+   633→  effectiveDate DateTime
+   634→  reason        String?
+   635→  status        String   @default("Approved") // Pending | Approved | Rejected
+   636→  approvedBy    String?
+   637→  createdAt     DateTime @default(now())
+   638→}
+   639→
+   640→model EmployeePromotionHistory {
+   641→  id            String   @id @default(cuid())
+   642→  tenantId      String
+   643→  employeeId    String
+   644→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   645→  oldDesignation String?
+   646→  newDesignation String?
+   647→  oldGrade      String?
+   648→  newGrade      String?
+   649→  oldCtc        Float?
+   650→  newCtc        Float?
+   651→  effectiveDate DateTime
+   652→  reason        String?
+   653→  status        String   @default("Approved") // Pending | Approved | Rejected
+   654→  approvedBy    String?
+   655→  letterUrl     String?
+   656→  createdAt     DateTime @default(now())
+   657→}
+   658→
+   659→model EmployeeProbation {
+   660→  id            String   @id @default(cuid())
+   661→  tenantId      String
+   662→  employeeId    String
+   663→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   664→  startDate     DateTime
+   665→  endDate       DateTime
+   666→  reviewDueDate DateTime?
+   667→  status        String   @default("On Probation") // On Probation | Review pending | Extended | Confirmed | Not Confirmed
+   668→  managerFeedback String?
+   669→  hrFeedback    String?
+   670→  extendedEndDate DateTime?
+   671→  confirmedDate DateTime?
+   672→  confirmedBy   String?
+   673→  createdAt     DateTime @default(now())
+   674→  updatedAt     DateTime @updatedAt
+   675→}
+   676→
+   677→model EmployeeExit {
+   678→  id            String   @id @default(cuid())
+   679→  tenantId      String
+   680→  employeeId    String
+   681→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   682→  resignationDate DateTime
+   683→  lastWorkingDate DateTime?
+   684→  reason        String?
+   685→  status        String   @default("Resignation submitted") // Resignation submitted | Manager approved | HR approved | Clearance pending | FnF pending | Exit completed | Rejected
+   686→  noticePeriodDays Int?
+   687→  noticeRecoveryDays Int?
+   688→  noticeRecoveryAmount Float?
+   689→  exitInterviewNotes String?
+   690→  clearanceHR   Boolean  @default(false)
+   691→  clearanceIT   Boolean  @default(false)
+   692→  clearanceAdmin Boolean @default(false)
+   693→  clearanceFinance Boolean @default(false)
+   694→  clearanceManager Boolean @default(false)
+   695→  clearancePayroll Boolean @default(false)
+   696→  finalSettlement Float?
+   697→  relievingLetterUrl String?
+   698→  experienceLetterUrl String?
+   699→  approvedBy    String?
+   700→  approvedAt    DateTime?
+   701→  createdAt     DateTime @default(now())
+   702→  updatedAt     DateTime @updatedAt
+   703→}
+   704→
+   705→model EmployeeLoginAccess {
+   706→  id            String   @id @default(cuid())
+   707→  tenantId      String
+   708→  employeeId    String
+   709→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   710→  username      String?
+   711→  email         String?
+   712→  status        String   @default("Active") // Active | Inactive | Blocked | Locked
+   713→  role          String?  // Employee | Manager | HR admin | Payroll admin | Finance admin | IT admin | Auditor | Sub-admin
+   714→  twoFactorEnabled Boolean @default(false)
+   715→  forcePasswordChange Boolean @default(true)
+   716→  passwordResetAt DateTime?
+   717→  lastLoginAt   DateTime?
+   718→  lastLoginIp   String?
+   719→  activeSessions Int     @default(0)
+   720→  createdAt     DateTime @default(now())
+   721→  updatedAt     DateTime @updatedAt
+   722→}
+   723→
+   724→model EmployeeRoleMapping {
+   725→  id            String   @id @default(cuid())
+   726→  tenantId      String
+   727→  employeeId    String
+   728→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   729→  role          String   // Employee | Manager | HR admin | Payroll admin | Finance admin | IT admin | Auditor | Sub-admin
+   730→  scopeType     String?  // Global | Entity | Department | Location
+   731→  scopeRef      String?
+   732→  modulePermissions String? // JSON
+   733→  fieldPermissions  String? // JSON
+   734→  reportPermissions String? // JSON
+   735→  assignedAt    DateTime @default(now())
+   736→  assignedBy    String?
+   737→  isActive      Boolean  @default(true)
+   738→}
+   739→
+   740→model EmployeeCustomFieldValue {
+   741→  id            String   @id @default(cuid())
+   742→  tenantId      String
+   743→  employeeId    String
+   744→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   745→  fieldKey      String
+   746→  fieldLabel    String?
+   747→  fieldType     String?  // text | number | date | select | multiselect | checkbox
+   748→  value         String?
+   749→  category      String?  // General | Project | Accommodation | Uniform | Other
+   750→  isMandatory   Boolean  @default(false)
+   751→  approvalRequired Boolean @default(false)
+   752→  createdAt     DateTime @default(now())
+   753→  updatedAt     DateTime @updatedAt
+   754→
+   755→  @@unique([employeeId, fieldKey])
+   756→}
+   757→
+   758→model EmployeeFormSubmission {
+   759→  id            String   @id @default(cuid())
+   760→  tenantId      String
+   761→  employeeId    String
+   762→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   763→  formCode      String   // joining | policy_declaration | asset_declaration | medical | nominee | travel | wfh | custom
+   764→  formName      String?
+   765→  version       Int      @default(1)
+   766→  data          String?  // JSON of submitted values
+   767→  status        String   @default("Draft") // Draft | Submitted | Approved | Rejected
+   768→  submittedAt   DateTime?
+   769→  approvedAt    DateTime?
+   770→  approvedBy    String?
+   771→  remarks       String?
+   772→  pdfUrl        String?
+   773→  createdAt     DateTime @default(now())
+   774→  updatedAt     DateTime @updatedAt
+   775→}
+   776→
+   777→model EmployeeSkill {
+   778→  id            String   @id @default(cuid())
+   779→  tenantId      String
+   780→  employeeId    String
+   781→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   782→  name          String
+   783→  category      String?  // Technical | Soft | Domain | Tool | Language
+   784→  proficiency   String?  // Beginner | Intermediate | Advanced | Expert
+   785→  yearsOfExperience Float?
+   786→  verifiedByManager Boolean @default(false)
+   787→  lastUsedDate  DateTime?
+   788→  createdAt     DateTime @default(now())
+   789→  updatedAt     DateTime @updatedAt
+   790→}
+   791→
+   792→model EmployeeCertification {
+   793→  id            String   @id @default(cuid())
+   794→  tenantId      String
+   795→  employeeId    String
+   796→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   797→  name          String
+   798→  issuingAuthority String?
+   799→  issueDate     DateTime?
+   800→  expiryDate    DateTime?
+   801→  certificateId String?
+   802→  certificateUrl String?
+   803→  createdAt     DateTime @default(now())
+   804→  updatedAt     DateTime @updatedAt
+   805→}
+   806→
+   807→model EmployeeTraining {
+   808→  id            String   @id @default(cuid())
+   809→  tenantId      String
+   810→  employeeId    String
+   811→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   812→  courseName    String
+   813→  trainingType  String?  // Online | Classroom | On-the-job | External
+   814→  startDate     DateTime?
+   815→  endDate       DateTime?
+   816→  status        String   @default("Assigned") // Assigned | In Progress | Completed | Pending | Cancelled
+   817→  score         Float?
+   818→  certificateUrl String?
+   819→  trainerFeedback String?
+   820→  employeeFeedback String?
+   821→  createdAt     DateTime @default(now())
+   822→  updatedAt     DateTime @updatedAt
+   823→}
+   824→
+   825→model EmployeePerformanceGoal {
+   826→  id            String   @id @default(cuid())
+   827→  tenantId      String
+   828→  employeeId    String
+   829→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   830→  title         String
+   831→  description   String?
+   832→  kra           String?  // Key Result Area
+   833→  kpi           String?  // Key Performance Indicator
+   834→  targetValue   String?
+   835→  achievedValue String?
+   836→  progress      Float?   // 0-100
+   837→  weightage     Float?
+   838→  cycle         String?  // FY2026-Q1 | FY2026-H1 | FY2026
+   839→  status        String   @default("Draft") // Draft | Submitted | Manager reviewed | HR reviewed | Finalized
+   840→  startDate     DateTime?
+   841→  endDate       DateTime?
+   842→  createdAt     DateTime @default(now())
+   843→  updatedAt     DateTime @updatedAt
+   844→}
+   845→
+   846→model EmployeePerformanceReview {
+   847→  id            String   @id @default(cuid())
+   848→  tenantId      String
+   849→  employeeId    String
+   850→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   851→  cycle         String   // FY2026 | FY2026-H1
+   852→  type          String?  // Self | Manager | HR | Final | 360
+   853→  reviewerName  String?
+   854→  rating        Float?   // 1-5
+   855→  comments      String?
+   856→  promotionRecommended Boolean @default(false)
+   857→  incrementRecommended Float?
+   858→  status        String   @default("Draft") // Draft | Submitted | Manager reviewed | HR reviewed | Finalized
+   859→  pipStatus     String?  // None | Active | Completed | Cancelled
+   860→  pipNotes      String?
+   861→  reviewDate    DateTime?
+   862→  finalizedAt   DateTime?
+   863→  createdAt     DateTime @default(now())
+   864→  updatedAt     DateTime @updatedAt
+   865→}
+   866→
+   867→model EmployeeExpense {
+   868→  id            String   @id @default(cuid())
+   869→  tenantId      String
+   870→  employeeId    String
+   871→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   872→  category      String?  // Travel | Food | Stay | Conveyance | Mobile | Internet | Other
+   873→  amount        Float
+   874→  currency      String   @default("INR")
+   875→  expenseDate   DateTime @default(now())
+   876→  description   String?
+   877→  billUrl       String?
+   878→  project       String?
+   879→  client        String?
+   880→  status        String   @default("Draft") // Draft | Submitted | Approved | Rejected | Paid | Cancelled
+   881→  paymentStatus String?  // Pending | Paid | Reimbursed
+   882→  approvedBy    String?
+   883→  approvedAt    DateTime?
+   884→  paidAt        DateTime?
+   885→  remarks       String?
+   886→  createdAt     DateTime @default(now())
+   887→  updatedAt     DateTime @updatedAt
+   888→}
+   889→
+   890→model EmployeeHelpdeskTicket {
+   891→  id            String   @id @default(cuid())
+   892→  tenantId      String
+   893→  employeeId    String
+   894→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   895→  ticketCode    String
+   896→  subject       String
+   897→  category      String?  // HR | IT | Payroll | Finance | Admin | Facilities | POSH | Whistleblower
+   898→  priority      String   @default("Medium") // Low | Medium | High | Urgent
+   899→  status        String   @default("Open") // Open | In Progress | Resolved | Closed | Reopened
+   900→  description   String?
+   901→  assignedTo    String?
+   902→  slaHours      Int?
+   903→  slaStatus     String?  // Within SLA | Breaching | Breached
+   904→  resolution    String?
+   905→  resolvedAt    DateTime?
+   906→  feedback      String?
+   907→  rating        Int?
+   908→  attachmentUrl String?
+   909→  createdAt     DateTime @default(now())
+   910→  updatedAt     DateTime @updatedAt
+   911→
+   912→  @@unique([tenantId, ticketCode])
+   913→}
+   914→
+   915→model EmployeeLetter {
+   916→  id            String   @id @default(cuid())
+   917→  tenantId      String
+   918→  employeeId    String
+   919→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   920→  letterType    String   // Offer | Appointment | Confirmation | Increment | Promotion | Transfer | Warning | Experience | Relieving | Termination | Internship | NDA
+   921→  letterCode    String?
+   922→  issuedDate    DateTime @default(now())
+   923→  subject       String?
+   924→  body          String?
+   925→  pdfUrl        String?
+   926→  status        String   @default("Generated") // Draft | Generated | Issued | E-signed | Cancelled
+   927→  issuedBy      String?
+   928→  approvedBy    String?
+   929→  version       Int      @default(1)
+   930→  createdAt     DateTime @default(now())
+   931→  updatedAt     DateTime @updatedAt
+   932→}
+   933→
+   934→model EmployeeRequest {
+   935→  id            String   @id @default(cuid())
+   936→  tenantId      String
+   937→  employeeId    String
+   938→  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   939→  requestType   String   // Leave | Attendance regularization | Profile update | Document update | Bank update | Expense claim | Asset request | Travel | WFH | Shift change | Resignation
+   940→  referenceId   String?  // id of related record (leave application id, etc.)
+   941→  title         String
+   942→  description   String?
+   943→  payload       String?  // JSON of request-specific fields
+   944→  status        String   @default("Pending") // Draft | Pending | Approved | Rejected | Cancelled | Withdrawn
+   945→  pendingWith   String?
+   946→  submittedAt   DateTime @default(now())
+   947→  decidedAt     DateTime?
+   948→  decidedBy     String?
+   949→  remarks       String?
+   950→  createdAt     DateTime @default(now())
+   951→  updatedAt     DateTime @updatedAt
+   952→}
+   953→
+   954→// ============================================================
+   955→// LEAVE MANAGEMENT
+   956→// ============================================================
+   957→
+   958→model LeaveType {
+   959→  id              String   @id @default(cuid())
+   960→  tenantId        String
+   961→  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   962→  code            String
+   963→  name            String
+   964→  color           String   @default("#10b981")
+   965→  isPaid          Boolean  @default(true)
+   966→  fullDayAllowed  Boolean  @default(true)
+   967→  halfDayAllowed  Boolean  @default(false)
+   968→  hourlyAllowed   Boolean  @default(false)
+   969→  monthlyAccrual  Float    @default(0)
+   970→  yearlyAccrual   Float    @default(0)
+   971→  openingBalance  Float    @default(0)
+   972→  carryForward    Boolean  @default(false)
+   973→  carryForwardLimit Float?
+   974→  encashment      Boolean  @default(false)
+   975→  negativeAllowed Boolean  @default(false)
+   976→  attachmentRequired Boolean @default(false)
+   977→  reasonRequired  Boolean  @default(true)
+   978→  genderApplicability String? // All | Male | Female
+   979→  minDays         Int      @default(1)
+   980→  maxDays         Int?
+   981→  backdatedAllowed Boolean @default(true)
+   982→  futureAllowed   Boolean  @default(true)
+   983→  status          String   @default("Active")
+   984→  createdAt       DateTime @default(now())
+   985→  updatedAt       DateTime @updatedAt
+   986→
+   987→  policies        LeavePolicyItem[]
+   988→  applications    LeaveApplication[]
+   989→  balances        LeaveBalance[]
+   990→
+   991→  @@unique([tenantId, code])
+   992→}
+   993→
+   994→model LeavePolicy {
+   995→  id          String   @id @default(cuid())
+   996→  tenantId    String
+   997→  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   998→  name        String
+   999→  code        String
+  1000→  description String?
+  1001→  effectiveDate DateTime?
+  1002→  status      String   @default("Active")
+  1003→  createdAt   DateTime @default(now())
+  1004→  updatedAt   DateTime @updatedAt
+  1005→
+  1006→  items       LeavePolicyItem[]
+  1007→}
+  1008→
+  1009→model LeavePolicyItem {
+  1010→  id          String   @id @default(cuid())
+  1011→  leavePolicyId String
+  1012→  leavePolicy LeavePolicy @relation(fields: [leavePolicyId], references: [id], onDelete: Cascade)
+  1013→  leaveTypeId String
+  1014→  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  1015→  allocation  Float    @default(0)
+  1016→}
+  1017→
+  1018→model LeaveApplication {
+  1019→  id          String   @id @default(cuid())
+  1020→  tenantId    String
+  1021→  employeeId  String
+  1022→  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  1023→  leaveTypeId String
+  1024→  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  1025→  fromDate    DateTime
+  1026→  toDate      DateTime
+  1027→  days        Float
+  1028→  halfDay     Boolean  @default(false)
+  1029→  reason      String?
+  1030→  attachmentUrl String?
+  1031→  status      String   @default("Pending") // Pending | Approved | Rejected | Cancelled | Withdrawn
+  1032→  appliedAt   DateTime @default(now())
+  1033→  decisionAt  DateTime?
+  1034→  decisionBy  String?
+  1035→  decisionComment String?
+  1036→  workflowInstanceId String?
+  1037→
+  1038→  createdAt   DateTime @default(now())
+  1039→  updatedAt   DateTime @updatedAt
+  1040→}
+  1041→
+  1042→model LeaveBalance {
+  1043→  id          String   @id @default(cuid())
+  1044→  tenantId    String
+  1045→  employeeId  String
+  1046→  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  1047→  leaveTypeId String
+  1048→  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  1049→  year        Int
+  1050→  opening     Float    @default(0)
+  1051→  accrued     Float    @default(0)
+  1052→  used        Float    @default(0)
+  1053→  pending     Float    @default(0)
+  1054→  lapsed      Float    @default(0)
+  1055→
+  1056→  @@unique([employeeId, leaveTypeId, year])
+  1057→}
+  1058→
+  1059→// ============================================================
+  1060→// SHIFT & ROSTER
+  1061→// ============================================================
+  1062→
+  1063→model Shift {
+  1064→  id            String   @id @default(cuid())
+  1065→  tenantId      String
+  1066→  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  1067→  code          String
+  1068→  name          String
+  1069→  startTime     String   // "09:00"
+  1070→  endTime       String   // "18:00"
+  1071→  breakStart    String?
+  1072→  breakEnd      String?
+  1073→  workingHours  Float    @default(8)
+  1074→  graceMinutes Int      @default(15)
+  1075→  halfDayHours  Float    @default(4)
+  1076→  fullDayHours  Float    @default(8)
+  1077→  isNightShift  Boolean  @default(false)
+  1078→  isFlexible    Boolean  @default(false)
+  1079→  autoPunchOut  Boolean  @default(false)
+  1080→  overtimeEligible Boolean @default(false)
+  1081→  color         String   @default("#10b981")
+  1082→  status        String   @default("Active")
+  1083→  createdAt     DateTime @default(now())
+  1084→  updatedAt     DateTime @updatedAt
+  1085→
+  1086→  assignments   ShiftAssignment[]
+  1087→  rosterEntries RosterEntry[]
+  1088→
+  1089→  @@unique([tenantId, code])
+  1090→}
+  1091→
+  1092→model ShiftAssignment {
+  1093→  id          String   @id @default(cuid())
+  1094→  tenantId    String
+  1095→  employeeId  String
+  1096→  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  1097→  shiftId     String
+  1098→  shift       Shift    @relation(fields: [shiftId], references: [id])
+  1099→  effectiveDate DateTime
+  1100→  endDate     DateTime?
+  1101→  isRecurring Boolean  @default(true)
+  1102→  createdAt   DateTime @default(now())
+  1103→}
+  1104→
+  1105→model Roster {
+  1106→  id          String   @id @default(cuid())
+  1107→  tenantId    String
+  1108→  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  1109→  name        String
+  1110→  code        String
+  1111→  startDate   DateTime
+  1112→  endDate     DateTime
+  1113→  cycle       String   @default("Weekly") // Weekly | Monthly
+  1114→  status      String   @default("Draft") // Draft | Published | Locked
+  1115→  publishedAt DateTime?
+  1116→  createdAt   DateTime @default(now())
+  1117→  updatedAt   DateTime @updatedAt
+  1118→
+  1119→  entries     RosterEntry[]
+  1120→
+  1121→  @@unique([tenantId, code])
+  1122→}
+  1123→
+  1124→model RosterEntry {
+  1125→  id          String   @id @default(cuid())
+  1126→  rosterId    String
+  1127→  roster      Roster   @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  1128→  employeeId  String
+  1129→  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  1130→  shiftId     String?
+  1131→  shift       Shift?   @relation(fields: [shiftId], references: [id])
+  1132→  date        DateTime
+  1133→  isWeeklyOff Boolean  @default(false)
+  1134→  isHoliday   Boolean  @default(false)
+  1135→  notes       String?
+  1136→}
+  1137→
+  1138→// ============================================================
+  1139→// HOLIDAY & ATTENDANCE
+  1140→// ============================================================
+  1141→
+  1142→model Holiday {
+  1143→  id          String   @id @default(cuid())
+  1144→  tenantId    String
+  1145→  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  1146→  name        String
+  1147→  date        DateTime
+  1148→  type        String   @default("National") // National | Regional | Optional | Restricted
+  1149→  description String?
+  1150→  country     String   @default("India")
+  1151→  state       String?
+  1152→  createdAt   DateTime @default(now())
+  1153→  updatedAt   DateTime @updatedAt
+  1154→}
+  1155→
+  1156→model Attendance {
+  1157→  id          String   @id @default(cuid())
+  1158→  tenantId    String
+  1159→  employeeId  String
+  1160→  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  1161→  date        DateTime
+  1162→  clockIn     DateTime?
+  1163→  clockOut    DateTime?
+  1164→  status      String   @default("Present") // Present | Absent | Half Day | Late | Weekly Off | Holiday | Leave | WFH | OD
+  1165→  workHours   Float    @default(0)
+  1166→  overtimeHours Float  @default(0)
+  1167→  isLate      Boolean  @default(false)
+  1168→  isEarlyGoing Boolean @default(false)
+  1169→  remarks     String?
+  1170→  source      String   @default("Web") // Web | Mobile | Biometric | Manual
+  1171→  createdAt   DateTime @default(now())
+  1172→  updatedAt   DateTime @updatedAt
+  1173→
+  1174→  @@unique([employeeId, date])
+  1175→}
+  1176→
+  1177→// ============================================================
+  1178→// ASSET MANAGEMENT
+  1179→// ============================================================
+  1180→
+  1181→model AssetCategory {
+  1182→  id          String   @id @default(cuid())
+  1183→  tenantId    String
+  1184→  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  1185→  code        String
+  1186→  name        String
+  1187→  icon        String?
+  1188→  description String?
+  1189→  createdAt   DateTime @default(now())
+  1190→  updatedAt   DateTime @updatedAt
+  1191→
+  1192→  assets      Asset[]
+  1193→  assetRequests AssetRequest[]
+  1194→
+  1195→  @@unique([tenantId, code])
+  1196→}
+  1197→
+  1198→model Asset {
+  1199→  id          String   @id @default(cuid())
+  1200→  tenantId    String
+  1201→  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  1202→  assetCode   String
+  1203→  name        String
+  1204→  categoryId  String?
+  1205→  category    AssetCategory? @relation(fields: [categoryId], references: [id])
+  1206→  serialNumber String?
+  1207→  assetTag    String?
+  1208→  purchaseDate DateTime?
+  1209→  purchaseValue Float?
+  1210→  condition   String   @default("Good") // Good | Fair | Damaged | Lost
+  1211→  status      String   @default("In Stock") // In Stock | Assigned | Returned | Damaged | Lost | Repair | Retired | Disposed
+  1212→  assignedToId String?
+  1213→  assignedDate DateTime?
+  1214→  returnDate  DateTime?
+  1215→  notes       String?
+  1216→  createdAt   DateTime @default(now())
+  1217→  updatedAt   DateTime @updatedAt
+  1218→
+  1219→  assignments AssetAssignment[]
+  1220→
+  1221→  @@unique([tenantId, assetCode])
+  1222→}
+  1223→
+  1224→model AssetAssignment {
+  1225→  id          String   @id @default(cuid())
+  1226→  assetId     String
+  1227→  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  1228→  employeeId  String
+  1229→  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  1230→  assignedDate DateTime
+  1231→  returnDate  DateTime?
+  1232→  condition   String   @default("Good")
+  1233→  acknowledged Boolean @default(false)
+  1234→  notes       String?
+  1235→}
+  1236→
+  1237→model AssetRequest {
+  1238→  id          String   @id @default(cuid())
+  1239→  tenantId    String
+  1240→  employeeId  String
+  1241→  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  1242→  categoryId  String?
+  1243→  category    AssetCategory? @relation(fields: [categoryId], references: [id])
+  1244→  requestType String   @default("New") // New | Replacement | Repair
+  1245→  reason      String?
+  1246→  status      String   @default("Pending") // Pending | Approved | Rejected | Fulfilled
+  1247→  priority    String   @default("Medium")
+  1248→  workflowInstanceId String?
+  1249→  createdAt   DateTime @default(now())
+  1250→  updatedAt   DateTime @updatedAt
+  1251→}
+  1252→
+  1253→// ============================================================
+  1254→// DYNAMIC FORM ENGINE
+  1255→// ============================================================
+  1256→
+  1257→model FormSchema {
+  1258→  id          String   @id @default(cuid())
+  1259→  tenantId    String
+  1260→  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  1261→  code        String
+  1262→  name        String
+  1263→  module      String   // employee | entity | leaveType | shift | roster | asset | leaveApplication | assetRequest | custom
+  1264→  description String?
+  1265→  sections    String   // JSON: array of {title, fields: [...]}
+  1266→  status      String   @default("Published") // Draft | Published
+  1267→  version     Int      @default(1)
+  1268→  createdAt   DateTime @default(now())
+  1269→  updatedAt   DateTime @updatedAt
+  1270→
+  1271→  @@unique([tenantId, code])
+  1272→}
+  1273→
+  1274→// ============================================================
+  1275→// WORKFLOW ENGINE
+  1276→// ============================================================
+  1277→
+  1278→model Workflow {
+  1279→  id          String   @id @default(cuid())
+  1280→  tenantId    String
+  1281→  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  1282→  code        String
+  1283→  name        String
+  1284→  module      String   // leave | asset | attendance | employee | expense | onboarding
+  1285→  event       String   // create | update | apply | request
+  1286→  description String?
+  1287→  approvalType String  @default("Sequential") // Sequential | Parallel | Auto
+  1288→  conditions  String?  // JSON
+  1289→  isActive    Boolean  @default(true)
+  1290→  createdAt   DateTime @default(now())
+  1291→  updatedAt   DateTime @updatedAt
+  1292→
+  1293→  steps       WorkflowStep[]
+  1294→  instances   WorkflowInstance[]
+  1295→
+  1296→  @@unique([tenantId, code])
+  1297→}
+  1298→
+  1299→model WorkflowStep {
+  1300→  id          String   @id @default(cuid())
+  1301→  workflowId  String
+  1302→  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  1303→  level       Int
+  1304→  approverType String  // ReportingManager | DepartmentHead | HRManager | SpecificEmployee | Role
+  1305→  approverId  String?  // employee id when SpecificEmployee
+  1306→  approverRole String?
+  1307→  slaHours    Int?
+  1308→  name        String?
+  1309→
+  1310→  instances   WorkflowAction[]
+  1311→}
+  1312→
+  1313→model WorkflowInstance {
+  1314→  id          String   @id @default(cuid())
+  1315→  tenantId    String
+  1316→  workflowId  String
+  1317→  workflow    Workflow @relation(fields: [workflowId], references: [id])
+  1318→  module      String
+  1319→  recordId    String   // the entity being approved
+  1320→  initiatorId String?
+  1321→  status      String   @default("Pending") // Pending | Approved | Rejected | Cancelled
+  1322→  currentLevel Int     @default(1)
+  1323→  createdAt   DateTime @default(now())
+  1324→  updatedAt   DateTime @updatedAt
+  1325→  completedAt DateTime?
+  1326→
+  1327→  actions     WorkflowAction[]
+  1328→}
+  1329→
+  1330→model WorkflowAction {
+  1331→  id              String   @id @default(cuid())
+  1332→  instanceId      String
+  1333→  instance        WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  1334→  stepId          String
+  1335→  step            WorkflowStep @relation(fields: [stepId], references: [id])
+  1336→  action          String   // Approve | Reject | Escalate
+  1337→  actorId         String?
+  1338→  comment         String?
+  1339→  actedAt         DateTime @default(now())
+  1340→}
+  1341→
+  1342→// ============================================================
+  1343→// ANNOUNCEMENTS & AUDIT
+  1344→// ============================================================
+  1345→
+  1346→model Announcement {
+  1347→  id          String   @id @default(cuid())
+  1348→  tenantId    String
+  1349→  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  1350→  title       String
+  1351→  body        String?
+  1352→  audience    String   @default("All") // All | Entity | Department | Location
+  1353→  audienceRef String?
+  1354→  publishDate DateTime @default(now())
+  1355→  expiryDate  DateTime?
+  1356→  priority    String   @default("Normal")
+  1357→  createdAt   DateTime @default(now())
+  1358→  updatedAt   DateTime @updatedAt
+  1359→}
+  1360→
+  1361→model AuditLog {
+  1362→  id          String   @id @default(cuid())
+  1363→  tenantId    String
+  1364→  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  1365→  module      String
+  1366→  action      String   // Create | Update | Delete | Approve | Reject
+  1367→  recordId    String?
+  1368→  userId      String?
+  1369→  userName    String?
+  1370→  details     String?  // JSON
+  1371→  ip          String?
+  1372→  createdAt   DateTime @default(now())
+  1373→}
+  1374→

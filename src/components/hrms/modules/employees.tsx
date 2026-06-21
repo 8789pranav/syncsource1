@@ -4,16 +4,11 @@ import * as React from "react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 import {
-  Users, Plus, Pencil, Trash2, Mail, Phone, MapPin, Calendar,
-  Briefcase, Banknote, FileText, User as UserIcon, Clock, ExternalLink,
+  Users, Plus, Pencil, Trash2, ExternalLink,
 } from "lucide-react"
-import type { LucideIcon } from "lucide-react"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog"
-import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
-} from "@/components/ui/sheet"
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel,
@@ -24,15 +19,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
 import {
   PageHeader, ListToolbar, DataTable, StatusBadge, EmptyState, Column,
 } from "@/components/hrms/ui"
-import { DynamicForm, FieldValue } from "@/components/dynamic-form/dynamic-form"
+import { DynamicForm } from "@/components/dynamic-form/dynamic-form"
 import { employeeFormSchema } from "@/lib/form-schemas"
-import type { FormValues, FormField as FormFieldDef, FieldType } from "@/lib/types"
+import type { FormValues } from "@/lib/types"
+import { EmployeeProfile } from "@/components/hrms/employee-profile/employee-profile"
 
 // ============================================================
 // Utilities
@@ -56,11 +49,6 @@ function formatDate(iso?: string | null): string {
   }
 }
 
-function formatCurrency(v?: number | null): string {
-  if (v === undefined || v === null) return "—"
-  return "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(v)
-}
-
 function toFormValues(rec: any): FormValues {
   if (!rec) return {}
   const out: FormValues = {}
@@ -78,11 +66,6 @@ function useDebounce<T>(value: T, delay: number): T {
     return () => clearTimeout(t)
   }, [value, delay])
   return debounced
-}
-
-// Build a FormFieldDef for FieldValue rendering
-function fd(key: string, label: string, type: FieldType = "text"): FormFieldDef {
-  return { id: `f-${key}`, key, label, type }
 }
 
 const EMPLOYEE_STATUS_OPTIONS = [
@@ -106,13 +89,10 @@ export function EmployeesModule() {
   const [statusFilter, setStatusFilter] = React.useState<string>("")
   const [departments, setDepartments] = React.useState<any[]>([])
 
-  // Detail sheet state
-  const [sheetOpen, setSheetOpen] = React.useState(false)
-  const [selectedId, setSelectedId] = React.useState<string | null>(null)
-  const [selectedEmp, setSelectedEmp] = React.useState<any | null>(null)
-  const [loadingDetail, setLoadingDetail] = React.useState(false)
+  // Selected employee (opens full-screen profile)
+  const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<string | null>(null)
 
-  // Add/Edit dialog state
+  // Add/Edit dialog state (list-level)
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<any | null>(null)
   const [saving, setSaving] = React.useState(false)
@@ -153,22 +133,9 @@ export function EmployeesModule() {
       .catch(() => {})
   }, [])
 
-  // Open detail sheet
-  const onView = async (row: any) => {
-    setSelectedId(row.id)
-    setSheetOpen(true)
-    setLoadingDetail(true)
-    setSelectedEmp(row) // initial data from list (lighter)
-    try {
-      const res = await fetch(`/api/employees/${row.id}`, { cache: "no-store" })
-      if (!res.ok) throw new Error()
-      const data = await res.json()
-      setSelectedEmp(data)
-    } catch {
-      toast.error("Failed to load employee details")
-    } finally {
-      setLoadingDetail(false)
-    }
+  // Open full-screen profile on row click
+  const onView = (row: any) => {
+    setSelectedEmployeeId(row.id)
   }
 
   const onAdd = () => {
@@ -179,7 +146,6 @@ export function EmployeesModule() {
   const onEdit = (emp: any) => {
     setEditing(emp)
     setDialogOpen(true)
-    setSheetOpen(false)
   }
 
   const onSubmit = async (values: FormValues) => {
@@ -201,13 +167,6 @@ export function EmployeesModule() {
       setDialogOpen(false)
       setEditing(null)
       await load()
-      // Refresh detail if we were editing the currently selected employee
-      if (isEdit && selectedId) {
-        try {
-          const detail = await fetch(`/api/employees/${selectedId}`, { cache: "no-store" }).then((r) => r.json())
-          setSelectedEmp(detail)
-        } catch {}
-      }
     } catch (e: any) {
       toast.error(e.message || "Something went wrong")
     } finally {
@@ -224,10 +183,9 @@ export function EmployeesModule() {
         throw new Error(err.error || "Failed to delete")
       }
       toast.success("Employee deleted")
-      if (selectedId === deletingId) {
-        setSheetOpen(false)
-        setSelectedId(null)
-        setSelectedEmp(null)
+      // If the deleted employee was the one being viewed, drop back to list
+      if (selectedEmployeeId === deletingId) {
+        setSelectedEmployeeId(null)
       }
       setDeletingId(null)
       await load()
@@ -315,6 +273,20 @@ export function EmployeesModule() {
       ),
     },
   ]
+
+  // ---------------------------------------------------------------
+  // Full-screen profile view (replaces the list when an employee
+  // is selected).
+  // ---------------------------------------------------------------
+  if (selectedEmployeeId) {
+    return (
+      <EmployeeProfile
+        employeeId={selectedEmployeeId}
+        onBack={() => setSelectedEmployeeId(null)}
+        onEdited={load}
+      />
+    )
+  }
 
   return (
     <div className="space-y-5">
@@ -414,24 +386,6 @@ export function EmployeesModule() {
         </DialogContent>
       </Dialog>
 
-      {/* Profile Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={(o) => { setSheetOpen(o); if (!o) { setSelectedId(null); setSelectedEmp(null) } }}>
-        <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col">
-          {selectedEmp ? (
-            <EmployeeProfile
-              emp={selectedEmp}
-              loading={loadingDetail}
-              onEdit={() => onEdit(selectedEmp)}
-              onDelete={() => setDeletingId(selectedEmp.id)}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full py-20">
-              <div className="text-sm text-muted-foreground">Loading employee...</div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
       {/* Delete confirmation */}
       <AlertDialog open={!!deletingId} onOpenChange={(o) => { if (!o) setDeletingId(null) }}>
         <AlertDialogContent>
@@ -452,306 +406,6 @@ export function EmployeesModule() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  )
-}
-
-// ============================================================
-// Employee Profile Drawer (Sheet content)
-// ============================================================
-
-function EmployeeProfile({
-  emp, loading, onEdit, onDelete,
-}: {
-  emp: any
-  loading: boolean
-  onEdit: () => void
-  onDelete: () => void
-}) {
-  const fullName = [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(" ")
-  const [tab, setTab] = React.useState("overview")
-
-  return (
-    <>
-      <SheetHeader className="border-b bg-gradient-to-br from-emerald-500/5 via-teal-500/5 to-cyan-500/5 px-6 py-5">
-        <div className="flex items-start gap-4">
-          <Avatar className="h-16 w-16 border-2 border-background shadow-soft shrink-0">
-            <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-500 text-white text-xl font-semibold">
-              {getInitials(emp.firstName, emp.middleName, emp.lastName)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <SheetTitle className="text-lg font-semibold truncate">{fullName}</SheetTitle>
-            <SheetDescription className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="font-mono text-xs">{emp.employeeCode}</span>
-              {emp.designation && <span className="text-xs">· {emp.designation.name}</span>}
-            </SheetDescription>
-            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-              <StatusBadge status={emp.employeeStatus} />
-              {emp.employmentType && <Badge variant="outline" className="text-xs">{emp.employmentType}</Badge>}
-              {emp.grade && <Badge variant="outline" className="text-xs">{emp.grade.name}</Badge>}
-            </div>
-          </div>
-        </div>
-
-        {/* Contact quick row */}
-        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
-          {emp.officialEmail && (
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Mail className="h-3 w-3 shrink-0" />
-              <span className="truncate">{emp.officialEmail}</span>
-            </div>
-          )}
-          {emp.mobileNumber && (
-            <div className="flex items-center gap-1.5">
-              <Phone className="h-3 w-3 shrink-0" /> {emp.mobileNumber}
-            </div>
-          )}
-          {emp.dateOfJoining && (
-            <div className="flex items-center gap-1.5">
-              <Calendar className="h-3 w-3 shrink-0" /> Joined {formatDate(emp.dateOfJoining)}
-            </div>
-          )}
-        </div>
-      </SheetHeader>
-
-      <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
-        <div className="border-b px-4">
-          <TabsList className="bg-transparent h-auto p-0 justify-start gap-1">
-            <TabsTrigger value="overview" className="rounded-b-none">Overview</TabsTrigger>
-            <TabsTrigger value="timeline" className="rounded-b-none">Timeline</TabsTrigger>
-            <TabsTrigger value="documents" className="rounded-b-none">Documents</TabsTrigger>
-            <TabsTrigger value="leave" className="rounded-b-none">Leave Balance</TabsTrigger>
-          </TabsList>
-        </div>
-
-        <ScrollArea className="flex-1">
-          <TabsContent value="overview" className="p-6 pt-5 m-0 mt-0 focus-visible:outline-none">
-            <OverviewTab emp={emp} />
-          </TabsContent>
-          <TabsContent value="timeline" className="p-6 pt-5 m-0 mt-0 focus-visible:outline-none">
-            <TimelineTab emp={emp} />
-          </TabsContent>
-          <TabsContent value="documents" className="p-6 pt-5 m-0 mt-0 focus-visible:outline-none">
-            <DocumentsTab emp={emp} />
-          </TabsContent>
-          <TabsContent value="leave" className="p-6 pt-5 m-0 mt-0 focus-visible:outline-none">
-            <LeaveTab emp={emp} />
-          </TabsContent>
-        </ScrollArea>
-      </Tabs>
-
-      <SheetFooter className="border-t flex-row justify-end gap-2 px-6 py-3">
-        <Button variant="outline" size="sm" onClick={onDelete} className="gap-1.5 text-destructive hover:text-destructive">
-          <Trash2 className="h-3.5 w-3.5" /> Delete
-        </Button>
-        <Button size="sm" onClick={onEdit} className="gap-1.5">
-          <Pencil className="h-3.5 w-3.5" /> Edit
-        </Button>
-      </SheetFooter>
-    </>
-  )
-}
-
-// ============================================================
-// Profile sub-tabs
-// ============================================================
-
-function FieldGrid({ items }: { items: { field: FormFieldDef; value: unknown }[] }) {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5">
-      {items.map(({ field, value }) => (
-        <div key={field.key} className="space-y-0.5 min-w-0">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{field.label}</div>
-          <FieldValue field={field} value={value} />
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function SectionTitle({ icon: Icon, title }: { icon: LucideIcon; title: string }) {
-  return (
-    <h3 className="text-sm font-semibold text-foreground mb-3.5 flex items-center gap-1.5">
-      <Icon className="h-4 w-4 text-emerald-500" /> {title}
-    </h3>
-  )
-}
-
-function OverviewTab({ emp }: { emp: any }) {
-  return (
-    <div className="space-y-6">
-      <section>
-        <SectionTitle icon={UserIcon} title="Basic Details" />
-        <FieldGrid items={[
-          { field: fd("displayName", "Display Name"), value: emp.displayName },
-          { field: fd("gender", "Gender"), value: emp.gender },
-          { field: fd("dateOfBirth", "Date of Birth", "date"), value: emp.dateOfBirth },
-          { field: fd("maritalStatus", "Marital Status"), value: emp.maritalStatus },
-          { field: fd("bloodGroup", "Blood Group"), value: emp.bloodGroup },
-          { field: fd("nationality", "Nationality"), value: emp.nationality },
-          { field: fd("personalEmail", "Personal Email", "email"), value: emp.personalEmail },
-          { field: fd("mobileNumber", "Mobile Number", "phone"), value: emp.mobileNumber },
-          { field: fd("alternateNumber", "Alternate Number", "phone"), value: emp.alternateNumber },
-        ]} />
-      </section>
-
-      <Separator />
-
-      <section>
-        <SectionTitle icon={Briefcase} title="Employment Details" />
-        <FieldGrid items={[
-          { field: fd("dateOfJoining", "Date of Joining", "date"), value: emp.dateOfJoining },
-          { field: fd("employmentType", "Employment Type"), value: emp.employmentType },
-          { field: fd("workerType", "Worker Type"), value: emp.workerType },
-          { field: fd("probationStatus", "Probation Status"), value: emp.probationStatus },
-          { field: fd("probationEndDate", "Probation End Date", "date"), value: emp.probationEndDate },
-          { field: fd("confirmationDate", "Confirmation Date", "date"), value: emp.confirmationDate },
-          { field: fd("noticePeriod", "Notice Period (days)", "number"), value: emp.noticePeriod },
-          { field: fd("employeeStatus", "Employee Status"), value: emp.employeeStatus },
-          { field: fd("entity", "Entity"), value: emp.entity?.tradeName || emp.entity?.legalName },
-          { field: fd("department", "Department"), value: emp.department?.name },
-          { field: fd("designation", "Designation"), value: emp.designation?.name },
-          { field: fd("grade", "Grade"), value: emp.grade?.name },
-          { field: fd("branch", "Branch"), value: emp.branch?.name },
-          { field: fd("location", "Location"), value: emp.location?.name },
-          {
-            field: fd("reportingManager", "Reporting Manager"),
-            value: emp.reportingManager
-              ? `${emp.reportingManager.firstName} ${emp.reportingManager.lastName || ""} (${emp.reportingManager.employeeCode})`
-              : null,
-          },
-        ]} />
-      </section>
-
-      <Separator />
-
-      <section>
-        <SectionTitle icon={Banknote} title="Bank & Compensation" />
-        <FieldGrid items={[
-          { field: fd("ctc", "Annual CTC", "currency"), value: emp.ctc },
-          { field: fd("basicSalary", "Basic Salary (monthly)", "currency"), value: emp.basicSalary },
-          { field: fd("hra", "HRA (monthly)", "currency"), value: emp.hra },
-          { field: fd("bankName", "Bank Name"), value: emp.bankName },
-          { field: fd("accountNumber", "Account Number"), value: emp.accountNumber },
-          { field: fd("ifscCode", "IFSC Code"), value: emp.ifscCode },
-          { field: fd("branchName", "Bank Branch"), value: emp.branchName },
-        ]} />
-      </section>
-
-      <Separator />
-
-      <section>
-        <SectionTitle icon={FileText} title="Statutory Details" />
-        <FieldGrid items={[
-          { field: fd("panNumber", "PAN"), value: emp.panNumber },
-          { field: fd("aadhaarNumber", "Aadhaar"), value: emp.aadhaarNumber },
-          { field: fd("uanNumber", "UAN"), value: emp.uanNumber },
-          { field: fd("pfNumber", "PF Number"), value: emp.pfNumber },
-          { field: fd("esiNumber", "ESI Number"), value: emp.esiNumber },
-        ]} />
-      </section>
-
-      <Separator />
-
-      <section>
-        <SectionTitle icon={MapPin} title="Address" />
-        <div className="space-y-4">
-          <div className="space-y-0.5">
-            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Current Address</div>
-            <p className="text-sm whitespace-pre-line">
-              {emp.currentAddress || <span className="text-muted-foreground/50 italic">—</span>}
-            </p>
-          </div>
-          <div className="space-y-0.5">
-            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Permanent Address</div>
-            <p className="text-sm whitespace-pre-line">
-              {emp.permanentAddress || <span className="text-muted-foreground/50 italic">—</span>}
-            </p>
-          </div>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function TimelineTab({ emp }: { emp: any }) {
-  type Event = { id: string; title: string; description?: string; date?: string | null; icon: LucideIcon }
-  const events: Event[] = [
-    {
-      id: "created",
-      title: "Employee record created",
-      description: "Profile added to the system",
-      date: emp.createdAt,
-      icon: FileText,
-    },
-    {
-      id: "joined",
-      title: "Onboarded",
-      description: "Date of joining",
-      date: emp.dateOfJoining,
-      icon: UserIcon,
-    },
-    ...(emp.probationEndDate
-      ? [{ id: "probation", title: "Probation period end", description: "Scheduled probation completion", date: emp.probationEndDate, icon: Clock as LucideIcon }]
-      : []),
-    ...(emp.confirmationDate
-      ? [{ id: "confirmed", title: "Confirmed as permanent employee", date: emp.confirmationDate, icon: Briefcase as LucideIcon }]
-      : []),
-  ].filter((e) => e.date) as Event[]
-
-  if (events.length === 0) {
-    return <EmptyState icon={Clock} title="No timeline events" description="Milestones will appear here as the employee progresses." />
-  }
-
-  return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">Key milestones and activity for {emp.firstName}.</p>
-      <div className="relative pl-7">
-        <div className="absolute left-[10px] top-1 bottom-1 w-px bg-border" />
-        {events.map((ev) => (
-          <div key={ev.id} className="relative pb-5 last:pb-0">
-            <div className="absolute -left-[18px] top-0.5 grid h-5 w-5 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-500/15 ring-2 ring-background">
-              <ev.icon className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div className="ml-1">
-              <p className="text-sm font-medium text-foreground">{ev.title}</p>
-              {ev.description && <p className="text-xs text-muted-foreground mt-0.5">{ev.description}</p>}
-              <p className="text-xs text-muted-foreground mt-1">{formatDate(ev.date)}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function DocumentsTab({ emp }: { emp: any }) {
-  return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Document vault for {emp.firstName} {emp.lastName || ""}.
-      </p>
-      <EmptyState
-        icon={FileText}
-        title="No documents uploaded"
-        description="Document management (KYC, contracts, certificates) will be available in an upcoming release."
-      />
-    </div>
-  )
-}
-
-function LeaveTab({ emp }: { emp: any }) {
-  return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Leave entitlement & balance summary for {emp.firstName}.
-      </p>
-      <EmptyState
-        icon={Calendar}
-        title="No leave balances"
-        description="Leave balances will appear here once leave policies are assigned to this employee."
-      />
     </div>
   )
 }

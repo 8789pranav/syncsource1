@@ -1,0 +1,1456 @@
+     1→// Comprehensive seed endpoint for the HRMS demo tenant.
+     2→// GET or POST /api/seed → wipes & re-creates demo data for the default tenant.
+     3→// Returns { ok: true, counts: {...} }
+     4→
+     5→import { db } from "@/lib/db"
+     6→import { ensureTenant, ok, bad } from "@/lib/api-helpers"
+     7→import { defaultFormSchemas } from "@/lib/form-schemas"
+     8→
+     9→// ---------- date helpers ----------
+    10→function daysAgo(n: number): Date {
+    11→  const d = new Date()
+    12→  d.setHours(12, 0, 0, 0)
+    13→  d.setDate(d.getDate() - n)
+    14→  return d
+    15→}
+    16→function daysFromNow(n: number): Date {
+    17→  const d = new Date()
+    18→  d.setHours(12, 0, 0, 0)
+    19→  d.setDate(d.getDate() + n)
+    20→  return d
+    21→}
+    22→function monthsAgo(n: number): Date {
+    23→  const d = new Date()
+    24→  d.setHours(12, 0, 0, 0)
+    25→  d.setMonth(d.getMonth() - n)
+    26→  return d
+    27→}
+    28→function monthsFromNow(n: number): Date {
+    29→  const d = new Date()
+    30→  d.setHours(12, 0, 0, 0)
+    31→  d.setMonth(d.getMonth() + n)
+    32→  return d
+    33→}
+    34→function yearsAgo(n: number, day = 1, month = 0): Date {
+    35→  const d = new Date()
+    36→  d.setHours(12, 0, 0, 0)
+    37→  d.setFullYear(d.getFullYear() - n)
+    38→  d.setMonth(month)
+    39→  d.setDate(day)
+    40→  return d
+    41→}
+    42→function dateOnly(year: number, month: number, day: number): Date {
+    43→  const d = new Date(year, month, day, 12, 0, 0, 0)
+    44→  return d
+    45→}
+    46→
+    47→export async function GET() {
+    48→  return runSeed()
+    49→}
+    50→
+    51→export async function POST() {
+    52→  return runSeed()
+    53→}
+    54→
+    55→async function runSeed() {
+    56→  try {
+    57→    // Ensure tenant exists first (creates ACME default tenant if absent)
+    58→    await ensureTenant()
+    59→
+    60→    // ---------- WIPE existing data in dependency order (children first) ----------
+    61→    // Phase 2 employee sub-records (must precede employee.deleteMany — FK to Employee)
+    62→    await db.employeeRequest.deleteMany()
+    63→    await db.employeeLetter.deleteMany()
+    64→    await db.employeeHelpdeskTicket.deleteMany()
+    65→    await db.employeeExpense.deleteMany()
+    66→    await db.employeePerformanceReview.deleteMany()
+    67→    await db.employeePerformanceGoal.deleteMany()
+    68→    await db.employeeTraining.deleteMany()
+    69→    await db.employeeCertification.deleteMany()
+    70→    await db.employeeSkill.deleteMany()
+    71→    await db.employeeFormSubmission.deleteMany()
+    72→    await db.employeeCustomFieldValue.deleteMany()
+    73→    await db.employeeRoleMapping.deleteMany()
+    74→    await db.employeeLoginAccess.deleteMany()
+    75→    await db.employeeExit.deleteMany()
+    76→    await db.employeeProbation.deleteMany()
+    77→    await db.employeePromotionHistory.deleteMany()
+    78→    await db.employeeTransferHistory.deleteMany()
+    79→    await db.employeeStatusHistory.deleteMany()
+    80→    await db.employeeAuditLog.deleteMany()
+    81→    await db.employeeTimelineEvent.deleteMany()
+    82→    await db.employeeNote.deleteMany()
+    83→    await db.employeeCompensationHistory.deleteMany()
+    84→    await db.employeeDocument.deleteMany()
+    85→    await db.employeeStatutoryDetail.deleteMany()
+    86→    await db.employeeBankDetail.deleteMany()
+    87→    await db.employeeExperience.deleteMany()
+    88→    await db.employeeEducation.deleteMany()
+    89→    await db.employeeFamilyMember.deleteMany()
+    90→
+    91→    // Phase 1 records
+    92→    await db.workflowAction.deleteMany()
+    93→    await db.workflowInstance.deleteMany()
+    94→    await db.workflowStep.deleteMany()
+    95→    await db.workflow.deleteMany()
+    96→    await db.formSchema.deleteMany()
+    97→    await db.auditLog.deleteMany()
+    98→    await db.announcement.deleteMany()
+    99→    await db.assetAssignment.deleteMany()
+   100→    await db.assetRequest.deleteMany()
+   101→    await db.asset.deleteMany()
+   102→    await db.assetCategory.deleteMany()
+   103→    await db.holiday.deleteMany()
+   104→    await db.attendance.deleteMany()
+   105→    await db.rosterEntry.deleteMany()
+   106→    await db.roster.deleteMany()
+   107→    await db.shiftAssignment.deleteMany()
+   108→    await db.shift.deleteMany()
+   109→    await db.leaveApplication.deleteMany()
+   110→    await db.leaveBalance.deleteMany()
+   111→    await db.leavePolicyItem.deleteMany()
+   112→    await db.leavePolicy.deleteMany()
+   113→    await db.leaveType.deleteMany()
+   114→    await db.profileUpdateRequest.deleteMany()
+   115→    await db.employee.deleteMany()
+   116→    await db.designation.deleteMany()
+   117→    await db.grade.deleteMany()
+   118→    await db.department.deleteMany()
+   119→    await db.branch.deleteMany()
+   120→    await db.location.deleteMany()
+   121→    await db.entity.deleteMany()
+   122→
+   123→    const tenantId = await ensureTenant()
+   124→    const counts: Record<string, number> = {}
+   125→
+   126→    // ---------- ENTITIES ----------
+   127→    const espl = await db.entity.create({
+   128→      data: {
+   129→        tenantId,
+   130→        code: "ESPL",
+   131→        legalName: "Example Services Private Limited",
+   132→        tradeName: "Example Services",
+   133→        pan: "AABCE1234F",
+   134→        gstin: "27AABCE1234F1Z5",
+   135→        tan: "MUME12345B",
+   136→        pfNumber: "BGBNG0012345000",
+   137→        esiNumber: "BGBNG0012345000",
+   138→        address: "Plot 14, MIDC Marol, Andheri East",
+   139→        city: "Mumbai",
+   140→        state: "Maharashtra",
+   141→        country: "India",
+   142→        currency: "INR",
+   143→        payrollApplicable: true,
+   144→        attendanceApplicable: true,
+   145→        leaveApplicable: true,
+   146→        status: "Active",
+   147→      },
+   148→    })
+   149→    const et = await db.entity.create({
+   150→      data: {
+   151→        tenantId,
+   152→        code: "ET",
+   153→        legalName: "Example Technologies Private Limited",
+   154→        tradeName: "Example Tech",
+   155→        pan: "AABCT5678G",
+   156→        gstin: "29AABCT5678G1Z2",
+   157→        tan: "BLRE98765C",
+   158→        pfNumber: "BGKAR0012345000",
+   159→        esiNumber: "BGKAR0012345000",
+   160→        address: "Outer Ring Road, Bellandur",
+   161→        city: "Bangalore",
+   162→        state: "Karnataka",
+   163→        country: "India",
+   164→        currency: "INR",
+   165→        payrollApplicable: true,
+   166→        attendanceApplicable: true,
+   167→        leaveApplicable: true,
+   168→        status: "Active",
+   169→      },
+   170→    })
+   171→    counts.entities = 2
+   172→
+   173→    // ---------- BRANCHES (linked to ESPL) ----------
+   174→    const bomHq = await db.branch.create({
+   175→      data: {
+   176→        tenantId, entityId: espl.id, code: "BOM-HQ",
+   177→        name: "Mumbai HQ", address: "Plot 14, MIDC Marol, Andheri East",
+   178→        city: "Mumbai", state: "Maharashtra", country: "India",
+   179→        lat: 19.1136, lng: 72.8697, workingDays: "Mon,Tue,Wed,Thu,Fri", status: "Active",
+   180→      },
+   181→    })
+   182→    const blrTech = await db.branch.create({
+   183→      data: {
+   184→        tenantId, entityId: espl.id, code: "BLR-TECH",
+   185→        name: "Bangalore Tech", address: "Outer Ring Road, Bellandur",
+   186→        city: "Bangalore", state: "Karnataka", country: "India",
+   187→        lat: 12.9279, lng: 77.6271, workingDays: "Mon,Tue,Wed,Thu,Fri", status: "Active",
+   188→      },
+   189→    })
+   190→    const delSales = await db.branch.create({
+   191→      data: {
+   192→        tenantId, entityId: espl.id, code: "DEL-SALES",
+   193→        name: "Delhi Sales", address: "Connaught Place, New Delhi",
+   194→        city: "New Delhi", state: "Delhi", country: "India",
+   195→        lat: 28.6315, lng: 77.2167, workingDays: "Mon,Tue,Wed,Thu,Fri", status: "Active",
+   196→      },
+   197→    })
+   198→    counts.branches = 3
+   199→
+   200→    // ---------- DEPARTMENTS (under ESPL) ----------
+   201→    const deptDefs = [
+   202→      { code: "DEPT-HR", name: "Human Resources" },
+   203→      { code: "DEPT-ENG", name: "Engineering" },
+   204→      { code: "DEPT-SAL", name: "Sales" },
+   205→      { code: "DEPT-FIN", name: "Finance" },
+   206→      { code: "DEPT-MKT", name: "Marketing" },
+   207→      { code: "DEPT-OPS", name: "Operations" },
+   208→    ]
+   209→    const depts: Record<string, { id: string; name: string }> = {}
+   210→    for (const d of deptDefs) {
+   211→      const rec = await db.department.create({
+   212→        data: { tenantId, entityId: espl.id, code: d.code, name: d.name, status: "Active" },
+   213→      })
+   214→      depts[d.code] = { id: rec.id, name: rec.name }
+   215→    }
+   216→    counts.departments = 6
+   217→
+   218→    // ---------- GRADES ----------
+   219→    const grades: Record<string, string> = {}
+   220→    const gradeDefs = [
+   221→      { code: "L4-MID", name: "L4 — Mid", hierarchyLevel: 4, minSalary: 500000, maxSalary: 1200000, leaveEligibility: 18, approvalAuthority: false },
+   222→      { code: "L5-SEN", name: "L5 — Senior", hierarchyLevel: 5, minSalary: 1200000, maxSalary: 2200000, leaveEligibility: 22, approvalAuthority: true },
+   223→      { code: "L6-LEAD", name: "L6 — Lead", hierarchyLevel: 6, minSalary: 2200000, maxSalary: 3500000, leaveEligibility: 26, approvalAuthority: true },
+   224→    ]
+   225→    for (const g of gradeDefs) {
+   226→      const rec = await db.grade.create({ data: { tenantId, ...g, status: "Active" } })
+   227→      grades[g.code] = rec.id
+   228→    }
+   229→    counts.grades = 3
+   230→
+   231→    // ---------- DESIGNATIONS (mapped to grades) ----------
+   232→    const desigs: Record<string, string> = {}
+   233→    const desigDefs = [
+   234→      { code: "DES-HR-EXEC", name: "HR Executive", gradeId: grades["L4-MID"], level: 1 },
+   235→      { code: "DES-SWE", name: "Software Engineer", gradeId: grades["L4-MID"], level: 2 },
+   236→      { code: "DES-SSWE", name: "Senior Software Engineer", gradeId: grades["L5-SEN"], level: 3 },
+   237→      { code: "DES-SALES-MGR", name: "Sales Manager", gradeId: grades["L6-LEAD"], level: 3 },
+   238→      { code: "DES-FIN-ANL", name: "Finance Analyst", gradeId: grades["L4-MID"], level: 2 },
+   239→      { code: "DES-DEVOPS", name: "DevOps Engineer", gradeId: grades["L5-SEN"], level: 3 },
+   240→    ]
+   241→    for (const d of desigDefs) {
+   242→      const rec = await db.designation.create({ data: { tenantId, ...d, status: "Active" } })
+   243→      desigs[d.code] = rec.id
+   244→    }
+   245→    counts.designations = 6
+   246→
+   247→    // ---------- LOCATIONS ----------
+   248→    const locs: Record<string, string> = {}
+   249→    const locDefs = [
+   250→      { code: "LOC-MUM", name: "Mumbai Office", address: "Andheri East, Mumbai", city: "Mumbai", state: "Maharashtra", country: "India", geoFenceRadius: 100, timezone: "Asia/Kolkata", attendanceMode: "Web" },
+   251→      { code: "LOC-BLR", name: "Bangalore Office", address: "Bellandur, Bangalore", city: "Bangalore", state: "Karnataka", country: "India", geoFenceRadius: 100, timezone: "Asia/Kolkata", attendanceMode: "Web" },
+   252→      { code: "LOC-DEL", name: "Delhi Office", address: "Connaught Place, New Delhi", city: "New Delhi", state: "Delhi", country: "India", geoFenceRadius: 100, timezone: "Asia/Kolkata", attendanceMode: "Web" },
+   253→    ]
+   254→    for (const l of locDefs) {
+   255→      const rec = await db.location.create({ data: { tenantId, ...l, status: "Active" } })
+   256→      locs[l.code] = rec.id
+   257→    }
+   258→    counts.locations = 3
+   259→
+   260→    // ---------- EMPLOYEES (12) ----------
+   261→    // Realistic Indian names; varied departments/designations/grades/locations; manager hierarchy.
+   262→    type EmpSeed = {
+   263→      code: string; first: string; last: string; gender: "Male" | "Female"
+   264→      dob: Date; doj: Date; mobile: string; personalEmail: string; officialEmail: string
+   265→      entity: string; branch: string; dept: string; desig: string; grade: string; loc: string
+   266→      mgrCode: string | null; ctc: number
+   267→      status: string; pan: string; bank: string; account: string; ifsc: string
+   268→      // new personal fields
+   269→      religion?: string; category?: string; marital?: string; blood?: string
+   270→      passport?: string; emergencyName?: string; emergencyRelation?: string; emergencyPhone?: string
+   271→      currentCity?: string; currentState?: string; currentPincode?: string
+   272→      permCity?: string; permState?: string; permPincode?: string
+   273→      workMode?: string; businessUnit?: string; costCenter?: string
+   274→      // exit-related (for "On Notice" employees)
+   275→      resignationDate?: Date; resignationReason?: string
+   276→    }
+   277→    const empSeeds: EmpSeed[] = [
+   278→      { code: "EMP-0001", first: "Aarav", last: "Sharma", gender: "Male", dob: dateOnly(1990, 4, 15), doj: yearsAgo(2, 15, 0), mobile: "+91-9876543210", personalEmail: "aarav.sharma@gmail.com", officialEmail: "aarav.sharma@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-ENG", desig: "DES-SSWE", grade: "L5-SEN", loc: "LOC-MUM", mgrCode: null, ctc: 2200000, status: "Active", pan: "ABCPS1234A", bank: "HDFC Bank", account: "501000123456789", ifsc: "HDFC0001234",
+   279→        religion: "Hindu", category: "General", marital: "Married", blood: "B+", passport: "P1234567",
+   280→        emergencyName: "Priya Sharma", emergencyRelation: "Spouse", emergencyPhone: "+91-9876543299",
+   281→        currentCity: "Mumbai", currentState: "Maharashtra", currentPincode: "400069",
+   282→        permCity: "Pune", permState: "Maharashtra", permPincode: "411001",
+   283→        workMode: "Hybrid", businessUnit: "Engineering", costCenter: "CC-ENG-100",
+   284→      },
+   285→      { code: "EMP-0002", first: "Vivaan", last: "Mehta", gender: "Male", dob: dateOnly(1991, 7, 22), doj: monthsAgo(22), mobile: "+91-9876543211", personalEmail: "vivaan.mehta@gmail.com", officialEmail: "vivaan.mehta@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-ENG", desig: "DES-SSWE", grade: "L5-SEN", loc: "LOC-BLR", mgrCode: "EMP-0001", ctc: 2000000, status: "Active", pan: "BCDPM2345B", bank: "ICICI Bank", account: "012301234567", ifsc: "ICIC0000123",
+   286→        religion: "Hindu", category: "OBC", marital: "Single", blood: "O+",
+   287→        emergencyName: "Rajesh Mehta", emergencyRelation: "Father", emergencyPhone: "+91-9876543298",
+   288→        currentCity: "Bangalore", currentState: "Karnataka", currentPincode: "560103",
+   289→        permCity: "Indore", permState: "Madhya Pradesh", permPincode: "452001",
+   290→        workMode: "Work from office", businessUnit: "Engineering", costCenter: "CC-ENG-101",
+   291→      },
+   292→      { code: "EMP-0003", first: "Ananya", last: "Iyer", gender: "Female", dob: dateOnly(1994, 2, 8), doj: monthsAgo(18), mobile: "+91-9876543212", personalEmail: "ananya.iyer@gmail.com", officialEmail: "ananya.iyer@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-HR", desig: "DES-HR-EXEC", grade: "L4-MID", loc: "LOC-MUM", mgrCode: "EMP-0001", ctc: 700000, status: "Active", pan: "CDEPI3456C", bank: "SBI", account: "30123456789", ifsc: "SBIN0001234",
+   293→        religion: "Hindu", category: "General", marital: "Single", blood: "AB+",
+   294→        emergencyName: "Lakshmi Iyer", emergencyRelation: "Mother", emergencyPhone: "+91-9876543297",
+   295→        currentCity: "Mumbai", currentState: "Maharashtra", currentPincode: "400070",
+   296→        permCity: "Chennai", permState: "Tamil Nadu", permPincode: "600001",
+   297→        workMode: "Work from office", businessUnit: "People Ops", costCenter: "CC-HR-200",
+   298→      },
+   299→      { code: "EMP-0004", first: "Aditya", last: "Reddy", gender: "Male", dob: dateOnly(1996, 10, 12), doj: monthsAgo(14), mobile: "+91-9876543213", personalEmail: "aditya.reddy@gmail.com", officialEmail: "aditya.reddy@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-ENG", desig: "DES-SWE", grade: "L4-MID", loc: "LOC-BLR", mgrCode: "EMP-0002", ctc: 1200000, status: "Active", pan: "DEFPR4567D", bank: "Axis Bank", account: "917020001234", ifsc: "UTIB0000123",
+   300→        religion: "Hindu", category: "OBC", marital: "Single", blood: "A+",
+   301→        emergencyName: "Suresh Reddy", emergencyRelation: "Father", emergencyPhone: "+91-9876543296",
+   302→        currentCity: "Bangalore", currentState: "Karnataka", currentPincode: "560102",
+   303→        workMode: "Work from home", businessUnit: "Engineering", costCenter: "CC-ENG-102",
+   304→      },
+   305→      { code: "EMP-0005", first: "Saanvi", last: "Nair", gender: "Female", dob: dateOnly(1997, 5, 30), doj: monthsAgo(11), mobile: "+91-9876543214", personalEmail: "saanvi.nair@gmail.com", officialEmail: "saanvi.nair@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-ENG", desig: "DES-SWE", grade: "L4-MID", loc: "LOC-BLR", mgrCode: "EMP-0002", ctc: 1100000, status: "Active", pan: "EFGPN5678E", bank: "Kotak Mahindra", account: "12341234567", ifsc: "KKBK0001234",
+   306→        religion: "Hindu", category: "General", marital: "Single", blood: "B+",
+   307→        emergencyName: "Geeta Nair", emergencyRelation: "Mother", emergencyPhone: "+91-9876543295",
+   308→        currentCity: "Bangalore", currentState: "Karnataka", currentPincode: "560103",
+   309→        workMode: "Hybrid", businessUnit: "Engineering", costCenter: "CC-ENG-103",
+   310→      },
+   311→      { code: "EMP-0006", first: "Arjun", last: "Gupta", gender: "Male", dob: dateOnly(1989, 1, 18), doj: monthsAgo(17), mobile: "+91-9876543215", personalEmail: "arjun.gupta@gmail.com", officialEmail: "arjun.gupta@acme.com", entity: "ESPL", branch: "DEL-SALES", dept: "DEPT-SAL", desig: "DES-SALES-MGR", grade: "L6-LEAD", loc: "LOC-DEL", mgrCode: "EMP-0001", ctc: 1900000, status: "Active", pan: "FGHPG6789F", bank: "HDFC Bank", account: "501009876543", ifsc: "HDFC0001234",
+   312→        religion: "Hindu", category: "General", marital: "Married", blood: "O+",
+   313→        emergencyName: "Neha Gupta", emergencyRelation: "Spouse", emergencyPhone: "+91-9876543294",
+   314→        currentCity: "New Delhi", currentState: "Delhi", currentPincode: "110001",
+   315→        workMode: "Field work", businessUnit: "Revenue", costCenter: "CC-SAL-300",
+   316→      },
+   317→      { code: "EMP-0007", first: "Ishita", last: "Verma", gender: "Female", dob: dateOnly(1998, 9, 5), doj: monthsAgo(5), mobile: "+91-9876543216", personalEmail: "ishita.verma@gmail.com", officialEmail: "ishita.verma@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-FIN", desig: "DES-FIN-ANL", grade: "L4-MID", loc: "LOC-MUM", mgrCode: "EMP-0001", ctc: 900000, status: "Active", pan: "GHIPV7890G", bank: "ICICI Bank", account: "012309876543", ifsc: "ICIC0000123",
+   318→        religion: "Hindu", category: "General", marital: "Single", blood: "A-",
+   319→        emergencyName: "Manish Verma", emergencyRelation: "Brother", emergencyPhone: "+91-9876543293",
+   320→        currentCity: "Mumbai", currentState: "Maharashtra", currentPincode: "400053",
+   321→        workMode: "Work from office", businessUnit: "Finance", costCenter: "CC-FIN-400",
+   322→      },
+   323→      { code: "EMP-0008", first: "Kabir", last: "Singh", gender: "Male", dob: dateOnly(1992, 11, 27), doj: monthsAgo(13), mobile: "+91-9876543217", personalEmail: "kabir.singh@gmail.com", officialEmail: "kabir.singh@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-OPS", desig: "DES-DEVOPS", grade: "L5-SEN", loc: "LOC-BLR", mgrCode: "EMP-0001", ctc: 1700000, status: "On Notice", pan: "HIJPS8901H", bank: "Axis Bank", account: "917020009876", ifsc: "UTIB0000123",
+   324→        religion: "Sikh", category: "General", marital: "Married", blood: "B+",
+   325→        emergencyName: "Simran Kaur", emergencyRelation: "Spouse", emergencyPhone: "+91-9876543292",
+   326→        currentCity: "Bangalore", currentState: "Karnataka", currentPincode: "560037",
+   327→        workMode: "Work from office", businessUnit: "Operations", costCenter: "CC-OPS-500",
+   328→        resignationDate: daysAgo(15), resignationReason: "Better opportunity abroad",
+   329→      },
+   330→      { code: "EMP-0009", first: "Aanya", last: "Joshi", gender: "Female", dob: dateOnly(1995, 6, 14), doj: monthsAgo(3), mobile: "+91-9876543218", personalEmail: "aanya.joshi@gmail.com", officialEmail: "aanya.joshi@acme.com", entity: "ESPL", branch: "DEL-SALES", dept: "DEPT-MKT", desig: "DES-SALES-MGR", grade: "L6-LEAD", loc: "LOC-DEL", mgrCode: "EMP-0006", ctc: 1400000, status: "Active", pan: "IJKPJ9012I", bank: "SBI", account: "30129876543", ifsc: "SBIN0001234",
+   331→        religion: "Hindu", category: "General", marital: "Married", blood: "AB-",
+   332→        emergencyName: "Rohit Joshi", emergencyRelation: "Spouse", emergencyPhone: "+91-9876543291",
+   333→        currentCity: "New Delhi", currentState: "Delhi", currentPincode: "110017",
+   334→        workMode: "Hybrid", businessUnit: "Revenue", costCenter: "CC-MKT-301",
+   335→      },
+   336→      { code: "EMP-0010", first: "Reyansh", last: "Kumar", gender: "Male", dob: dateOnly(1993, 3, 19), doj: monthsAgo(2), mobile: "+91-9876543219", personalEmail: "reyansh.kumar@gmail.com", officialEmail: "reyansh.kumar@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-SAL", desig: "DES-SALES-MGR", grade: "L6-LEAD", loc: "LOC-MUM", mgrCode: "EMP-0006", ctc: 1500000, status: "Active", pan: "JKLPK0123J", bank: "Kotak Mahindra", account: "12340987654", ifsc: "KKBK0001234",
+   337→        religion: "Hindu", category: "OBC", marital: "Married", blood: "O+",
+   338→        emergencyName: "Pooja Kumar", emergencyRelation: "Spouse", emergencyPhone: "+91-9876543290",
+   339→        currentCity: "Mumbai", currentState: "Maharashtra", currentPincode: "400076",
+   340→        workMode: "Hybrid", businessUnit: "Revenue", costCenter: "CC-SAL-302",
+   341→      },
+   342→      { code: "EMP-0011", first: "Myra", last: "Desai", gender: "Female", dob: dateOnly(2000, 8, 11), doj: daysAgo(15), mobile: "+91-9876543220", personalEmail: "myra.desai@gmail.com", officialEmail: "myra.desai@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-HR", desig: "DES-HR-EXEC", grade: "L4-MID", loc: "LOC-MUM", mgrCode: "EMP-0003", ctc: 650000, status: "Active", pan: "KLMPL1234K", bank: "HDFC Bank", account: "501005678901", ifsc: "HDFC0001234",
+   343→        religion: "Hindu", category: "General", marital: "Single", blood: "A+",
+   344→        emergencyName: "Kiran Desai", emergencyRelation: "Father", emergencyPhone: "+91-9876543289",
+   345→        currentCity: "Mumbai", currentState: "Maharashtra", currentPincode: "400050",
+   346→        workMode: "Work from office", businessUnit: "People Ops", costCenter: "CC-HR-201",
+   347→      },
+   348→      { code: "EMP-0012", first: "Vihaan", last: "Rao", gender: "Male", dob: dateOnly(1999, 12, 3), doj: daysAgo(5), mobile: "+91-9876543221", personalEmail: "vihaan.rao@gmail.com", officialEmail: "vihaan.rao@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-OPS", desig: "DES-SWE", grade: "L4-MID", loc: "LOC-BLR", mgrCode: "EMP-0008", ctc: 1000000, status: "Active", pan: "LMNPM2345L", bank: "ICICI Bank", account: "012356789012", ifsc: "ICIC0000123",
+   349→        religion: "Hindu", category: "General", marital: "Single", blood: "B+",
+   350→        emergencyName: "Latha Rao", emergencyRelation: "Mother", emergencyPhone: "+91-9876543288",
+   351→        currentCity: "Bangalore", currentState: "Karnataka", currentPincode: "560100",
+   352→        workMode: "Work from home", businessUnit: "Operations", costCenter: "CC-OPS-501",
+   353→      },
+   354→    ]
+   355→
+   356→    const empByCode: Record<string, { id: string; name: string }> = {}
+   357→    for (const e of empSeeds) {
+   358→      // Compensation breakdown — consistent with standard Indian payroll
+   359→      // (all annual figures; basic = 50% of CTC, hra = 40% of basic)
+   360→      const ctc = e.ctc
+   361→      const basic = Math.round(ctc * 0.5)
+   362→      const hra = Math.round(basic * 0.4)
+   363→      const conveyanceAllowance = 19200
+   364→      const medicalAllowance = 15000
+   365→      const specialAllowance = Math.max(0, ctc - basic - hra - conveyanceAllowance - medicalAllowance)
+   366→      const pfEmployee = Math.round(basic * 0.12)
+   367→      const pfEmployer = Math.round(basic * 0.12)
+   368→      const esiAmount = ctc / 12 <= 21000 ? Math.round(ctc * 0.0053) : 0
+   369→      const professionalTax = 2400
+   370→      const tdsAmount = Math.round(ctc * 0.10)
+   371→      const grossSalary = basic + hra + specialAllowance + conveyanceAllowance + medicalAllowance
+   372→      const netSalary = grossSalary - pfEmployee - professionalTax - tdsAmount
+   373→
+   374→      const rec = await db.employee.create({
+   375→        data: {
+   376→          tenantId,
+   377→          employeeCode: e.code,
+   378→          firstName: e.first,
+   379→          lastName: e.last,
+   380→          displayName: `${e.first} ${e.last}`,
+   381→          gender: e.gender,
+   382→          dateOfBirth: e.dob,
+   383→          maritalStatus: e.marital || "Single",
+   384→          bloodGroup: e.blood || "B+",
+   385→          nationality: "Indian",
+   386→          religion: e.religion,
+   387→          category: e.category,
+   388→          personalEmail: e.personalEmail,
+   389→          officialEmail: e.officialEmail,
+   390→          mobileNumber: e.mobile,
+   391→          // Identity documents
+   392→          passportNumber: e.passport,
+   393→          physicallyDisabled: false,
+   394→          // Employment
+   395→          dateOfJoining: e.doj,
+   396→          employmentType: "Full-time",
+   397→          workerType: "Permanent",
+   398→          jobType: "On-roll",
+   399→          probationStatus: monthsAgo(0).getTime() - e.doj.getTime() > 180 * 24 * 3600 * 1000 ? "Confirmed" : "On Probation",
+   400→          probationStartDate: new Date(e.doj.getTime()),
+   401→          probationEndDate: new Date(e.doj.getTime() + 90 * 24 * 3600 * 1000),
+   402→          confirmationDate: monthsAgo(0).getTime() - e.doj.getTime() > 180 * 24 * 3600 * 1000 ? new Date(e.doj.getTime() + 90 * 24 * 3600 * 1000) : null,
+   403→          noticePeriod: 60,
+   404→          noticePeriodStartDate: e.status === "On Notice" ? daysAgo(15) : null,
+   405→          lastWorkingDate: e.status === "On Notice" ? daysFromNow(45) : null,
+   406→          employeeStatus: e.status,
+   407→          workMode: e.workMode || "Work from office",
+   408→          businessUnit: e.businessUnit,
+   409→          costCenter: e.costCenter,
+   410→          // Organization
+   411→          entityId: espl.id,
+   412→          branchId: e.branch === "BOM-HQ" ? bomHq.id : e.branch === "BLR-TECH" ? blrTech.id : delSales.id,
+   413→          departmentId: depts[e.dept].id,
+   414→          designationId: desigs[e.desig],
+   415→          gradeId: grades[e.grade],
+   416→          locationId: locs[e.loc],
+   417→          reportingManagerId: null, // set after creation below
+   418→          functionalManagerId: null,
+   419→          hrManagerId: null,
+   420→          // Bank
+   421→          bankName: e.bank,
+   422→          accountHolderName: `${e.first} ${e.last}`,
+   423→          accountNumber: e.account,
+   424→          accountType: "Savings",
+   425→          ifscCode: e.ifsc,
+   426→          branchName: `${e.bank} Branch`,
+   427→          upiId: `${e.first.toLowerCase()}.${e.last.toLowerCase()}@okhdfcbank`,
+   428→          // Statutory
+   429→          panNumber: e.pan,
+   430→          aadhaarNumber: "XXXX-XXXX-" + Math.floor(1000 + Math.random() * 9000),
+   431→          uanNumber: "101234567890",
+   432→          pfNumber: "BGBNG/" + e.code.replace("EMP-", "") + "/000",
+   433→          ptLocation: e.currentCity || "Mumbai",
+   434→          pfApplicable: true,
+   435→          esiApplicable: esiAmount > 0,
+   436→          ptApplicable: true,
+   437→          lwfApplicability: "Applicable",
+   438→          gratuityApplicability: "Applicable",
+   439→          taxRegime: "New",
+   440→          tdsDeclarationStatus: "Submitted",
+   441→          // Current address
+   442→          currentAddress: `${e.currentCity || "Mumbai"}, ${e.currentState || "Maharashtra"}`,
+   443→          currentAddressLine2: null,
+   444→          currentCity: e.currentCity,
+   445→          currentState: e.currentState,
+   446→          currentCountry: "India",
+   447→          currentPincode: e.currentPincode,
+   448→          // Permanent address
+   449→          permanentAddress: `${e.permCity || e.currentCity || "Mumbai"}, ${e.permState || e.currentState || "Maharashtra"}`,
+   450→          permanentAddressLine2: null,
+   451→          permanentCity: e.permCity || e.currentCity,
+   452→          permanentState: e.permState || e.currentState,
+   453→          permanentCountry: "India",
+   454→          permanentPincode: e.permPincode || e.currentPincode,
+   455→          sameAsCurrent: (e.permCity || e.currentCity) === e.currentCity,
+   456→          // Emergency contact
+   457→          emergencyContactName: e.emergencyName,
+   458→          emergencyContactRelation: e.emergencyRelation,
+   459→          emergencyContactPhone: e.emergencyPhone,
+   460→          emergencyContactAltPhone: null,
+   461→          emergencyContactEmail: null,
+   462→          emergencyContactAddress: null,
+   463→          communicationPreference: "Email",
+   464→          // Compensation
+   465→          ctc,
+   466→          basicSalary: basic,
+   467→          hra,
+   468→          specialAllowance,
+   469→          conveyanceAllowance,
+   470→          medicalAllowance,
+   471→          bonusAmount: 0,
+   472→          pfEmployee,
+   473→          pfEmployer,
+   474→          esiAmount,
+   475→          professionalTax,
+   476→          tdsAmount,
+   477→          grossSalary,
+   478→          netSalary,
+   479→          // Exit
+   480→          resignationDate: e.resignationDate || null,
+   481→          resignationReason: e.resignationReason || null,
+   482→          exitStatus: e.status === "On Notice" ? "Resignation submitted" : "Not initiated",
+   483→        },
+   484→      })
+   485→      empByCode[e.code] = { id: rec.id, name: `${e.first} ${e.last}` }
+   486→    }
+   487→    // Wire up reporting managers, functional managers, hr manager
+   488→    for (const e of empSeeds) {
+   489→      const updates: Record<string, unknown> = {}
+   490→      if (e.mgrCode) updates.reportingManagerId = empByCode[e.mgrCode].id
+   491→      // functional manager = same as reporting manager for now
+   492→      if (e.mgrCode) updates.functionalManagerId = empByCode[e.mgrCode].id
+   493→      // hr manager = Ananya (EMP-0003) for everyone except herself (where it's Aarav)
+   494→      updates.hrManagerId = e.code === "EMP-0003" ? empByCode["EMP-0001"].id : empByCode["EMP-0003"].id
+   495→      if (Object.keys(updates).length) {
+   496→        await db.employee.update({
+   497→          where: { id: empByCode[e.code].id },
+   498→          data: updates,
+   499→        })
+   500→      }
+   501→    }
+   502→    counts.employees = empSeeds.length
+   503→
+   504→    // ---------- LEAVE TYPES (5) ----------
+   505→    const ltDefs = [
+   506→      { code: "CL", name: "Casual Leave", color: "#10b981", isPaid: true, yearlyAccrual: 12, carryForward: true, carryForwardLimit: 6, halfDayAllowed: true, genderApplicability: "All" },
+   507→      { code: "SL", name: "Sick Leave", color: "#f59e0b", isPaid: true, yearlyAccrual: 7, carryForward: false, halfDayAllowed: false, attachmentRequired: false, genderApplicability: "All" },
+   508→      { code: "EL", name: "Earned Leave", color: "#06b6d4", isPaid: true, yearlyAccrual: 15, carryForward: true, carryForwardLimit: 30, encashment: true, genderApplicability: "All" },
+   509→      { code: "PL", name: "Privilege Leave", color: "#d946ef", isPaid: true, yearlyAccrual: 12, carryForward: false, halfDayAllowed: true, genderApplicability: "All" },
+   510→      { code: "CO", name: "Comp Off", color: "#f43f5e", isPaid: true, monthlyAccrual: 1, yearlyAccrual: 0, carryForward: false, genderApplicability: "All" },
+   511→    ]
+   512→    const leaveTypes: Record<string, string> = {}
+   513→    for (const t of ltDefs) {
+   514→      const rec = await db.leaveType.create({
+   515→        data: { tenantId, ...t, fullDayAllowed: true, hourlyAllowed: false, openingBalance: 0, negativeAllowed: false, reasonRequired: true, minDays: 1, backdatedAllowed: true, futureAllowed: true, status: "Active" },
+   516→      })
+   517→      leaveTypes[t.code] = rec.id
+   518→    }
+   519→    counts.leaveTypes = ltDefs.length
+   520→
+   521→    // ---------- LEAVE POLICY + items ----------
+   522→    const stdPolicy = await db.leavePolicy.create({
+   523→      data: {
+   524→        tenantId, name: "Standard Policy", code: "STD-POLICY",
+   525→        description: "Standard leave policy applicable to all full-time employees.",
+   526→        effectiveDate: yearsAgo(1), status: "Active",
+   527→      },
+   528→    })
+   529→    for (const t of ltDefs) {
+   530→      await db.leavePolicyItem.create({
+   531→        data: {
+   532→          leavePolicyId: stdPolicy.id,
+   533→          leaveTypeId: leaveTypes[t.code],
+   534→          allocation: t.yearlyAccrual || 12,
+   535→        },
+   536→      })
+   537→    }
+   538→    counts.leavePolicies = 1
+   539→
+   540→    // ---------- LEAVE APPLICATIONS (3: 1 approved, 1 pending, 1 rejected) ----------
+   541→    const today = new Date(); today.setHours(0, 0, 0, 0)
+   542→    // Approved leave covering today (so dashboard's onLeaveToday = 1)
+   543→    const emp5 = empByCode["EMP-0005"].id
+   544→    const emp3 = empByCode["EMP-0003"].id
+   545→    const emp7 = empByCode["EMP-0007"].id
+   546→    await db.leaveApplication.create({
+   547→      data: {
+   548→        tenantId, employeeId: emp5, leaveTypeId: leaveTypes["CL"],
+   549→        fromDate: daysAgo(1), toDate: daysFromNow(1), days: 3, halfDay: false,
+   550→        reason: "Family function out of town", status: "Approved",
+   551→        appliedAt: daysAgo(5), decisionAt: daysAgo(4),
+   552→        decisionBy: empByCode["EMP-0002"].id, decisionComment: "Approved. Enjoy!",
+   553→      },
+   554→    })
+   555→    await db.leaveApplication.create({
+   556→      data: {
+   557→        tenantId, employeeId: emp3, leaveTypeId: leaveTypes["SL"],
+   558→        fromDate: daysFromNow(2), toDate: daysFromNow(2), days: 1, halfDay: false,
+   559→        reason: "Medical appointment", status: "Pending",
+   560→        appliedAt: daysAgo(1),
+   561→      },
+   562→    })
+   563→    await db.leaveApplication.create({
+   564→      data: {
+   565→        tenantId, employeeId: emp7, leaveTypeId: leaveTypes["PL"],
+   566→        fromDate: daysAgo(10), toDate: daysAgo(8), days: 3, halfDay: false,
+   567→        reason: "Personal work", status: "Rejected",
+   568→        appliedAt: daysAgo(12), decisionAt: daysAgo(11),
+   569→        decisionBy: empByCode["EMP-0001"].id, decisionComment: "Critical project deadline. Please apply next month.",
+   570→      },
+   571→    })
+   572→    counts.leaveApplications = 3
+   573→
+   574→    // ---------- SHIFTS (3) ----------
+   575→    const shiftGeneral = await db.shift.create({
+   576→      data: {
+   577→        tenantId, code: "GEN", name: "General Shift",
+   578→        startTime: "09:00", endTime: "18:00", breakStart: "13:00", breakEnd: "14:00",
+   579→        workingHours: 8, graceMinutes: 15, halfDayHours: 4, fullDayHours: 8,
+   580→        isNightShift: false, isFlexible: false, autoPunchOut: false, overtimeEligible: true,
+   581→        color: "#10b981", status: "Active",
+   582→      },
+   583→    })
+   584→    const shiftEarly = await db.shift.create({
+   585→      data: {
+   586→        tenantId, code: "EARLY", name: "Early Shift",
+   587→        startTime: "06:00", endTime: "15:00", breakStart: "11:00", breakEnd: "12:00",
+   588→        workingHours: 8, graceMinutes: 10, halfDayHours: 4, fullDayHours: 8,
+   589→        isNightShift: false, isFlexible: false, autoPunchOut: false, overtimeEligible: true,
+   590→        color: "#06b6d4", status: "Active",
+   591→      },
+   592→    })
+   593→    const shiftNight = await db.shift.create({
+   594→      data: {
+   595→        tenantId, code: "NIGHT", name: "Night Shift",
+   596→        startTime: "22:00", endTime: "07:00", breakStart: "02:00", breakEnd: "03:00",
+   597→        workingHours: 8, graceMinutes: 15, halfDayHours: 4, fullDayHours: 8,
+   598→        isNightShift: true, isFlexible: false, autoPunchOut: false, overtimeEligible: true,
+   599→        color: "#d946ef", status: "Active",
+   600→      },
+   601→    })
+   602→    counts.shifts = 3
+   603→
+   604→    // ---------- ROSTERS (2: 1 Published, 1 Draft) for current week ----------
+   605→    const mondayThisWeek = new Date(today)
+   606→    const dow = mondayThisWeek.getDay() // 0 Sun ... 6 Sat
+   607→    mondayThisWeek.setDate(mondayThisWeek.getDate() - ((dow + 6) % 7))
+   608→    const fridayThisWeek = new Date(mondayThisWeek); fridayThisWeek.setDate(mondayThisWeek.getDate() + 4)
+   609→
+   610→    const rosterPub = await db.roster.create({
+   611→      data: {
+   612→        tenantId, name: "Engineering Weekly Roster", code: "ENG-ROSTER-W1",
+   613→        startDate: mondayThisWeek, endDate: fridayThisWeek, cycle: "Weekly",
+   614→        status: "Published", publishedAt: daysAgo(2),
+   615→      },
+   616→    })
+   617→    const rosterDraft = await db.roster.create({
+   618→      data: {
+   619→        tenantId, name: "Operations Draft Roster", code: "OPS-ROSTER-W1",
+   620→        startDate: mondayThisWeek, endDate: fridayThisWeek, cycle: "Weekly",
+   621→        status: "Draft",
+   622→      },
+   623→    })
+   624→    // Roster entries — 3 for published roster (EMP-1 General Mon-Wed)
+   625→    for (let i = 0; i < 3; i++) {
+   626→      const d = new Date(mondayThisWeek); d.setDate(d.getDate() + i)
+   627→      await db.rosterEntry.create({
+   628→        data: {
+   629→          rosterId: rosterPub.id, employeeId: empByCode["EMP-0001"].id, shiftId: shiftGeneral.id,
+   630→          date: d, isWeeklyOff: false, isHoliday: false,
+   631→        },
+   632→      })
+   633→    }
+   634→    // 2 entries for draft roster (EMP-8 Night Mon, EMP-12 General Tue)
+   635→    const dMon = new Date(mondayThisWeek)
+   636→    const dTue = new Date(mondayThisWeek); dTue.setDate(dTue.getDate() + 1)
+   637→    await db.rosterEntry.create({
+   638→      data: { rosterId: rosterDraft.id, employeeId: empByCode["EMP-0008"].id, shiftId: shiftNight.id, date: dMon, isWeeklyOff: false, isHoliday: false },
+   639→    })
+   640→    await db.rosterEntry.create({
+   641→      data: { rosterId: rosterDraft.id, employeeId: empByCode["EMP-0012"].id, shiftId: shiftEarly.id, date: dTue, isWeeklyOff: false, isHoliday: false },
+   642→    })
+   643→    counts.rosters = 2
+   644→
+   645→    // ---------- HOLIDAYS (8 for current year) ----------
+   646→    const yr = new Date().getFullYear()
+   647→    const holDefs = [
+   648→      { name: "Republic Day", date: dateOnly(yr, 0, 26), type: "National", description: "National holiday" },
+   649→      { name: "Holi", date: dateOnly(yr, 2, 14), type: "Regional", description: "Festival of colors", state: "Maharashtra" },
+   650→      { name: "Good Friday", date: dateOnly(yr, 3, 18), type: "National", description: "Christian holiday" },
+   651→      { name: "Independence Day", date: dateOnly(yr, 7, 15), type: "National", description: "National holiday" },
+   652→      { name: "Ganesh Chaturthi", date: dateOnly(yr, 7, 27), type: "Regional", description: "Hindu festival", state: "Maharashtra" },
+   653→      { name: "Gandhi Jayanti", date: dateOnly(yr, 9, 2), type: "National", description: "Birth anniversary of Mahatma Gandhi" },
+   654→      { name: "Dussehra", date: dateOnly(yr, 9, 21), type: "Regional", description: "Hindu festival" },
+   655→      { name: "Diwali", date: dateOnly(yr, 10, 1), type: "Regional", description: "Festival of lights" },
+   656→    ]
+   657→    for (const h of holDefs) {
+   658→      await db.holiday.create({ data: { tenantId, ...h, country: "India" } })
+   659→    }
+   660→    counts.holidays = holDefs.length
+   661→
+   662→    // ---------- ATTENDANCE (5 records for first employee, last 5 working days) ----------
+   663→    // Skip weekends: walk back from today, pick last 5 weekdays.
+   664→    const workingDays: Date[] = []
+   665→    const cursor = new Date(today)
+   666→    while (workingDays.length < 5) {
+   667→      const d = cursor.getDay()
+   668→      if (d !== 0 && d !== 6) workingDays.push(new Date(cursor))
+   669→      cursor.setDate(cursor.getDate() - 1)
+   670→    }
+   671→    const attStatuses = [
+   672→      { status: "Present", isLate: false, workHours: 8.5, source: "Web", remarks: "On time" },
+   673→      { status: "Late", isLate: true, workHours: 8.0, source: "Web", remarks: "Traffic delay" },
+   674→      { status: "WFH", isLate: false, workHours: 8.0, source: "Mobile", remarks: "Work from home" },
+   675→      { status: "Present", isLate: false, workHours: 9.0, source: "Web", remarks: "Stayed late" },
+   676→      { status: "Present", isLate: false, workHours: 8.0, source: "Web", remarks: "" },
+   677→    ]
+   678→    for (let i = 0; i < 5; i++) {
+   679→      const d = workingDays[i]
+   680→      const clockIn = new Date(d); clockIn.setHours(9, attStatuses[i].isLate ? 25 : 5, 0, 0)
+   681→      const clockOut = new Date(d); clockOut.setHours(18, 10, 0, 0)
+   682→      await db.attendance.create({
+   683→        data: {
+   684→          tenantId, employeeId: empByCode["EMP-0001"].id,
+   685→          date: d, clockIn, clockOut,
+   686→          status: attStatuses[i].status,
+   687→          workHours: attStatuses[i].workHours,
+   688→          overtimeHours: Math.max(0, attStatuses[i].workHours - 8),
+   689→          isLate: attStatuses[i].isLate,
+   690→          isEarlyGoing: false,
+   691→          remarks: attStatuses[i].remarks,
+   692→          source: attStatuses[i].source,
+   693→        },
+   694→      })
+   695→    }
+   696→    counts.attendance = 5
+   697→
+   698→    // ---------- ASSET CATEGORIES (3) ----------
+   699→    const catLaptops = await db.assetCategory.create({ data: { tenantId, code: "LAPTOPS", name: "Laptops", icon: "Laptop", description: "Company-issued laptops" } })
+   700→    const catMobile = await db.assetCategory.create({ data: { tenantId, code: "MOBILE", name: "Mobile", icon: "Smartphone", description: "Mobile phones" } })
+   701→    const catAcc = await db.assetCategory.create({ data: { tenantId, code: "ACCESSORIES", name: "Accessories", icon: "Mouse", description: "Monitors, keyboards, mice, etc." } })
+   702→    counts.assetCategories = 3
+   703→
+   704→    // ---------- ASSETS (6: 2 laptops assigned, 1 in stock, 1 mobile, 1 monitor, 1 keyboard) ----------
+   705→    const ast1 = await db.asset.create({
+   706→      data: { tenantId, assetCode: "AST-LP-001", name: "Dell Latitude 5430", categoryId: catLaptops.id, serialNumber: "DL5430-001", assetTag: "LP-001", purchaseDate: yearsAgo(1, 10), purchaseValue: 95000, condition: "Good", status: "Assigned", assignedToId: empByCode["EMP-0001"].id, assignedDate: yearsAgo(2), notes: "Primary work laptop" },
+   707→    })
+   708→    const ast2 = await db.asset.create({
+   709→      data: { tenantId, assetCode: "AST-LP-002", name: "HP EliteBook 840", categoryId: catLaptops.id, serialNumber: "HP840-002", assetTag: "LP-002", purchaseDate: yearsAgo(1, 6), purchaseValue: 102000, condition: "Good", status: "Assigned", assignedToId: empByCode["EMP-0002"].id, assignedDate: monthsAgo(22), notes: "Primary work laptop" },
+   710→    })
+   711→    const ast3 = await db.asset.create({
+   712→      data: { tenantId, assetCode: "AST-LP-003", name: "Lenovo ThinkPad T14", categoryId: catLaptops.id, serialNumber: "LNV-T14-003", assetTag: "LP-003", purchaseDate: monthsAgo(3), purchaseValue: 110000, condition: "Good", status: "In Stock", notes: "Spare laptop for new joiners" },
+   713→    })
+   714→    await db.asset.create({
+   715→      data: { tenantId, assetCode: "AST-MB-001", name: "iPhone 14", categoryId: catMobile.id, serialNumber: "IP14-001", assetTag: "MB-001", purchaseDate: monthsAgo(6), purchaseValue: 79000, condition: "Good", status: "In Stock", notes: "Sales team pool device" },
+   716→    })
+   717→    await db.asset.create({
+   718→      data: { tenantId, assetCode: "AST-ACC-001", name: "Dell 27\" Monitor", categoryId: catAcc.id, serialNumber: "DELL27-001", assetTag: "ACC-001", purchaseDate: monthsAgo(4), purchaseValue: 22000, condition: "Good", status: "In Stock", notes: "External monitor" },
+   719→    })
+   720→    await db.asset.create({
+   721→      data: { tenantId, assetCode: "AST-ACC-002", name: "Logitech Keyboard", categoryId: catAcc.id, serialNumber: "LOG-K380-002", assetTag: "ACC-002", purchaseDate: monthsAgo(2), purchaseValue: 3500, condition: "Good", status: "In Stock", notes: "Wireless keyboard" },
+   722→    })
+   723→    counts.assets = 6
+   724→
+   725→    // Asset assignments (2 records for the 2 assigned laptops)
+   726→    await db.assetAssignment.create({ data: { assetId: ast1.id, employeeId: empByCode["EMP-0001"].id, assignedDate: yearsAgo(2), condition: "Good", acknowledged: true, notes: "Initial assignment" } })
+   727→    await db.assetAssignment.create({ data: { assetId: ast2.id, employeeId: empByCode["EMP-0002"].id, assignedDate: monthsAgo(22), condition: "Good", acknowledged: true, notes: "Initial assignment" } })
+   728→
+   729→    // ---------- ASSET REQUESTS (2: 1 pending, 1 approved) ----------
+   730→    await db.assetRequest.create({
+   731→      data: { tenantId, employeeId: empByCode["EMP-0004"].id, categoryId: catLaptops.id, requestType: "New", reason: "Need a dedicated laptop for development work", status: "Pending", priority: "High" },
+   732→    })
+   733→    await db.assetRequest.create({
+   734→      data: { tenantId, employeeId: empByCode["EMP-0012"].id, categoryId: catAcc.id, requestType: "New", reason: "Need external monitor for coding", status: "Approved", priority: "Medium" },
+   735→    })
+   736→    counts.assetRequests = 2
+   737→
+   738→    // ---------- ANNOUNCEMENTS (2) ----------
+   739→    await db.announcement.create({
+   740→      data: { tenantId, title: "Welcome to Nexus HR", body: "We're excited to roll out our new HRMS. Please complete your profile and explore the dashboard.", audience: "All", publishDate: daysAgo(7), priority: "Normal" },
+   741→    })
+   742→    await db.announcement.create({
+   743→      data: { tenantId, title: "Q3 Town Hall — Save the Date", body: "Our quarterly town hall is scheduled for next Friday at 4 PM IST. Please plan to attend.", audience: "All", publishDate: daysAgo(2), priority: "High" },
+   744→    })
+   745→    counts.announcements = 2
+   746→
+   747→    // ---------- AUDIT LOGS (3) ----------
+   748→    await db.auditLog.create({ data: { tenantId, module: "employee", action: "Create", recordId: empByCode["EMP-0001"].id, userId: empByCode["EMP-0003"].id, userName: "Ananya Iyer", details: JSON.stringify({ code: "EMP-0001" }), ip: "10.0.0.12" } })
+   749→    await db.auditLog.create({ data: { tenantId, module: "leave", action: "Approve", recordId: empByCode["EMP-0005"].id, userId: empByCode["EMP-0002"].id, userName: "Vivaan Mehta", details: JSON.stringify({ days: 3 }), ip: "10.0.0.18" } })
+   750→    await db.auditLog.create({ data: { tenantId, module: "asset", action: "Create", recordId: ast1.id, userId: empByCode["EMP-0003"].id, userName: "Ananya Iyer", details: JSON.stringify({ assetCode: "AST-LP-001" }), ip: "10.0.0.12" } })
+   751→    counts.auditLogs = 3
+   752→
+   753→    // ---------- FORM SCHEMAS (2) ----------
+   754→    // 1. Clone default employee form
+   755→    await db.formSchema.create({
+   756→      data: {
+   757→        tenantId, code: "employee-default", name: "Employee Form (Default Clone)",
+   758→        module: "employee", description: "Default employee form schema cloned from system defaults.",
+   759→        sections: JSON.stringify(defaultFormSchemas.employee.sections),
+   760→        status: "Published", version: 1,
+   761→      },
+   762→    })
+   763→    // 2. Custom "IT Asset Request" form
+   764→    const itAssetRequestSections = [
+   765→      {
+   766→        id: "sec-req-details",
+   767→        title: "Request Details",
+   768→        description: "Tell us what you need",
+   769→        fields: [
+   770→          { id: "f-asset-type", key: "assetType", label: "Asset Type", type: "select", width: "half", validation: { required: true }, options: [
+   771→            { label: "Laptop", value: "Laptop" }, { label: "Mobile", value: "Mobile" }, { label: "Monitor", value: "Monitor" }, { label: "Keyboard", value: "Keyboard" }, { label: "Other", value: "Other" },
+   772→          ] },
+   773→          { id: "f-req-type", key: "requestType", label: "Request Type", type: "select", width: "half", validation: { required: true }, options: [
+   774→            { label: "New", value: "New" }, { label: "Replacement", value: "Replacement" }, { label: "Repair", value: "Repair" },
+   775→          ] },
+   776→          { id: "f-priority", key: "priority", label: "Priority", type: "select", width: "half", options: [
+   777→            { label: "Low", value: "Low" }, { label: "Medium", value: "Medium" }, { label: "High", value: "High" }, { label: "Critical", value: "Critical" },
+   778→          ] },
+   779→          { id: "f-expected", key: "expectedDate", label: "Expected Date", type: "date", width: "half" },
+   780→          { id: "f-reason", key: "reason", label: "Reason / Justification", type: "textarea", width: "full", validation: { required: true, minLength: 10 } },
+   781→        ],
+   782→      },
+   783→      {
+   784→        id: "sec-asset-info",
+   785→        title: "Asset Specifications",
+   786→        description: "Preferred configuration",
+   787→        fields: [
+   788→          { id: "f-brand", key: "preferredBrand", label: "Preferred Brand", type: "text", width: "half", placeholder: "e.g. Dell, HP, Lenovo" },
+   789→          { id: "f-model", key: "preferredModel", label: "Preferred Model", type: "text", width: "half", placeholder: "e.g. Latitude 5430" },
+   790→          { id: "f-budget", key: "budget", label: "Indicative Budget", type: "currency", width: "half", unit: "₹" },
+   791→          { id: "f-config", key: "configuration", label: "Configuration Details", type: "textarea", width: "full", placeholder: "RAM, SSD, CPU, etc." },
+   792→        ],
+   793→      },
+   794→    ]
+   795→    await db.formSchema.create({
+   796→      data: {
+   797→        tenantId, code: "it-asset-request", name: "IT Asset Request",
+   798→        module: "custom", description: "Form for employees to request IT assets.",
+   799→        sections: JSON.stringify(itAssetRequestSections),
+   800→        status: "Published", version: 1,
+   801→      },
+   802→    })
+   803→    counts.formSchemas = 2
+   804→
+   805→    // ---------- WORKFLOWS (2 with WorkflowSteps) ----------
+   806→    const wfLeave = await db.workflow.create({
+   807→      data: {
+   808→        tenantId, code: "leave-approval-2level", name: "Leave Approval 2-Level",
+   809→        module: "leave", event: "apply",
+   810→        description: "Two-level sequential approval: Reporting Manager → HR Manager.",
+   811→        approvalType: "Sequential", isActive: true,
+   812→      },
+   813→    })
+   814→    await db.workflowStep.create({ data: { workflowId: wfLeave.id, level: 1, approverType: "ReportingManager", name: "Reporting Manager Approval", slaHours: 24 } })
+   815→    await db.workflowStep.create({ data: { workflowId: wfLeave.id, level: 2, approverType: "HRManager", name: "HR Manager Approval", slaHours: 48 } })
+   816→
+   817→    const wfAsset = await db.workflow.create({
+   818→      data: {
+   819→        tenantId, code: "asset-request-approval", name: "Asset Request Approval",
+   820→        module: "asset", event: "request",
+   821→        description: "Single-step Department Head approval for asset requests.",
+   822→        approvalType: "Sequential", isActive: true,
+   823→      },
+   824→    })
+   825→    await db.workflowStep.create({ data: { workflowId: wfAsset.id, level: 1, approverType: "DepartmentHead", name: "Department Head Approval", slaHours: 48 } })
+   826→    counts.workflows = 2
+   827→
+   828→    // ============================================================
+   829→    // PHASE 2 — EMPLOYEE PROFILE SUB-RECORDS (for first 3 employees)
+   830→    // ============================================================
+   831→    const detailEmpCodes = ["EMP-0001", "EMP-0002", "EMP-0003"]
+   832→    const detailEmpIds = detailEmpCodes.map((c) => empByCode[c].id)
+   833→    const subCounts: Record<string, number> = {}
+   834→
+   835→    // Helper to count quickly
+   836→    const bump = (k: string) => { subCounts[k] = (subCounts[k] || 0) + 1 }
+   837→
+   838→    for (let idx = 0; idx < detailEmpCodes.length; idx++) {
+   839→      const code = detailEmpCodes[idx]
+   840→      const empId = detailEmpIds[idx]
+   841→      const e = empSeeds.find((x) => x.code === code)!
+   842→      const ctc = e.ctc
+   843→      const basic = Math.round(ctc * 0.5)
+   844→      const hra = Math.round(basic * 0.4)
+   845→      const doj = e.doj
+   846→
+   847→      // ---- Family members (2-3 each) ----
+   848→      if (code === "EMP-0001") {
+   849→        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Priya Sharma", relationship: "Spouse", gender: "Female", dateOfBirth: dateOnly(1992, 6, 20), mobileNumber: "+91-9876543299", occupation: "Doctor", isDependent: true, isNominee: true, nomineePercentage: 100, insuranceApplicable: true } })
+   850→        bump("family")
+   851→        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Ayaan Sharma", relationship: "Son", gender: "Male", dateOfBirth: dateOnly(2020, 3, 12), isDependent: true, isNominee: false, insuranceApplicable: true } })
+   852→        bump("family")
+   853→        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Ramesh Sharma", relationship: "Father", gender: "Male", dateOfBirth: dateOnly(1958, 8, 5), occupation: "Retired", isDependent: false, isNominee: false } })
+   854→        bump("family")
+   855→      } else if (code === "EMP-0002") {
+   856→        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Rajesh Mehta", relationship: "Father", gender: "Male", dateOfBirth: dateOnly(1960, 1, 18), occupation: "Business", isDependent: true, isNominee: true, nomineePercentage: 100, insuranceApplicable: true } })
+   857→        bump("family")
+   858→        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Sunita Mehta", relationship: "Mother", gender: "Female", dateOfBirth: dateOnly(1963, 5, 22), occupation: "Homemaker", isDependent: true, isNominee: false, insuranceApplicable: true } })
+   859→        bump("family")
+   860→      } else {
+   861→        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Lakshmi Iyer", relationship: "Mother", gender: "Female", dateOfBirth: dateOnly(1965, 11, 30), occupation: "Teacher", isDependent: true, isNominee: true, nomineePercentage: 100, insuranceApplicable: true } })
+   862→        bump("family")
+   863→        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Krishnan Iyer", relationship: "Father", gender: "Male", dateOfBirth: dateOnly(1962, 7, 14), occupation: "Retired Banker", isDependent: true, isNominee: false } })
+   864→        bump("family")
+   865→      }
+   866→
+   867→      // ---- Education records (UG + PG) ----
+   868→      await db.employeeEducation.create({ data: { tenantId, employeeId: empId, qualification: "UG", degree: "B.E. Computer Science", specialization: "Computer Science", institute: "VJTI Mumbai", university: "Mumbai University", yearOfPassing: 2011, percentage: 78, cgpa: 8.2, educationType: "Full-time", isHighest: false, certificateUrl: null } })
+   869→      bump("education")
+   870→      await db.employeeEducation.create({ data: { tenantId, employeeId: empId, qualification: "PG", degree: "M.Tech Software Systems", specialization: "Software Systems", institute: "BITS Pilani", university: "BITS Pilani", yearOfPassing: 2013, percentage: 82, cgpa: 8.7, educationType: "Full-time", isHighest: true, certificateUrl: null } })
+   871→      bump("education")
+   872→
+   873→      // ---- Experience records (1-2 each) ----
+   874→      await db.employeeExperience.create({
+   875→        data: {
+   876→          tenantId, employeeId: empId,
+   877→          companyName: "Infosys Limited", designation: "Software Engineer", department: "Engineering",
+   878→          startDate: yearsAgo(7, 5), endDate: yearsAgo(3, 5),
+   879→          totalYears: 4.0, reasonForLeaving: "Career growth", previousSalary: 800000,
+   880→          managerName: "Sridhar Rao", managerContact: "+91-9000011111",
+   881→          verificationStatus: "Verified",
+   882→        },
+   883→      })
+   884→      bump("experience")
+   885→      if (code !== "EMP-0003") {
+   886→        await db.employeeExperience.create({
+   887→          data: {
+   888→            tenantId, employeeId: empId,
+   889→            companyName: "TCS Digital", designation: "Senior Engineer", department: "Engineering",
+   890→            startDate: yearsAgo(3, 5), endDate: doj,
+   891→            totalYears: 1.5, reasonForLeaving: "Better opportunity", previousSalary: 1200000,
+   892→            managerName: "Anil Kumar", managerContact: "+91-9000022222",
+   893→            verificationStatus: "Verified",
+   894→          },
+   895→        })
+   896→        bump("experience")
+   897→      }
+   898→
+   899→      // ---- Bank detail (active) ----
+   900→      await db.employeeBankDetail.create({
+   901→        data: {
+   902→          tenantId, employeeId: empId,
+   903→          bankName: e.bank, accountHolderName: `${e.first} ${e.last}`,
+   904→          accountNumber: e.account, ifscCode: e.ifsc,
+   905→          branchName: `${e.bank} Branch`, accountType: "Savings",
+   906→          upiId: `${e.first.toLowerCase()}.${e.last.toLowerCase()}@okhdfcbank`,
+   907→          isActive: true, verified: true, effectiveDate: doj,
+   908→        },
+   909→      })
+   910→      bump("bank")
+   911→
+   912→      // ---- Statutory detail ----
+   913→      await db.employeeStatutoryDetail.create({
+   914→        data: {
+   915→          tenantId, employeeId: empId,
+   916→          panNumber: e.pan,
+   917→          aadhaarNumber: "XXXX-XXXX-1234",
+   918→          uanNumber: "101234567890",
+   919→          pfNumber: "BGBNG/" + code.replace("EMP-", "") + "/000",
+   920→          esiNumber: null,
+   921→          ptLocation: e.currentCity,
+   922→          lwfApplicability: "Applicable",
+   923→          gratuityApplicability: "Applicable",
+   924→          pfApplicable: true, esiApplicable: false, ptApplicable: true,
+   925→          taxRegime: "New",
+   926→          tdsDeclarationStatus: "Submitted",
+   927→          nomineeDetails: JSON.stringify({ name: e.emergencyName, relation: e.emergencyRelation, percent: 100 }),
+   928→          effectiveDate: doj,
+   929→        },
+   930→      })
+   931→      bump("statutory")
+   932→
+   933→      // ---- Documents (3-5 each) ----
+   934→      await db.employeeDocument.create({ data: { tenantId, employeeId: empId, name: "Aadhaar Card", category: "Identity", documentType: "Aadhaar", fileUrl: "/docs/aadhaar.pdf", fileExt: "pdf", fileSize: 240000, status: "Approved", uploadedAt: doj, approvedAt: doj, approvedBy: "Ananya Iyer" } })
+   935→      bump("documents")
+   936→      await db.employeeDocument.create({ data: { tenantId, employeeId: empId, name: "PAN Card", category: "Identity", documentType: "PAN", fileUrl: "/docs/pan.pdf", fileExt: "pdf", fileSize: 180000, status: "Approved", uploadedAt: doj, approvedAt: doj, approvedBy: "Ananya Iyer" } })
+   937→      bump("documents")
+   938→      await db.employeeDocument.create({ data: { tenantId, employeeId: empId, name: "Profile Photo", category: "Identity", documentType: "Photo", fileUrl: "/docs/photo.jpg", fileExt: "jpg", fileSize: 95000, status: "Approved", uploadedAt: doj, approvedAt: doj, approvedBy: "Ananya Iyer" } })
+   939→      bump("documents")
+   940→      await db.employeeDocument.create({ data: { tenantId, employeeId: empId, name: "Resume", category: "Joining", documentType: "Resume", fileUrl: "/docs/resume.pdf", fileExt: "pdf", fileSize: 320000, status: "Uploaded", uploadedAt: doj } })
+   941→      bump("documents")
+   942→      await db.employeeDocument.create({ data: { tenantId, employeeId: empId, name: "Offer Letter", category: "Joining", documentType: "Offer letter", fileUrl: "/docs/offer.pdf", fileExt: "pdf", fileSize: 210000, status: "Approved", uploadedAt: doj, approvedAt: doj, approvedBy: "Ananya Iyer" } })
+   943→      bump("documents")
+   944→      // Expiring soon — passport expiring in 30 days
+   945→      if (e.passport) {
+   946→        await db.employeeDocument.create({ data: { tenantId, employeeId: empId, name: "Passport", category: "Identity", documentType: "Passport", fileUrl: "/docs/passport.pdf", fileExt: "pdf", fileSize: 410000, status: "Expiring soon", expiryDate: daysFromNow(30), uploadedAt: doj, remarks: "Expiring soon — renewal due" } })
+   947→        bump("documents")
+   948→      }
+   949→
+   950→      // ---- Compensation history (joining + annual appraisal) ----
+   951→      await db.employeeCompensationHistory.create({
+   952→        data: {
+   953→          tenantId, employeeId: empId, effectiveDate: doj,
+   954→          oldCtc: null, newCtc: ctc,
+   955→          oldBasic: null, newBasic: basic,
+   956→          oldHra: null, newHra: hra,
+   957→          incrementPercent: null, revisionReason: "Joining",
+   958→          approvedBy: "Ananya Iyer", status: "Approved",
+   959→        },
+   960→      })
+   961→      bump("compensation")
+   962→      // Annual appraisal after 1 year (10% raise)
+   963→      const apprDate = new Date(doj); apprDate.setFullYear(apprDate.getFullYear() + 1)
+   964→      if (apprDate.getTime() < new Date().getTime()) {
+   965→        const newCtc = Math.round(ctc * 1.1)
+   966→        const newBasic = Math.round(newCtc * 0.5)
+   967→        const newHra = Math.round(newBasic * 0.4)
+   968→        await db.employeeCompensationHistory.create({
+   969→          data: {
+   970→            tenantId, employeeId: empId, effectiveDate: apprDate,
+   971→            oldCtc: ctc, newCtc,
+   972→            oldBasic: basic, newBasic,
+   973→            oldHra: hra, newHra,
+   974→            incrementPercent: 10, revisionReason: "Annual appraisal",
+   975→            approvedBy: "Ananya Iyer", status: "Approved",
+   976→          },
+   977→        })
+   978→        bump("compensation")
+   979→      }
+   980→
+   981→      // ---- Notes (2-3 each, mix of categories) ----
+   982→      await db.employeeNote.create({ data: { tenantId, employeeId: empId, category: "General", body: "Onboarding completed. All joining documents verified.", isPrivate: false, visibleToManager: true, createdBy: "Ananya Iyer" } })
+   983→      bump("notes")
+   984→      await db.employeeNote.create({ data: { tenantId, employeeId: empId, category: "Performance", body: "Strong technical skills. Demonstrated leadership in Q2 project delivery.", isPrivate: false, visibleToManager: true, createdBy: "Aarav Sharma" } })
+   985→      bump("notes")
+   986→      if (code !== "EMP-0003") {
+   987→        await db.employeeNote.create({ data: { tenantId, employeeId: empId, category: "Manager feedback", body: "Consistently meets expectations. Ready for next-level responsibility.", isPrivate: true, visibleToManager: true, createdBy: "Vivaan Mehta" } })
+   988→        bump("notes")
+   989→      }
+   990→
+   991→      // ---- Timeline events (5-8 each) ----
+   992→      const tl: Array<{ type: string; title: string; date: Date; desc?: string }> = [
+   993→        { type: "Created", title: "Employee record created", date: new Date(doj.getTime() - 7 * 24 * 3600 * 1000) },
+   994→        { type: "Joined", title: "Joined ACME Corporation", date: doj, desc: `Joined as ${e.desig}` },
+   995→        { type: "Document uploaded", title: "Onboarding documents uploaded", date: new Date(doj.getTime() + 1 * 24 * 3600 * 1000) },
+   996→        { type: "Profile updated", title: "Bank details verified", date: new Date(doj.getTime() + 3 * 24 * 3600 * 1000) },
+   997→        { type: "Salary revised", title: "Annual appraisal", date: apprDate.getTime() < new Date().getTime() ? apprDate : new Date(doj.getTime() + 30 * 24 * 3600 * 1000), desc: "10% increment" },
+   998→        { type: "Profile updated", title: "Probation confirmed", date: new Date(doj.getTime() + 90 * 24 * 3600 * 1000) },
+   999→        { type: "Profile updated", title: "Asset assigned", date: new Date(doj.getTime() + 2 * 24 * 3600 * 1000), desc: "Dell Latitude 5430" },
+  1000→        { type: "Profile updated", title: "Profile photo updated", date: daysAgo(45) },
+  1001→      ]
+  1002→      for (const t of tl) {
+  1003→        await db.employeeTimelineEvent.create({ data: { tenantId, employeeId: empId, eventType: t.type, title: t.title, description: t.desc || null, eventDate: t.date, actorName: "Ananya Iyer" } })
+  1004→        bump("timeline")
+  1005→      }
+  1006→
+  1007→      // ---- Audit logs (3-5 each) ----
+  1008→      const aud: Array<{ module: string; field: string; oldV: string; newV: string; date: Date; action: string }> = [
+  1009→        { module: "Personal", field: "officialEmail", oldV: "", newV: e.officialEmail || "", date: new Date(doj.getTime() - 7 * 24 * 3600 * 1000), action: "Create" },
+  1010→        { module: "Job", field: "departmentId", oldV: "", newV: depts[e.dept].id, date: doj, action: "Create" },
+  1011→        { module: "Bank", field: "accountNumber", oldV: "", newV: e.account, date: new Date(doj.getTime() + 3 * 24 * 3600 * 1000), action: "Update" },
+  1012→        { module: "Compensation", field: "ctc", oldV: String(ctc), newV: String(Math.round(ctc * 1.1)), date: apprDate.getTime() < new Date().getTime() ? apprDate : new Date(doj.getTime() + 30 * 24 * 3600 * 1000), action: "Update" },
+  1013→        { module: "Personal", field: "currentAddress", oldV: "Mumbai, Maharashtra", newV: `${e.currentCity}, ${e.currentState}`, date: daysAgo(60), action: "Update" },
+  1014→      ]
+  1015→      for (const a of aud) {
+  1016→        await db.employeeAuditLog.create({ data: { tenantId, employeeId: empId, module: a.module, field: a.field, oldValue: a.oldV, newValue: a.newV, action: a.action, changedBy: "Ananya Iyer", createdAt: a.date } })
+  1017→        bump("audit")
+  1018→      }
+  1019→
+  1020→      // ---- Status history (1 each) ----
+  1021→      await db.employeeStatusHistory.create({ data: { tenantId, employeeId: empId, oldStatus: null, newStatus: "Active", effectiveDate: doj, reason: "New hire onboarding", changedBy: "Ananya Iyer" } })
+  1022→      bump("statusHistory")
+  1023→
+  1024→      // ---- Transfer history (1 for EMP-0002) ----
+  1025→      if (code === "EMP-0002") {
+  1026→        await db.employeeTransferHistory.create({
+  1027→          data: {
+  1028→            tenantId, employeeId: empId,
+  1029→            oldDepartment: "Sales", newDepartment: "Engineering",
+  1030→            oldLocation: "Delhi Office", newLocation: "Bangalore Office",
+  1031→            oldManager: "Arjun Gupta", newManager: "Aarav Sharma",
+  1032→            oldEntity: "Example Services", newEntity: "Example Services",
+  1033→            effectiveDate: new Date(doj.getTime() + 60 * 24 * 3600 * 1000),
+  1034→            reason: "Internal transfer to engineering team",
+  1035→            status: "Approved", approvedBy: "Ananya Iyer",
+  1036→          },
+  1037→        })
+  1038→        bump("transfers")
+  1039→      }
+  1040→
+  1041→      // ---- Promotion history (1 for EMP-0001) ----
+  1042→      if (code === "EMP-0001") {
+  1043→        await db.employeePromotionHistory.create({
+  1044→          data: {
+  1045→            tenantId, employeeId: empId,
+  1046→            oldDesignation: "Software Engineer", newDesignation: "Senior Software Engineer",
+  1047→            oldGrade: "L4 — Mid", newGrade: "L5 — Senior",
+  1048→            oldCtc: Math.round(ctc * 0.9), newCtc: ctc,
+  1049→            effectiveDate: new Date(doj.getTime() + 365 * 24 * 3600 * 1000),
+  1050→            reason: "Annual appraisal + promotion",
+  1051→            status: "Approved", approvedBy: "Ananya Iyer",
+  1052→          },
+  1053→        })
+  1054→        bump("promotions")
+  1055→      }
+  1056→
+  1057→      // ---- Probation record (1 for EMP-0011 if they're marked On Probation) ----
+  1058→      // For first 3, mark EMP-0002 as On Probation at start (then confirmed)
+  1059→      if (code === "EMP-0002") {
+  1060→        await db.employeeProbation.create({
+  1061→          data: {
+  1062→            tenantId, employeeId: empId,
+  1063→            startDate: doj,
+  1064→            endDate: new Date(doj.getTime() + 90 * 24 * 3600 * 1000),
+  1065→            reviewDueDate: new Date(doj.getTime() + 80 * 24 * 3600 * 1000),
+  1066→            status: "Confirmed",
+  1067→            managerFeedback: "Excellent problem-solving and team collaboration.",
+  1068→            hrFeedback: "Met all KPIs. Confirmed on schedule.",
+  1069→            confirmedDate: new Date(doj.getTime() + 90 * 24 * 3600 * 1000),
+  1070→            confirmedBy: "Ananya Iyer",
+  1071→          },
+  1072→        })
+  1073→        bump("probation")
+  1074→      }
+  1075→
+  1076→      // ---- Exit record for EMP-0008 (NOT in first 3, but seeded separately) ----
+  1077→      // Done outside this loop below.
+  1078→
+  1079→      // ---- Login access (1 each) ----
+  1080→      await db.employeeLoginAccess.create({
+  1081→        data: {
+  1082→          tenantId, employeeId: empId,
+  1083→          username: e.officialEmail?.split("@")[0] || e.first.toLowerCase(),
+  1084→          email: e.officialEmail,
+  1085→          status: "Active",
+  1086→          role: code === "EMP-0003" ? "HR admin" : "Employee",
+  1087→          twoFactorEnabled: false,
+  1088→          forcePasswordChange: false,
+  1089→          passwordResetAt: doj,
+  1090→          lastLoginAt: daysAgo(1),
+  1091→          lastLoginIp: "10.0.0." + (10 + idx),
+  1092→          activeSessions: 1,
+  1093→        },
+  1094→      })
+  1095→      bump("loginAccess")
+  1096→
+  1097→      // ---- Role mappings (1-2 each) ----
+  1098→      await db.employeeRoleMapping.create({
+  1099→        data: {
+  1100→          tenantId, employeeId: empId,
+  1101→          role: code === "EMP-0003" ? "HR admin" : "Employee",
+  1102→          scopeType: "Global",
+  1103→          assignedBy: "Ananya Iyer",
+  1104→          isActive: true,
+  1105→        },
+  1106→      })
+  1107→      bump("roles")
+  1108→      if (code === "EMP-0001") {
+  1109→        await db.employeeRoleMapping.create({
+  1110→          data: {
+  1111→            tenantId, employeeId: empId,
+  1112→            role: "Manager", scopeType: "Department", scopeRef: depts["DEPT-ENG"].id,
+  1113→            assignedBy: "Ananya Iyer", isActive: true,
+  1114→          },
+  1115→        })
+  1116→        bump("roles")
+  1117→      }
+  1118→
+  1119→      // ---- Custom field values (3-4 each) ----
+  1120→      const cfv: Array<{ key: string; label: string; value: string; category: string }> = [
+  1121→        { key: "tshirtSize", label: "T-Shirt Size", value: e.gender === "Male" ? "L" : "M", category: "Uniform" },
+  1122→        { key: "foodPreference", label: "Food Preference", value: "Veg", category: "General" },
+  1123→        { key: "transportRoute", label: "Transport Route", value: e.currentCity === "Mumbai" ? "Route 12 - Andheri" : e.currentCity === "Bangalore" ? "Route 5 - Bellandur" : "Route 2 - CP", category: "Accommodation" },
+  1124→        { key: "uniformSize", label: "Uniform Size", value: e.gender === "Male" ? "40" : "36", category: "Uniform" },
+  1125→      ]
+  1126→      for (const c of cfv) {
+  1127→        await db.employeeCustomFieldValue.create({
+  1128→          data: { tenantId, employeeId: empId, fieldKey: c.key, fieldLabel: c.label, fieldType: "select", value: c.value, category: c.category, isMandatory: false, approvalRequired: false },
+  1129→        })
+  1130→        bump("customFields")
+  1131→      }
+  1132→
+  1133→      // ---- Form submissions (1-2 each) ----
+  1134→      await db.employeeFormSubmission.create({
+  1135→        data: {
+  1136→          tenantId, employeeId: empId,
+  1137→          formCode: "joining", formName: "Joining Form", version: 1,
+  1138→          data: JSON.stringify({ personalEmail: e.personalEmail, mobile: e.mobile, emergencyName: e.emergencyName, emergencyPhone: e.emergencyPhone }),
+  1139→          status: "Submitted", submittedAt: new Date(doj.getTime() + 1 * 24 * 3600 * 1000),
+  1140→          approvedAt: new Date(doj.getTime() + 2 * 24 * 3600 * 1000), approvedBy: "Ananya Iyer",
+  1141→        },
+  1142→      })
+  1143→      bump("forms")
+  1144→      await db.employeeFormSubmission.create({
+  1145→        data: {
+  1146→          tenantId, employeeId: empId,
+  1147→          formCode: "policy_declaration", formName: "Policy Declaration", version: 1,
+  1148→          data: JSON.stringify({ acceptedCodeOfConduct: true, acceptedItPolicy: true, acceptedRemoteWorkPolicy: true }),
+  1149→          status: "Approved", submittedAt: new Date(doj.getTime() + 3 * 24 * 3600 * 1000),
+  1150→          approvedAt: new Date(doj.getTime() + 5 * 24 * 3600 * 1000), approvedBy: "Ananya Iyer",
+  1151→        },
+  1152→      })
+  1153→      bump("forms")
+  1154→
+  1155→      // ---- Skills (3-4 each) ----
+  1156→      const skills: Array<{ name: string; cat: string; prof: string; yrs: number }> = [
+  1157→        { name: "TypeScript", cat: "Technical", prof: "Expert", yrs: 5 },
+  1158→        { name: "React", cat: "Technical", prof: "Advanced", yrs: 4 },
+  1159→        { name: "Node.js", cat: "Technical", prof: "Advanced", yrs: 4 },
+  1160→        { name: "Communication", cat: "Soft", prof: "Advanced", yrs: 6 },
+  1161→      ]
+  1162→      if (code === "EMP-0003") {
+  1163→        skills.length = 0
+  1164→        skills.push(
+  1165→          { name: "Recruitment", cat: "Domain", prof: "Advanced", yrs: 4 },
+  1166→          { name: "HR Compliance", cat: "Domain", prof: "Expert", yrs: 4 },
+  1167→          { name: "Excel", cat: "Tool", prof: "Advanced", yrs: 6 },
+  1168→          { name: "Onboarding", cat: "Domain", prof: "Expert", yrs: 4 },
+  1169→        )
+  1170→      }
+  1171→      for (const s of skills) {
+  1172→        await db.employeeSkill.create({
+  1173→          data: {
+  1174→            tenantId, employeeId: empId,
+  1175→            name: s.name, category: s.cat, proficiency: s.prof,
+  1176→            yearsOfExperience: s.yrs, verifiedByManager: true,
+  1177→            lastUsedDate: daysAgo(7),
+  1178→          },
+  1179→        })
+  1180→        bump("skills")
+  1181→      }
+  1182→
+  1183→      // ---- Certifications (1-2 each, one with expiry 60 days from now) ----
+  1184→      await db.employeeCertification.create({
+  1185→        data: {
+  1186→          tenantId, employeeId: empId,
+  1187→          name: "AWS Certified Developer - Associate",
+  1188→          issuingAuthority: "Amazon Web Services",
+  1189→          issueDate: yearsAgo(1, 10),
+  1190→          expiryDate: daysFromNow(60),
+  1191→          certificateId: "AWS-DEV-" + code.replace("EMP-", "0"),
+  1192→          certificateUrl: "/docs/aws-cert.pdf",
+  1193→        },
+  1194→      })
+  1195→      bump("certifications")
+  1196→      if (code !== "EMP-0003") {
+  1197→        await db.employeeCertification.create({
+  1198→          data: {
+  1199→            tenantId, employeeId: empId,
+  1200→            name: "Scrum Master (PSM I)",
+  1201→            issuingAuthority: "Scrum.org",
+  1202→            issueDate: yearsAgo(2, 4),
+  1203→            expiryDate: null,
+  1204→            certificateId: "PSM-" + code.replace("EMP-", "0"),
+  1205→            certificateUrl: "/docs/psm.pdf",
+  1206→          },
+  1207→        })
+  1208→        bump("certifications")
+  1209→      }
+  1210→
+  1211→      // ---- Training (1-2 each: one Completed, one In Progress) ----
+  1212→      await db.employeeTraining.create({
+  1213→        data: {
+  1214→          tenantId, employeeId: empId,
+  1215→          courseName: "Information Security Awareness",
+  1216→          trainingType: "Online",
+  1217→          startDate: new Date(doj.getTime() + 5 * 24 * 3600 * 1000),
+  1218→          endDate: new Date(doj.getTime() + 12 * 24 * 3600 * 1000),
+  1219→          status: "Completed", score: 92,
+  1220→          certificateUrl: "/docs/security-cert.pdf",
+  1221→          trainerFeedback: "Good understanding of security best practices.",
+  1222→        },
+  1223→      })
+  1224→      bump("training")
+  1225→      await db.employeeTraining.create({
+  1226→        data: {
+  1227→          tenantId, employeeId: empId,
+  1228→          courseName: "Leadership Excellence Program",
+  1229→          trainingType: "Classroom",
+  1230→          startDate: daysAgo(30),
+  1231→          endDate: null,
+  1232→          status: "In Progress",
+  1233→        },
+  1234→      })
+  1235→      bump("training")
+  1236→
+  1237→      // ---- Performance goals (1-2 each) ----
+  1238→      await db.employeePerformanceGoal.create({
+  1239→        data: {
+  1240→          tenantId, employeeId: empId,
+  1241→          title: "Deliver Q3 product roadmap",
+  1242→          description: "Lead the engineering team to ship the new analytics module by end of Q3.",
+  1243→          kra: "Engineering Delivery", kpi: "On-time delivery rate",
+  1244→          targetValue: "100%", achievedValue: "80%", progress: 80, weightage: 40,
+  1245→          cycle: "FY" + new Date().getFullYear() + "-H2",
+  1246→          status: "Manager reviewed",
+  1247→          startDate: monthsAgo(3), endDate: monthsFromNow(3),
+  1248→        },
+  1249→      })
+  1250→      bump("goals")
+  1251→      if (code !== "EMP-0003") {
+  1252→        await db.employeePerformanceGoal.create({
+  1253→          data: {
+  1254→            tenantId, employeeId: empId,
+  1255→            title: "Mentor 2 junior engineers",
+  1256→            description: "Pair-program with new hires and conduct weekly 1:1s.",
+  1257→            kra: "Team Development", kpi: "Mentee satisfaction score",
+  1258→            targetValue: "4.5/5", achievedValue: "4.2/5", progress: 75, weightage: 20,
+  1259→            cycle: "FY" + new Date().getFullYear() + "-H2",
+  1260→            status: "Submitted",
+  1261→            startDate: monthsAgo(3), endDate: monthsFromNow(3),
+  1262→          },
+  1263→        })
+  1264→        bump("goals")
+  1265→      }
+  1266→
+  1267→      // ---- Performance review (1 each) ----
+  1268→      await db.employeePerformanceReview.create({
+  1269→        data: {
+  1270→          tenantId, employeeId: empId,
+  1271→          cycle: "FY" + (new Date().getFullYear() - 1),
+  1272→          type: "Final",
+  1273→          reviewerName: "Aarav Sharma",
+  1274→          rating: 4.2,
+  1275→          comments: "Strong performer. Delivered key projects on time. Ready for next-level responsibility.",
+  1276→          promotionRecommended: code === "EMP-0001",
+  1277→          incrementRecommended: 12,
+  1278→          status: "Finalized",
+  1279→          reviewDate: monthsAgo(2),
+  1280→          finalizedAt: monthsAgo(1),
+  1281→        },
+  1282→      })
+  1283→      bump("reviews")
+  1284→
+  1285→      // ---- Expenses (1-2 each) ----
+  1286→      await db.employeeExpense.create({
+  1287→        data: {
+  1288→          tenantId, employeeId: empId,
+  1289→          category: "Travel", amount: 12500, currency: "INR",
+  1290→          expenseDate: daysAgo(20),
+  1291→          description: "Client visit travel — Bangalore to Mumbai",
+  1292→          billUrl: "/bills/travel-1.pdf", project: "Phoenix", client: "Acme Corp",
+  1293→          status: "Paid", paymentStatus: "Paid",
+  1294→          approvedBy: "Aarav Sharma", approvedAt: daysAgo(18), paidAt: daysAgo(10),
+  1295→        },
+  1296→      })
+  1297→      bump("expenses")
+  1298→      await db.employeeExpense.create({
+  1299→        data: {
+  1300→          tenantId, employeeId: empId,
+  1301→          category: "Food", amount: 850, currency: "INR",
+  1302→          expenseDate: daysAgo(5),
+  1303→          description: "Team lunch with client",
+  1304→          billUrl: "/bills/food-1.pdf",
+  1305→          status: "Submitted",
+  1306→        },
+  1307→      })
+  1308→      bump("expenses")
+  1309→
+  1310→      // ---- Helpdesk tickets (1-2 each) ----
+  1311→      await db.employeeHelpdeskTicket.create({
+  1312→        data: {
+  1313→          tenantId, employeeId: empId,
+  1314→          ticketCode: `TKT-${String((idx * 2) + 1).padStart(4, "0")}`,
+  1315→          subject: "Laptop running slow",
+  1316→          category: "IT", priority: "Medium",
+  1317→          status: "Resolved",
+  1318→          description: "My laptop is taking a long time to boot and applications are sluggish.",
+  1319→          assignedTo: "IT Helpdesk",
+  1320→          slaHours: 24, slaStatus: "Within SLA",
+  1321→          resolution: "Replaced HDD with SSD. Performance restored.",
+  1322→          resolvedAt: daysAgo(10),
+  1323→          feedback: "Quick resolution, thanks!", rating: 5,
+  1324→        },
+  1325→      })
+  1326→      bump("tickets")
+  1327→      await db.employeeHelpdeskTicket.create({
+  1328→        data: {
+  1329→          tenantId, employeeId: empId,
+  1330→          ticketCode: `TKT-${String((idx * 2) + 2).padStart(4, "0")}`,
+  1331→          subject: "Salary slip not generated",
+  1332→          category: "Payroll", priority: "High",
+  1333→          status: "Open",
+  1334→          description: "Last month's salary slip is not showing in the portal.",
+  1335→          assignedTo: "Payroll Team",
+  1336→          slaHours: 48, slaStatus: "Within SLA",
+  1337→        },
+  1338→      })
+  1339→      bump("tickets")
+  1340→
+  1341→      // ---- Letters (1-2 each) ----
+  1342→      await db.employeeLetter.create({
+  1343→        data: {
+  1344→          tenantId, employeeId: empId,
+  1345→          letterType: "Appointment",
+  1346→          letterCode: `LTR-${String((idx * 2) + 1).padStart(4, "0")}`,
+  1347→          issuedDate: doj,
+  1348→          subject: "Letter of Appointment",
+  1349→          body: `Dear ${e.first}, we are pleased to confirm your appointment as ${e.desig} at ACME Corporation.`,
+  1350→          status: "Issued",
+  1351→          issuedBy: "Ananya Iyer",
+  1352→          version: 1,
+  1353→        },
+  1354→      })
+  1355→      bump("letters")
+  1356→      if (monthsAgo(0).getTime() - doj.getTime() > 90 * 24 * 3600 * 1000) {
+  1357→        await db.employeeLetter.create({
+  1358→          data: {
+  1359→            tenantId, employeeId: empId,
+  1360→            letterType: "Confirmation",
+  1361→            letterCode: `LTR-${String((idx * 2) + 2).padStart(4, "0")}`,
+  1362→            issuedDate: new Date(doj.getTime() + 95 * 24 * 3600 * 1000),
+  1363→            subject: "Letter of Confirmation",
+  1364→            body: `Dear ${e.first}, we are pleased to confirm your successful completion of probation.`,
+  1365→            status: "Issued",
+  1366→            issuedBy: "Ananya Iyer",
+  1367→            version: 1,
+  1368→          },
+  1369→        })
+  1370→        bump("letters")
+  1371→      }
+  1372→
+  1373→      // ---- Requests (1-2 each) ----
+  1374→      await db.employeeRequest.create({
+  1375→        data: {
+  1376→          tenantId, employeeId: empId,
+  1377→          requestType: "WFH",
+  1378→          title: "Work from home — 2 days",
+  1379→          description: "Requesting WFH for next Monday and Tuesday due to personal reasons.",
+  1380→          payload: JSON.stringify({ dates: [daysFromNow(3), daysFromNow(4)] }),
+  1381→          status: "Approved",
+  1382→          pendingWith: "Aarav Sharma",
+  1383→          submittedAt: daysAgo(7),
+  1384→          decidedAt: daysAgo(5),
+  1385→          decidedBy: "Aarav Sharma",
+  1386→          remarks: "Approved. Please be available on Slack.",
+  1387→        },
+  1388→      })
+  1389→      bump("requests")
+  1390→      await db.employeeRequest.create({
+  1391→        data: {
+  1392→          tenantId, employeeId: empId,
+  1393→          requestType: "Document update",
+  1394→          title: "Update personal email",
+  1395→          description: "I would like to update my personal email address.",
+  1396→          payload: JSON.stringify({ field: "personalEmail", oldValue: e.personalEmail, newValue: e.first.toLowerCase() + ".new@gmail.com" }),
+  1397→          status: "Pending",
+  1398→          pendingWith: "Ananya Iyer",
+  1399→          submittedAt: daysAgo(2),
+  1400→        },
+  1401→      })
+  1402→      bump("requests")
+  1403→    } // end of per-employee sub-record loop
+  1404→
+  1405→    // ---- Exit record for EMP-0008 (Kabir Singh, On Notice) ----
+  1406→    {
+  1407→      const empId = empByCode["EMP-0008"].id
+  1408→      await db.employeeExit.create({
+  1409→        data: {
+  1410→          tenantId, employeeId: empId,
+  1411→          resignationDate: daysAgo(15),
+  1412→          lastWorkingDate: daysFromNow(45),
+  1413→          reason: "Better opportunity abroad",
+  1414→          status: "Manager approved",
+  1415→          noticePeriodDays: 60,
+  1416→          noticeRecoveryDays: 0,
+  1417→          clearanceHR: false, clearanceIT: false, clearanceAdmin: false,
+  1418→          clearanceFinance: false, clearanceManager: true, clearancePayroll: false,
+  1419→          approvedBy: "Aarav Sharma",
+  1420→          approvedAt: daysAgo(7),
+  1421→        },
+  1422→      })
+  1423→      subCounts.exits = 1
+  1424→      // Status history for EMP-0008
+  1425→      await db.employeeStatusHistory.create({
+  1426→        data: {
+  1427→          tenantId, employeeId: empId, oldStatus: "Active", newStatus: "On Notice",
+  1428→          effectiveDate: daysAgo(15), reason: "Resignation submitted",
+  1429→          changedBy: "Ananya Iyer",
+  1430→        },
+  1431→      })
+  1432→      subCounts.statusHistory = (subCounts.statusHistory || 0) + 1
+  1433→      // Timeline event
+  1434→      await db.employeeTimelineEvent.create({
+  1435→        data: {
+  1436→          tenantId, employeeId: empId, eventType: "Resignation submitted",
+  1437→          title: "Resignation submitted",
+  1438→          description: "Better opportunity abroad",
+  1439→          eventDate: daysAgo(15), actorName: "Kabir Singh",
+  1440→        },
+  1441→      })
+  1442→      subCounts.timeline = (subCounts.timeline || 0) + 1
+  1443→    }
+  1444→
+  1445→    // Add subCounts to counts
+  1446→    for (const [k, v] of Object.entries(subCounts)) {
+  1447→      counts[`emp_${k}`] = v
+  1448→    }
+  1449→
+  1450→    return ok({ ok: true, counts })
+  1451→  } catch (err: any) {
+  1452→    console.error("[seed] error:", err)
+  1453→    return bad("Seed failed: " + (err?.message || String(err)), 500)
+  1454→  }
+  1455→}
+  1456→

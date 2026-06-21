@@ -1,0 +1,774 @@
+     1→     1→// Default dynamic form schemas for each module.
+     2→     2→// These are used when no DB override (FormSchema) exists. Admins can clone & edit via the Form Builder.
+     3→     3→
+     4→     4→import { FormSchema } from "./types"
+     5→     5→
+     6→     6→function id(p: string) { return `${p}-${Math.random().toString(36).slice(2, 9)}` }
+     7→     7→
+     8→     8→// ============================================================
+     9→     9→// EMPLOYEE
+    10→    10→// ============================================================
+    11→    11→
+    12→    12→export const employeeFormSchema: FormSchema = {
+    13→    13→  code: "employee-default",
+    14→    14→  name: "Add Employee",
+    15→    15→  module: "employee",
+    16→    16→  description: "Dynamic form for creating a new employee record.",
+    17→    17→  sections: [
+    18→    18→    {
+    19→    19→      id: "sec-basic",
+    20→    20→      title: "Basic Details",
+    21→    21→      description: "Personal & identity information",
+    22→    22→      fields: [
+    23→    23→        { id: id("f"), key: "employeeCode", label: "Employee Code", type: "text", placeholder: "EMP-0001", width: "half", validation: { required: true, maxLength: 20 }, helpText: "Unique identifier for the employee" },
+    24→    24→        { id: id("f"), key: "firstName", label: "First Name", type: "text", placeholder: "Aarav", width: "half", validation: { required: true } },
+    25→    25→        { id: id("f"), key: "middleName", label: "Middle Name", type: "text", width: "half" },
+    26→    26→        { id: id("f"), key: "lastName", label: "Last Name", type: "text", placeholder: "Sharma", width: "half", validation: { required: true } },
+    27→    27→        { id: id("f"), key: "gender", label: "Gender", type: "select", width: "half", options: [
+    28→    28→          { label: "Male", value: "Male" }, { label: "Female", value: "Female" }, { label: "Other", value: "Other" },
+    29→    29→        ] },
+    30→    30→        { id: id("f"), key: "dateOfBirth", label: "Date of Birth", type: "date", width: "half" },
+    31→    31→        { id: id("f"), key: "maritalStatus", label: "Marital Status", type: "select", width: "half", options: [
+    32→    32→          { label: "Single", value: "Single" }, { label: "Married", value: "Married" }, { label: "Divorced", value: "Divorced" }, { label: "Widowed", value: "Widowed" },
+    33→    33→        ] },
+    34→    34→        { id: id("f"), key: "bloodGroup", label: "Blood Group", type: "select", width: "half", options: [
+    35→    35→          { label: "A+", value: "A+" }, { label: "A-", value: "A-" }, { label: "B+", value: "B+" }, { label: "B-", value: "B-" },
+    36→    36→          { label: "O+", value: "O+" }, { label: "O-", value: "O-" }, { label: "AB+", value: "AB+" }, { label: "AB-", value: "AB-" },
+    37→    37→        ] },
+    38→    38→        { id: id("f"), key: "personalEmail", label: "Personal Email", type: "email", width: "half", validation: { pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" } },
+    39→    39→        { id: id("f"), key: "mobileNumber", label: "Mobile Number", type: "phone", width: "half", validation: { required: true } },
+    40→    40→      ],
+    41→    41→    },
+    42→    42→    {
+    43→    43→      id: "sec-employment",
+    44→    44→      title: "Employment Details",
+    45→    45→      description: "Job & organizational assignment",
+    46→    46→      fields: [
+    47→    47→        { id: id("f"), key: "dateOfJoining", label: "Date of Joining", type: "date", width: "half", validation: { required: true } },
+    48→    48→        { id: id("f"), key: "employmentType", label: "Employment Type", type: "select", width: "half", defaultValue: "Full-time", options: [
+    49→    49→          { label: "Full-time", value: "Full-time" }, { label: "Part-time", value: "Part-time" }, { label: "Contract", value: "Contract" }, { label: "Intern", value: "Intern" },
+    50→    50→          { label: "Consultant", value: "Consultant" }, { label: "Apprentice", value: "Apprentice" }, { label: "Temporary", value: "Temporary" },
+    51→    51→        ] },
+    52→    52→        { id: id("f"), key: "entityId", label: "Entity", type: "entity", width: "half", endpoint: "/api/entities" },
+    53→    53→        { id: id("f"), key: "branchId", label: "Branch", type: "select", width: "half", endpoint: "/api/branches" },
+    54→    54→        { id: id("f"), key: "departmentId", label: "Department", type: "department", width: "half", endpoint: "/api/departments" },
+    55→    55→        { id: id("f"), key: "designationId", label: "Designation", type: "designation", width: "half", endpoint: "/api/designations" },
+    56→    56→        { id: id("f"), key: "gradeId", label: "Grade / Band", type: "grade", width: "half", endpoint: "/api/grades" },
+    57→    57→        { id: id("f"), key: "locationId", label: "Location", type: "location", width: "half", endpoint: "/api/locations" },
+    58→    58→        { id: id("f"), key: "reportingManagerId", label: "Reporting Manager", type: "employee", width: "half", endpoint: "/api/employees/picker" },
+    59→    59→        { id: id("f"), key: "functionalManagerId", label: "Functional Manager", type: "employee", width: "half", endpoint: "/api/employees/picker" },
+    60→    60→        { id: id("f"), key: "hrManagerId", label: "HR Manager", type: "employee", width: "half", endpoint: "/api/employees/picker" },
+    61→    61→        { id: id("f"), key: "probationStatus", label: "Probation Status", type: "select", width: "half", options: [
+    62→    62→          { label: "On Probation", value: "On Probation" }, { label: "Confirmed", value: "Confirmed" }, { label: "Extended", value: "Extended" }, { label: "Not Confirmed", value: "Not Confirmed" }, { label: "N/A", value: "" },
+    63→    63→        ] },
+    64→    64→        { id: id("f"), key: "probationEndDate", label: "Probation End Date", type: "date", width: "half", visibilityConditions: [{ field: "probationStatus", operator: "eq", value: "On Probation" }] },
+    65→    65→        { id: id("f"), key: "noticePeriod", label: "Notice Period (days)", type: "number", width: "half", defaultValue: 30 },
+    66→    66→        { id: id("f"), key: "employeeStatus", label: "Employee Status", type: "select", width: "half", defaultValue: "Active", options: [
+    67→    67→          { label: "Active", value: "Active" }, { label: "On Notice", value: "On Notice" }, { label: "Resigned", value: "Resigned" }, { label: "Terminated", value: "Terminated" }, { label: "Inactive", value: "Inactive" },
+    68→    68→        ] },
+    69→    69→      ],
+    70→    70→    },
+    71→    71→    {
+    72→    72→      id: "sec-compensation",
+    73→    73→      title: "Compensation",
+    74→    74→      description: "Salary & CTC details",
+    75→    75→      fields: [
+    76→    76→        { id: id("f"), key: "ctc", label: "Annual CTC", type: "currency", unit: "₹", width: "half" },
+    77→    77→        { id: id("f"), key: "basicSalary", label: "Basic Salary (annual)", type: "currency", unit: "₹", width: "half" },
+    78→    78→        { id: id("f"), key: "hra", label: "HRA (annual)", type: "currency", unit: "₹", width: "half" },
+    79→    79→      ],
+    80→    80→    },
+    81→    81→    {
+    82→    82→      id: "sec-bank",
+    83→    83→      title: "Bank Details",
+    84→    84→      fields: [
+    85→    85→        { id: id("f"), key: "bankName", label: "Bank Name", type: "text", width: "half" },
+    86→    86→        { id: id("f"), key: "accountNumber", label: "Account Number", type: "text", width: "half" },
+    87→    87→        { id: id("f"), key: "ifscCode", label: "IFSC Code", type: "text", width: "half" },
+    88→    88→        { id: id("f"), key: "branchName", label: "Branch Name", type: "text", width: "half" },
+    89→    89→      ],
+    90→    90→    },
+    91→    91→    {
+    92→    92→      id: "sec-statutory",
+    93→    93→      title: "Statutory Details",
+    94→    94→      fields: [
+    95→    95→        { id: id("f"), key: "panNumber", label: "PAN", type: "text", width: "half", validation: { pattern: "^[A-Z]{5}[0-9]{4}[A-Z]{1}$" } },
+    96→    96→        { id: id("f"), key: "aadhaarNumber", label: "Aadhaar", type: "text", width: "half" },
+    97→    97→        { id: id("f"), key: "uanNumber", label: "UAN", type: "text", width: "half" },
+    98→    98→        { id: id("f"), key: "pfNumber", label: "PF Number", type: "text", width: "half" },
+    99→    99→      ],
+   100→   100→    },
+   101→   101→    {
+   102→   102→      id: "sec-address",
+   103→   103→      title: "Address",
+   104→   104→      fields: [
+   105→   105→        { id: id("f"), key: "currentAddress", label: "Current Address", type: "textarea", width: "full" },
+   106→   106→        { id: id("f"), key: "permanentAddress", label: "Permanent Address", type: "textarea", width: "full" },
+   107→   107→      ],
+   108→   108→    },
+   109→   109→  ],
+   110→   110→}
+   111→   111→
+   112→   112→// ============================================================
+   113→   113→// EMPLOYEE — FULL FORM (Phase 2: comprehensive form with all fields)
+   114→   114→// ============================================================
+   115→   115→
+   116→   116→export const employeeFullFormSchema: FormSchema = {
+   117→   117→  code: "employee-full",
+   118→   118→  name: "Employee Full Form",
+   119→   119→  module: "employee",
+   120→   120→  description: "Comprehensive employee form covering all sections: personal, identity, employment, organization, policy assignments, bank, statutory, addresses, emergency contact, compensation.",
+   121→   121→  sections: [
+   122→   122→    {
+   123→   123→      id: "sec-basic",
+   124→   124→      title: "Basic Details",
+   125→   125→      description: "Personal & identity information",
+   126→   126→      fields: [
+   127→   127→        { id: id("f"), key: "employeeCode", label: "Employee Code", type: "text", placeholder: "EMP-0001", width: "half", validation: { required: true, maxLength: 20 }, helpText: "Unique identifier for the employee" },
+   128→   128→        { id: id("f"), key: "firstName", label: "First Name", type: "text", placeholder: "Aarav", width: "half", validation: { required: true } },
+   129→   129→        { id: id("f"), key: "middleName", label: "Middle Name", type: "text", width: "half" },
+   130→   130→        { id: id("f"), key: "lastName", label: "Last Name", type: "text", placeholder: "Sharma", width: "half", validation: { required: true } },
+   131→   131→        { id: id("f"), key: "displayName", label: "Display Name", type: "text", width: "half", placeholder: "Aarav Sharma" },
+   132→   132→        { id: id("f"), key: "gender", label: "Gender", type: "select", width: "half", options: [
+   133→   133→          { label: "Male", value: "Male" }, { label: "Female", value: "Female" }, { label: "Other", value: "Other" },
+   134→   134→        ] },
+   135→   135→        { id: id("f"), key: "dateOfBirth", label: "Date of Birth", type: "date", width: "half" },
+   136→   136→        { id: id("f"), key: "maritalStatus", label: "Marital Status", type: "select", width: "half", options: [
+   137→   137→          { label: "Single", value: "Single" }, { label: "Married", value: "Married" }, { label: "Divorced", value: "Divorced" }, { label: "Widowed", value: "Widowed" },
+   138→   138→        ] },
+   139→   139→        { id: id("f"), key: "bloodGroup", label: "Blood Group", type: "select", width: "half", options: [
+   140→   140→          { label: "A+", value: "A+" }, { label: "A-", value: "A-" }, { label: "B+", value: "B+" }, { label: "B-", value: "B-" },
+   141→   141→          { label: "O+", value: "O+" }, { label: "O-", value: "O-" }, { label: "AB+", value: "AB+" }, { label: "AB-", value: "AB-" },
+   142→   142→        ] },
+   143→   143→        { id: id("f"), key: "nationality", label: "Nationality", type: "text", width: "half", defaultValue: "Indian" },
+   144→   144→        { id: id("f"), key: "religion", label: "Religion", type: "select", width: "half", options: [
+   145→   145→          { label: "Hindu", value: "Hindu" }, { label: "Muslim", value: "Muslim" }, { label: "Christian", value: "Christian" },
+   146→   146→          { label: "Sikh", value: "Sikh" }, { label: "Jain", value: "Jain" }, { label: "Buddhist", value: "Buddhist" }, { label: "Other", value: "Other" },
+   147→   147→        ] },
+   148→   148→        { id: id("f"), key: "category", label: "Category", type: "select", width: "half", options: [
+   149→   149→          { label: "General", value: "General" }, { label: "OBC", value: "OBC" }, { label: "SC", value: "SC" }, { label: "ST", value: "ST" },
+   150→   150→        ] },
+   151→   151→        { id: id("f"), key: "profilePhotoUrl", label: "Profile Photo URL", type: "url", width: "half" },
+   152→   152→        { id: id("f"), key: "personalEmail", label: "Personal Email", type: "email", width: "half", validation: { pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" } },
+   153→   153→        { id: id("f"), key: "officialEmail", label: "Official Email", type: "email", width: "half", validation: { pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" } },
+   154→   154→        { id: id("f"), key: "mobileNumber", label: "Mobile Number", type: "phone", width: "half", validation: { required: true } },
+   155→   155→        { id: id("f"), key: "alternateNumber", label: "Alternate Number", type: "phone", width: "half" },
+   156→   156→      ],
+   157→   157→    },
+   158→   158→    {
+   159→   159→      id: "sec-identity",
+   160→   160→      title: "Identity Documents",
+   161→   161→      description: "Government-issued identity numbers",
+   162→   162→      fields: [
+   163→   163→        { id: id("f"), key: "passportNumber", label: "Passport Number", type: "text", width: "half", placeholder: "P1234567" },
+   164→   164→        { id: id("f"), key: "drivingLicense", label: "Driving License", type: "text", width: "half" },
+   165→   165→        { id: id("f"), key: "voterId", label: "Voter ID", type: "text", width: "half" },
+   166→   166→        { id: id("f"), key: "physicallyDisabled", label: "Physically Disabled", type: "switch", width: "half", defaultValue: false },
+   167→   167→        { id: id("f"), key: "disabilityDetails", label: "Disability Details", type: "textarea", width: "full", visibilityConditions: [{ field: "physicallyDisabled", operator: "eq", value: true }] },
+   168→   168→      ],
+   169→   169→    },
+   170→   170→    {
+   171→   171→      id: "sec-employment",
+   172→   172→      title: "Employment Details",
+   173→   173→      description: "Job & probation",
+   174→   174→      fields: [
+   175→   175→        { id: id("f"), key: "dateOfJoining", label: "Date of Joining", type: "date", width: "half", validation: { required: true } },
+   176→   176→        { id: id("f"), key: "employmentType", label: "Employment Type", type: "select", width: "half", defaultValue: "Full-time", options: [
+   177→   177→          { label: "Full-time", value: "Full-time" }, { label: "Part-time", value: "Part-time" }, { label: "Contract", value: "Contract" }, { label: "Intern", value: "Intern" },
+   178→   178→          { label: "Consultant", value: "Consultant" }, { label: "Apprentice", value: "Apprentice" }, { label: "Temporary", value: "Temporary" },
+   179→   179→        ] },
+   180→   180→        { id: id("f"), key: "workerType", label: "Worker Type", type: "select", width: "half", defaultValue: "Permanent", options: [
+   181→   181→          { label: "Permanent", value: "Permanent" }, { label: "Contract", value: "Contract" }, { label: "Consultant", value: "Consultant" }, { label: "Temporary", value: "Temporary" },
+   182→   182→        ] },
+   183→   183→        { id: id("f"), key: "jobType", label: "Job Type", type: "select", width: "half", options: [
+   184→   184→          { label: "On-roll", value: "On-roll" }, { label: "Off-roll", value: "Off-roll" },
+   185→   185→        ] },
+   186→   186→        { id: id("f"), key: "probationStatus", label: "Probation Status", type: "select", width: "half", options: [
+   187→   187→          { label: "On Probation", value: "On Probation" }, { label: "Confirmed", value: "Confirmed" }, { label: "Extended", value: "Extended" }, { label: "Not Confirmed", value: "Not Confirmed" },
+   188→   188→        ] },
+   189→   189→        { id: id("f"), key: "probationStartDate", label: "Probation Start Date", type: "date", width: "half", visibilityConditions: [{ field: "probationStatus", operator: "eq", value: "On Probation" }] },
+   190→   190→        { id: id("f"), key: "probationEndDate", label: "Probation End Date", type: "date", width: "half", visibilityConditions: [{ field: "probationStatus", operator: "eq", value: "On Probation" }] },
+   191→   191→        { id: id("f"), key: "confirmationDate", label: "Confirmation Date", type: "date", width: "half" },
+   192→   192→        { id: id("f"), key: "noticePeriod", label: "Notice Period (days)", type: "number", width: "half", defaultValue: 30 },
+   193→   193→        { id: id("f"), key: "noticePeriodStartDate", label: "Notice Period Start Date", type: "date", width: "half" },
+   194→   194→        { id: id("f"), key: "lastWorkingDate", label: "Last Working Date", type: "date", width: "half" },
+   195→   195→        { id: id("f"), key: "employeeStatus", label: "Employee Status", type: "select", width: "half", defaultValue: "Active", options: [
+   196→   196→          { label: "Active", value: "Active" }, { label: "On Notice", value: "On Notice" }, { label: "Resigned", value: "Resigned" }, { label: "Terminated", value: "Terminated" }, { label: "Absconded", value: "Absconded" }, { label: "Retired", value: "Retired" }, { label: "Inactive", value: "Inactive" }, { label: "Alumni", value: "Alumni" },
+   197→   197→        ] },
+   198→   198→        { id: id("f"), key: "workMode", label: "Work Mode", type: "select", width: "half", defaultValue: "Work from office", options: [
+   199→   199→          { label: "Work from office", value: "Work from office" }, { label: "Work from home", value: "Work from home" }, { label: "Hybrid", value: "Hybrid" }, { label: "Field work", value: "Field work" },
+   200→   200→        ] },
+   201→   201→        { id: id("f"), key: "businessUnit", label: "Business Unit", type: "text", width: "half", placeholder: "Engineering" },
+   202→   202→        { id: id("f"), key: "costCenter", label: "Cost Center", type: "text", width: "half", placeholder: "CC-ENG-100" },
+   203→   203→      ],
+   204→   204→    },
+   205→   205→    {
+   206→   206→      id: "sec-organization",
+   207→   207→      title: "Organization",
+   208→   208→      description: "Reporting hierarchy & policy assignments",
+   209→   209→      fields: [
+   210→   210→        { id: id("f"), key: "entityId", label: "Entity", type: "entity", width: "half", endpoint: "/api/entities" },
+   211→   211→        { id: id("f"), key: "branchId", label: "Branch", type: "select", width: "half", endpoint: "/api/branches" },
+   212→   212→        { id: id("f"), key: "departmentId", label: "Department", type: "department", width: "half", endpoint: "/api/departments" },
+   213→   213→        { id: id("f"), key: "designationId", label: "Designation", type: "designation", width: "half", endpoint: "/api/designations" },
+   214→   214→        { id: id("f"), key: "gradeId", label: "Grade / Band", type: "grade", width: "half", endpoint: "/api/grades" },
+   215→   215→        { id: id("f"), key: "locationId", label: "Location", type: "location", width: "half", endpoint: "/api/locations" },
+   216→   216→        { id: id("f"), key: "reportingManagerId", label: "Reporting Manager", type: "employee", width: "half", endpoint: "/api/employees/picker" },
+   217→   217→        { id: id("f"), key: "functionalManagerId", label: "Functional Manager", type: "employee", width: "half", endpoint: "/api/employees/picker" },
+   218→   218→        { id: id("f"), key: "hrManagerId", label: "HR Manager", type: "employee", width: "half", endpoint: "/api/employees/picker" },
+   219→   219→      ],
+   220→   220→    },
+   221→   221→    {
+   222→   222→      id: "sec-policies",
+   223→   223→      title: "Policy Assignments",
+   224→   224→      description: "Leave, attendance, payroll, shift & holiday policies",
+   225→   225→      fields: [
+   226→   226→        { id: id("f"), key: "leavePolicyId", label: "Leave Policy", type: "text", width: "half", placeholder: "Policy ID (optional)" },
+   227→   227→        { id: id("f"), key: "attendancePolicyId", label: "Attendance Policy", type: "text", width: "half", placeholder: "Policy ID (optional)" },
+   228→   228→        { id: id("f"), key: "payrollPolicyId", label: "Payroll Policy", type: "text", width: "half", placeholder: "Policy ID (optional)" },
+   229→   229→        { id: id("f"), key: "shiftPolicyId", label: "Shift Policy", type: "text", width: "half", placeholder: "Policy ID (optional)" },
+   230→   230→        { id: id("f"), key: "holidayCalendarId", label: "Holiday Calendar", type: "text", width: "half", placeholder: "Calendar ID (optional)" },
+   231→   231→      ],
+   232→   232→    },
+   233→   233→    {
+   234→   234→      id: "sec-bank",
+   235→   235→      title: "Bank Details",
+   236→   236→      fields: [
+   237→   237→        { id: id("f"), key: "bankName", label: "Bank Name", type: "text", width: "half" },
+   238→   238→        { id: id("f"), key: "accountHolderName", label: "Account Holder Name", type: "text", width: "half" },
+   239→   239→        { id: id("f"), key: "accountNumber", label: "Account Number", type: "text", width: "half" },
+   240→   240→        { id: id("f"), key: "accountType", label: "Account Type", type: "select", width: "half", options: [
+   241→   241→          { label: "Savings", value: "Savings" }, { label: "Current", value: "Current" }, { label: "Salary", value: "Salary" },
+   242→   242→        ] },
+   243→   243→        { id: id("f"), key: "ifscCode", label: "IFSC Code", type: "text", width: "half" },
+   244→   244→        { id: id("f"), key: "branchName", label: "Branch Name", type: "text", width: "half" },
+   245→   245→        { id: id("f"), key: "upiId", label: "UPI ID", type: "text", width: "half", placeholder: "name@okhdfcbank" },
+   246→   246→      ],
+   247→   247→    },
+   248→   248→    {
+   249→   249→      id: "sec-statutory",
+   250→   250→      title: "Statutory Details",
+   251→   251→      fields: [
+   252→   252→        { id: id("f"), key: "panNumber", label: "PAN", type: "text", width: "half", validation: { pattern: "^[A-Z]{5}[0-9]{4}[A-Z]{1}$" } },
+   253→   253→        { id: id("f"), key: "aadhaarNumber", label: "Aadhaar", type: "text", width: "half" },
+   254→   254→        { id: id("f"), key: "uanNumber", label: "UAN", type: "text", width: "half" },
+   255→   255→        { id: id("f"), key: "pfNumber", label: "PF Number", type: "text", width: "half" },
+   256→   256→        { id: id("f"), key: "esiNumber", label: "ESI Number", type: "text", width: "half" },
+   257→   257→        { id: id("f"), key: "ptLocation", label: "PT Location", type: "text", width: "half" },
+   258→   258→        { id: id("f"), key: "pfApplicable", label: "PF Applicable", type: "switch", width: "half", defaultValue: true },
+   259→   259→        { id: id("f"), key: "esiApplicable", label: "ESI Applicable", type: "switch", width: "half", defaultValue: false },
+   260→   260→        { id: id("f"), key: "ptApplicable", label: "PT Applicable", type: "switch", width: "half", defaultValue: true },
+   261→   261→        { id: id("f"), key: "lwfApplicability", label: "LWF Applicability", type: "text", width: "half" },
+   262→   262→        { id: id("f"), key: "gratuityApplicability", label: "Gratuity Applicability", type: "text", width: "half" },
+   263→   263→        { id: id("f"), key: "taxRegime", label: "Tax Regime", type: "select", width: "half", options: [
+   264→   264→          { label: "Old", value: "Old" }, { label: "New", value: "New" },
+   265→   265→        ] },
+   266→   266→        { id: id("f"), key: "tdsDeclarationStatus", label: "TDS Declaration Status", type: "select", width: "half", options: [
+   267→   267→          { label: "Pending", value: "Pending" }, { label: "Submitted", value: "Submitted" }, { label: "Verified", value: "Verified" },
+   268→   268→        ] },
+   269→   269→      ],
+   270→   270→    },
+   271→   271→    {
+   272→   272→      id: "sec-current-address",
+   273→   273→      title: "Current Address",
+   274→   274→      fields: [
+   275→   275→        { id: id("f"), key: "currentAddress", label: "Address Line 1", type: "textarea", width: "full" },
+   276→   276→        { id: id("f"), key: "currentAddressLine2", label: "Address Line 2", type: "text", width: "half" },
+   277→   277→        { id: id("f"), key: "currentLandmark", label: "Landmark", type: "text", width: "half" },
+   278→   278→        { id: id("f"), key: "currentCity", label: "City", type: "text", width: "half" },
+   279→   279→        { id: id("f"), key: "currentState", label: "State", type: "text", width: "half" },
+   280→   280→        { id: id("f"), key: "currentCountry", label: "Country", type: "text", width: "half", defaultValue: "India" },
+   281→   281→        { id: id("f"), key: "currentPincode", label: "Pincode", type: "text", width: "half" },
+   282→   282→      ],
+   283→   283→    },
+   284→   284→    {
+   285→   285→      id: "sec-permanent-address",
+   286→   286→      title: "Permanent Address",
+   287→   287→      fields: [
+   288→   288→        { id: id("f"), key: "sameAsCurrent", label: "Same as Current Address", type: "switch", width: "half", defaultValue: false },
+   289→   289→        { id: id("f"), key: "permanentAddress", label: "Address Line 1", type: "textarea", width: "full", visibilityConditions: [{ field: "sameAsCurrent", operator: "eq", value: false }] },
+   290→   290→        { id: id("f"), key: "permanentAddressLine2", label: "Address Line 2", type: "text", width: "half", visibilityConditions: [{ field: "sameAsCurrent", operator: "eq", value: false }] },
+   291→   291→        { id: id("f"), key: "permanentCity", label: "City", type: "text", width: "half", visibilityConditions: [{ field: "sameAsCurrent", operator: "eq", value: false }] },
+   292→   292→        { id: id("f"), key: "permanentState", label: "State", type: "text", width: "half", visibilityConditions: [{ field: "sameAsCurrent", operator: "eq", value: false }] },
+   293→   293→        { id: id("f"), key: "permanentCountry", label: "Country", type: "text", width: "half", defaultValue: "India", visibilityConditions: [{ field: "sameAsCurrent", operator: "eq", value: false }] },
+   294→   294→        { id: id("f"), key: "permanentPincode", label: "Pincode", type: "text", width: "half", visibilityConditions: [{ field: "sameAsCurrent", operator: "eq", value: false }] },
+   295→   295→      ],
+   296→   296→    },
+   297→   297→    {
+   298→   298→      id: "sec-emergency",
+   299→   299→      title: "Emergency Contact",
+   300→   300→      fields: [
+   301→   301→        { id: id("f"), key: "emergencyContactName", label: "Contact Name", type: "text", width: "half" },
+   302→   302→        { id: id("f"), key: "emergencyContactRelation", label: "Relationship", type: "text", width: "half", placeholder: "Spouse / Parent / Sibling" },
+   303→   303→        { id: id("f"), key: "emergencyContactPhone", label: "Phone", type: "phone", width: "half" },
+   304→   304→        { id: id("f"), key: "emergencyContactAltPhone", label: "Alternate Phone", type: "phone", width: "half" },
+   305→   305→        { id: id("f"), key: "emergencyContactEmail", label: "Email", type: "email", width: "half" },
+   306→   306→        { id: id("f"), key: "emergencyContactAddress", label: "Address", type: "textarea", width: "full" },
+   307→   307→        { id: id("f"), key: "communicationPreference", label: "Communication Preference", type: "select", width: "half", options: [
+   308→   308→          { label: "Email", value: "Email" }, { label: "SMS", value: "SMS" }, { label: "WhatsApp", value: "WhatsApp" },
+   309→   309→        ] },
+   310→   310→      ],
+   311→   311→    },
+   312→   312→    {
+   313→   313→      id: "sec-compensation",
+   314→   314→      title: "Compensation",
+   315→   315→      description: "Salary & CTC details (annual figures)",
+   316→   316→      fields: [
+   317→   317→        { id: id("f"), key: "ctc", label: "Annual CTC", type: "currency", unit: "₹", width: "half" },
+   318→   318→        { id: id("f"), key: "basicSalary", label: "Basic Salary (annual)", type: "currency", unit: "₹", width: "half", helpText: "Typically 50% of CTC" },
+   319→   319→        { id: id("f"), key: "hra", label: "HRA (annual)", type: "currency", unit: "₹", width: "half", helpText: "Typically 40% of Basic" },
+   320→   320→        { id: id("f"), key: "specialAllowance", label: "Special Allowance", type: "currency", unit: "₹", width: "half" },
+   321→   321→        { id: id("f"), key: "conveyanceAllowance", label: "Conveyance Allowance", type: "currency", unit: "₹", width: "half" },
+   322→   322→        { id: id("f"), key: "medicalAllowance", label: "Medical Allowance", type: "currency", unit: "₹", width: "half" },
+   323→   323→        { id: id("f"), key: "bonusAmount", label: "Bonus Amount", type: "currency", unit: "₹", width: "half" },
+   324→   324→        { id: id("f"), key: "pfEmployee", label: "PF (Employee)", type: "currency", unit: "₹", width: "half" },
+   325→   325→        { id: id("f"), key: "pfEmployer", label: "PF (Employer)", type: "currency", unit: "₹", width: "half" },
+   326→   326→        { id: id("f"), key: "esiAmount", label: "ESI Amount", type: "currency", unit: "₹", width: "half" },
+   327→   327→        { id: id("f"), key: "professionalTax", label: "Professional Tax", type: "currency", unit: "₹", width: "half" },
+   328→   328→        { id: id("f"), key: "tdsAmount", label: "TDS Amount", type: "currency", unit: "₹", width: "half" },
+   329→   329→        { id: id("f"), key: "grossSalary", label: "Gross Salary", type: "currency", unit: "₹", width: "half" },
+   330→   330→        { id: id("f"), key: "netSalary", label: "Net Salary", type: "currency", unit: "₹", width: "half" },
+   331→   331→      ],
+   332→   332→    },
+   333→   333→  ],
+   334→   334→}
+   335→   335→
+   336→   336→// ============================================================
+   337→   337→// ENTITY (Company)
+   338→   338→// ============================================================
+   339→   339→
+   340→   340→export const entityFormSchema: FormSchema = {
+   341→   341→  code: "entity-default",
+   342→   342→  name: "Add Entity",
+   343→   343→  module: "entity",
+   344→   344→  sections: [
+   345→   345→    {
+   346→   346→      id: "sec-1",
+   347→   347→      title: "Entity Details",
+   348→   348→      fields: [
+   349→   349→        { id: id("f"), key: "code", label: "Entity Code", type: "text", width: "half", validation: { required: true }, placeholder: "ESPL" },
+   350→   350→        { id: id("f"), key: "legalName", label: "Legal Name", type: "text", width: "half", validation: { required: true }, placeholder: "Example Services Pvt Ltd" },
+   351→   351→        { id: id("f"), key: "tradeName", label: "Trade Name", type: "text", width: "half", placeholder: "Example" },
+   352→   352→        { id: id("f"), key: "country", label: "Country", type: "text", width: "half", defaultValue: "India" },
+   353→   353→        { id: id("f"), key: "currency", label: "Currency", type: "select", width: "half", defaultValue: "INR", options: [
+   354→   354→          { label: "INR", value: "INR" }, { label: "USD", value: "USD" }, { label: "EUR", value: "EUR" }, { label: "GBP", value: "GBP" },
+   355→   355→        ] },
+   356→   356→        { id: id("f"), key: "effectiveDate", label: "Effective Date", type: "date", width: "half" },
+   357→   357→      ],
+   358→   358→    },
+   359→   359→    {
+   360→   360→      id: "sec-2",
+   361→   361→      title: "Registrations",
+   362→   362→      fields: [
+   363→   363→        { id: id("f"), key: "pan", label: "PAN", type: "text", width: "half" },
+   364→   364→        { id: id("f"), key: "gstin", label: "GSTIN", type: "text", width: "half" },
+   365→   365→        { id: id("f"), key: "tan", label: "TAN", type: "text", width: "half" },
+   366→   366→        { id: id("f"), key: "pfNumber", label: "PF Number", type: "text", width: "half" },
+   367→   367→        { id: id("f"), key: "esiNumber", label: "ESI Number", type: "text", width: "half" },
+   368→   368→      ],
+   369→   369→    },
+   370→   370→    {
+   371→   371→      id: "sec-3",
+   372→   372→      title: "Address & Applicability",
+   373→   373→      fields: [
+   374→   374→        { id: id("f"), key: "address", label: "Address", type: "textarea", width: "full" },
+   375→   375→        { id: id("f"), key: "city", label: "City", type: "text", width: "half" },
+   376→   376→        { id: id("f"), key: "state", label: "State", type: "text", width: "half" },
+   377→   377→        { id: id("f"), key: "payrollApplicable", label: "Payroll Applicable", type: "switch", width: "half", defaultValue: true },
+   378→   378→        { id: id("f"), key: "attendanceApplicable", label: "Attendance Applicable", type: "switch", width: "half", defaultValue: true },
+   379→   379→        { id: id("f"), key: "leaveApplicable", label: "Leave Applicable", type: "switch", width: "half", defaultValue: true },
+   380→   380→        { id: id("f"), key: "status", label: "Status", type: "select", width: "half", defaultValue: "Active", options: [
+   381→   381→          { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" },
+   382→   382→        ] },
+   383→   383→      ],
+   384→   384→    },
+   385→   385→  ],
+   386→   386→}
+   387→   387→
+   388→   388→// ============================================================
+   389→   389→// DEPARTMENT
+   390→   390→// ============================================================
+   391→   391→
+   392→   392→export const departmentFormSchema: FormSchema = {
+   393→   393→  code: "department-default",
+   394→   394→  name: "Add Department",
+   395→   395→  module: "department",
+   396→   396→  sections: [{
+   397→   397→    id: "sec-1",
+   398→   398→    title: "Department Details",
+   399→   399→    fields: [
+   400→   400→      { id: id("f"), key: "code", label: "Department Code", type: "text", width: "half", validation: { required: true }, placeholder: "HR" },
+   401→   401→      { id: id("f"), key: "name", label: "Department Name", type: "text", width: "half", validation: { required: true }, placeholder: "Human Resources" },
+   402→   402→      { id: id("f"), key: "entityId", label: "Entity", type: "entity", width: "half", endpoint: "/api/entities" },
+   403→   403→      { id: id("f"), key: "parentId", label: "Parent Department", type: "department", width: "half", endpoint: "/api/departments" },
+   404→   404→      { id: id("f"), key: "departmentHeadId", label: "Department Head", type: "employee", width: "half", endpoint: "/api/employees/picker" },
+   405→   405→      { id: id("f"), key: "status", label: "Status", type: "select", width: "half", defaultValue: "Active", options: [
+   406→   406→        { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" },
+   407→   407→      ] },
+   408→   408→    ],
+   409→   409→  }],
+   410→   410→}
+   411→   411→
+   412→   412→// ============================================================
+   413→   413→// DESIGNATION
+   414→   414→// ============================================================
+   415→   415→
+   416→   416→export const designationFormSchema: FormSchema = {
+   417→   417→  code: "designation-default",
+   418→   418→  name: "Add Designation",
+   419→   419→  module: "designation",
+   420→   420→  sections: [{
+   421→   421→    id: "sec-1",
+   422→   422→    title: "Designation Details",
+   423→   423→    fields: [
+   424→   424→      { id: id("f"), key: "code", label: "Designation Code", type: "text", width: "half", validation: { required: true }, placeholder: "MGR" },
+   425→   425→      { id: id("f"), key: "name", label: "Designation Name", type: "text", width: "half", validation: { required: true }, placeholder: "Manager" },
+   426→   426→      { id: id("f"), key: "gradeId", label: "Grade / Band", type: "grade", width: "half", endpoint: "/api/grades" },
+   427→   427→      { id: id("f"), key: "level", label: "Level", type: "number", width: "half" },
+   428→   428→      { id: id("f"), key: "departmentId", label: "Department", type: "department", width: "half", endpoint: "/api/departments" },
+   429→   429→      { id: id("f"), key: "jobDescription", label: "Job Description", type: "textarea", width: "full" },
+   430→   430→      { id: id("f"), key: "status", label: "Status", type: "select", width: "half", defaultValue: "Active", options: [
+   431→   431→        { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" },
+   432→   432→      ] },
+   433→   433→    ],
+   434→   434→  }],
+   435→   435→}
+   436→   436→
+   437→   437→// ============================================================
+   438→   438→// GRADE
+   439→   439→// ============================================================
+   440→   440→
+   441→   441→export const gradeFormSchema: FormSchema = {
+   442→   442→  code: "grade-default",
+   443→   443→  name: "Add Grade / Band",
+   444→   444→  module: "grade",
+   445→   445→  sections: [{
+   446→   446→    id: "sec-1",
+   447→   447→    title: "Grade Details",
+   448→   448→    fields: [
+   449→   449→      { id: id("f"), key: "code", label: "Grade Code", type: "text", width: "half", validation: { required: true }, placeholder: "L5" },
+   450→   450→      { id: id("f"), key: "name", label: "Grade Name", type: "text", width: "half", validation: { required: true }, placeholder: "Senior" },
+   451→   451→      { id: id("f"), key: "hierarchyLevel", label: "Hierarchy Level", type: "number", width: "half", defaultValue: 5, helpText: "Lower number = higher in hierarchy" },
+   452→   452→      { id: id("f"), key: "minSalary", label: "Min Salary", type: "currency", unit: "₹", width: "half" },
+   453→   453→      { id: id("f"), key: "maxSalary", label: "Max Salary", type: "currency", unit: "₹", width: "half" },
+   454→   454→      { id: id("f"), key: "leaveEligibility", label: "Leave Eligibility (days/yr)", type: "number", width: "half" },
+   455→   455→      { id: id("f"), key: "approvalAuthority", label: "Has Approval Authority", type: "switch", width: "half", defaultValue: false },
+   456→   456→      { id: id("f"), key: "status", label: "Status", type: "select", width: "half", defaultValue: "Active", options: [
+   457→   457→        { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" },
+   458→   458→      ] },
+   459→   459→    ],
+   460→   460→  }],
+   461→   461→}
+   462→   462→
+   463→   463→// ============================================================
+   464→   464→// LEAVE TYPE
+   465→   465→// ============================================================
+   466→   466→
+   467→   467→export const leaveTypeFormSchema: FormSchema = {
+   468→   468→  code: "leaveType-default",
+   469→   469→  name: "Add Leave Type",
+   470→   470→  module: "leaveType",
+   471→   471→  sections: [
+   472→   472→    {
+   473→   473→      id: "sec-1",
+   474→   474→      title: "Basic",
+   475→   475→      fields: [
+   476→   476→        { id: id("f"), key: "code", label: "Leave Code", type: "text", width: "half", validation: { required: true }, placeholder: "CL" },
+   477→   477→        { id: id("f"), key: "name", label: "Leave Name", type: "text", width: "half", validation: { required: true }, placeholder: "Casual Leave" },
+   478→   478→        { id: id("f"), key: "color", label: "Color", type: "text", width: "half", defaultValue: "#10b981", placeholder: "#10b981" },
+   479→   479→        { id: id("f"), key: "isPaid", label: "Paid Leave", type: "switch", width: "half", defaultValue: true },
+   480→   480→      ],
+   481→   481→    },
+   482→   482→    {
+   483→   483→      id: "sec-2",
+   484→   484→      title: "Allowed Modes",
+   485→   485→      fields: [
+   486→   486→        { id: id("f"), key: "fullDayAllowed", label: "Full Day Allowed", type: "switch", width: "half", defaultValue: true },
+   487→   487→        { id: id("f"), key: "halfDayAllowed", label: "Half Day Allowed", type: "switch", width: "half", defaultValue: false },
+   488→   488→        { id: id("f"), key: "hourlyAllowed", label: "Hourly Allowed", type: "switch", width: "half", defaultValue: false },
+   489→   489→      ],
+   490→   490→    },
+   491→   491→    {
+   492→   492→      id: "sec-3",
+   493→   493→      title: "Accrual & Balance",
+   494→   494→      fields: [
+   495→   495→        { id: id("f"), key: "yearlyAccrual", label: "Yearly Accrual (days)", type: "number", width: "half", defaultValue: 12 },
+   496→   496→        { id: id("f"), key: "monthlyAccrual", label: "Monthly Accrual (days)", type: "number", width: "half", defaultValue: 1 },
+   497→   497→        { id: id("f"), key: "openingBalance", label: "Opening Balance", type: "number", width: "half", defaultValue: 0 },
+   498→   498→        { id: id("f"), key: "carryForward", label: "Carry Forward", type: "switch", width: "half", defaultValue: false },
+   499→   499→        { id: id("f"), key: "carryForwardLimit", label: "Carry Forward Limit", type: "number", width: "half", visibilityConditions: [{ field: "carryForward", operator: "eq", value: true }] },
+   500→   500→        { id: id("f"), key: "encashment", label: "Encashment Allowed", type: "switch", width: "half", defaultValue: false },
+   501→   501→        { id: id("f"), key: "negativeAllowed", label: "Negative Balance Allowed", type: "switch", width: "half", defaultValue: false },
+   502→   502→      ],
+   503→   503→    },
+   504→   504→    {
+   505→   505→      id: "sec-4",
+   506→   506→      title: "Rules & Constraints",
+   507→   507→      fields: [
+   508→   508→        { id: id("f"), key: "minDays", label: "Minimum Days", type: "number", width: "half", defaultValue: 1 },
+   509→   509→        { id: id("f"), key: "maxDays", label: "Maximum Days", type: "number", width: "half" },
+   510→   510→        { id: id("f"), key: "backdatedAllowed", label: "Backdated Allowed", type: "switch", width: "half", defaultValue: true },
+   511→   511→        { id: id("f"), key: "futureAllowed", label: "Future Date Allowed", type: "switch", width: "half", defaultValue: true },
+   512→   512→        { id: id("f"), key: "attachmentRequired", label: "Attachment Required", type: "switch", width: "half", defaultValue: false },
+   513→   513→        { id: id("f"), key: "reasonRequired", label: "Reason Required", type: "switch", width: "half", defaultValue: true },
+   514→   514→        { id: id("f"), key: "genderApplicability", label: "Gender Applicability", type: "select", width: "half", defaultValue: "All", options: [
+   515→   515→          { label: "All", value: "All" }, { label: "Male", value: "Male" }, { label: "Female", value: "Female" },
+   516→   516→        ] },
+   517→   517→        { id: id("f"), key: "status", label: "Status", type: "select", width: "half", defaultValue: "Active", options: [
+   518→   518→          { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" },
+   519→   519→        ] },
+   520→   520→      ],
+   521→   521→    },
+   522→   522→  ],
+   523→   523→}
+   524→   524→
+   525→   525→// ============================================================
+   526→   526→// LEAVE APPLICATION
+   527→   527→// ============================================================
+   528→   528→
+   529→   529→export const leaveApplicationFormSchema: FormSchema = {
+   530→   530→  code: "leaveApplication-default",
+   531→   531→  name: "Apply Leave",
+   532→   532→  module: "leaveApplication",
+   533→   533→  sections: [{
+   534→   534→    id: "sec-1",
+   535→   535→    title: "Leave Application",
+   536→   536→    fields: [
+   537→   537→      { id: id("f"), key: "employeeId", label: "Employee", type: "employee", width: "full", validation: { required: true }, endpoint: "/api/employees/picker" },
+   538→   538→      { id: id("f"), key: "leaveTypeId", label: "Leave Type", type: "leaveType", width: "half", validation: { required: true }, endpoint: "/api/leave-types" },
+   539→   539→      { id: id("f"), key: "fromDate", label: "From Date", type: "date", width: "half", validation: { required: true } },
+   540→   540→      { id: id("f"), key: "toDate", label: "To Date", type: "date", width: "half", validation: { required: true } },
+   541→   541→      { id: id("f"), key: "halfDay", label: "Half Day", type: "switch", width: "half", defaultValue: false },
+   542→   542→      { id: id("f"), key: "reason", label: "Reason", type: "textarea", width: "full", validation: { required: true } },
+   543→   543→      { id: id("f"), key: "attachmentUrl", label: "Attachment", type: "file", width: "full" },
+   544→   544→    ],
+   545→   545→  }],
+   546→   546→}
+   547→   547→
+   548→   548→// ============================================================
+   549→   549→// SHIFT
+   550→   550→// ============================================================
+   551→   551→
+   552→   552→export const shiftFormSchema: FormSchema = {
+   553→   553→  code: "shift-default",
+   554→   554→  name: "Add Shift",
+   555→   555→  module: "shift",
+   556→   556→  sections: [
+   557→   557→    {
+   558→   558→      id: "sec-1",
+   559→   559→      title: "Shift Details",
+   560→   560→      fields: [
+   561→   561→        { id: id("f"), key: "code", label: "Shift Code", type: "text", width: "half", validation: { required: true }, placeholder: "GEN" },
+   562→   562→        { id: id("f"), key: "name", label: "Shift Name", type: "text", width: "half", validation: { required: true }, placeholder: "General Shift" },
+   563→   563→        { id: id("f"), key: "color", label: "Color", type: "text", width: "half", defaultValue: "#10b981" },
+   564→   564→        { id: id("f"), key: "startTime", label: "Start Time", type: "time", width: "half", validation: { required: true }, defaultValue: "09:00" },
+   565→   565→        { id: id("f"), key: "endTime", label: "End Time", type: "time", width: "half", validation: { required: true }, defaultValue: "18:00" },
+   566→   566→        { id: id("f"), key: "breakStart", label: "Break Start", type: "time", width: "half", defaultValue: "13:00" },
+   567→   567→        { id: id("f"), key: "breakEnd", label: "Break End", type: "time", width: "half", defaultValue: "14:00" },
+   568→   568→      ],
+   569→   569→    },
+   570→   570→    {
+   571→   571→      id: "sec-2",
+   572→   572→      title: "Rules",
+   573→   573→      fields: [
+   574→   574→        { id: id("f"), key: "workingHours", label: "Working Hours", type: "decimal", width: "half", defaultValue: 8 },
+   575→   575→        { id: id("f"), key: "graceMinutes", label: "Grace (minutes)", type: "number", width: "half", defaultValue: 15 },
+   576→   576→        { id: id("f"), key: "halfDayHours", label: "Half Day Hours", type: "decimal", width: "half", defaultValue: 4 },
+   577→   577→        { id: id("f"), key: "fullDayHours", label: "Full Day Hours", type: "decimal", width: "half", defaultValue: 8 },
+   578→   578→        { id: id("f"), key: "isNightShift", label: "Night Shift", type: "switch", width: "half", defaultValue: false },
+   579→   579→        { id: id("f"), key: "isFlexible", label: "Flexible", type: "switch", width: "half", defaultValue: false },
+   580→   580→        { id: id("f"), key: "autoPunchOut", label: "Auto Punch-out", type: "switch", width: "half", defaultValue: false },
+   581→   581→        { id: id("f"), key: "overtimeEligible", label: "Overtime Eligible", type: "switch", width: "half", defaultValue: false },
+   582→   582→        { id: id("f"), key: "status", label: "Status", type: "select", width: "half", defaultValue: "Active", options: [
+   583→   583→          { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" },
+   584→   584→        ] },
+   585→   585→      ],
+   586→   586→    },
+   587→   587→  ],
+   588→   588→}
+   589→   589→
+   590→   590→// ============================================================
+   591→   591→// ROSTER
+   592→   592→// ============================================================
+   593→   593→
+   594→   594→export const rosterFormSchema: FormSchema = {
+   595→   595→  code: "roster-default",
+   596→   596→  name: "Create Roster",
+   597→   597→  module: "roster",
+   598→   598→  sections: [{
+   599→   599→    id: "sec-1",
+   600→   600→    title: "Roster Details",
+   601→   601→    fields: [
+   602→   602→      { id: id("f"), key: "name", label: "Roster Name", type: "text", width: "half", validation: { required: true }, placeholder: "November Operations Roster" },
+   603→   603→      { id: id("f"), key: "code", label: "Roster Code", type: "text", width: "half", validation: { required: true }, placeholder: "ROST-NOV-25" },
+   604→   604→      { id: id("f"), key: "cycle", label: "Cycle", type: "select", width: "half", defaultValue: "Weekly", options: [
+   605→   605→        { label: "Weekly", value: "Weekly" }, { label: "Monthly", value: "Monthly" },
+   606→   606→      ] },
+   607→   607→      { id: id("f"), key: "startDate", label: "Start Date", type: "date", width: "half", validation: { required: true } },
+   608→   608→      { id: id("f"), key: "endDate", label: "End Date", type: "date", width: "half", validation: { required: true } },
+   609→   609→      { id: id("f"), key: "status", label: "Status", type: "select", width: "half", defaultValue: "Draft", options: [
+   610→   610→        { label: "Draft", value: "Draft" }, { label: "Published", value: "Published" }, { label: "Locked", value: "Locked" },
+   611→   611→      ] },
+   612→   612→    ],
+   613→   613→  }],
+   614→   614→}
+   615→   615→
+   616→   616→// ============================================================
+   617→   617→// ASSET
+   618→   618→// ============================================================
+   619→   619→
+   620→   620→export const assetFormSchema: FormSchema = {
+   621→   621→  code: "asset-default",
+   622→   622→  name: "Add Asset",
+   623→   623→  module: "asset",
+   624→   624→  sections: [
+   625→   625→    {
+   626→   626→      id: "sec-1",
+   627→   627→      title: "Asset Details",
+   628→   628→      fields: [
+   629→   629→        { id: id("f"), key: "assetCode", label: "Asset Code", type: "text", width: "half", validation: { required: true }, placeholder: "AST-0001" },
+   630→   630→        { id: id("f"), key: "name", label: "Asset Name", type: "text", width: "half", validation: { required: true }, placeholder: "Dell Latitude 5420" },
+   631→   631→        { id: id("f"), key: "categoryId", label: "Category", type: "assetCategory", width: "half", endpoint: "/api/asset-categories" },
+   632→   632→        { id: id("f"), key: "serialNumber", label: "Serial Number", type: "text", width: "half" },
+   633→   633→        { id: id("f"), key: "assetTag", label: "Asset Tag", type: "text", width: "half" },
+   634→   634→        { id: id("f"), key: "purchaseDate", label: "Purchase Date", type: "date", width: "half" },
+   635→   635→        { id: id("f"), key: "purchaseValue", label: "Purchase Value", type: "currency", unit: "₹", width: "half" },
+   636→   636→        { id: id("f"), key: "condition", label: "Condition", type: "select", width: "half", defaultValue: "Good", options: [
+   637→   637→          { label: "Good", value: "Good" }, { label: "Fair", value: "Fair" }, { label: "Damaged", value: "Damaged" }, { label: "Lost", value: "Lost" },
+   638→   638→        ] },
+   639→   639→        { id: id("f"), key: "status", label: "Status", type: "select", width: "half", defaultValue: "In Stock", options: [
+   640→   640→          { label: "In Stock", value: "In Stock" }, { label: "Assigned", value: "Assigned" }, { label: "Returned", value: "Returned" },
+   641→   641→          { label: "Damaged", value: "Damaged" }, { label: "Lost", value: "Lost" }, { label: "Repair", value: "Repair" },
+   642→   642→          { label: "Retired", value: "Retired" }, { label: "Disposed", value: "Disposed" },
+   643→   643→        ] },
+   644→   644→        { id: id("f"), key: "assignedToId", label: "Assigned To", type: "employee", width: "half", endpoint: "/api/employees/picker", visibilityConditions: [{ field: "status", operator: "eq", value: "Assigned" }] },
+   645→   645→        { id: id("f"), key: "notes", label: "Notes", type: "textarea", width: "full" },
+   646→   646→      ],
+   647→   647→    },
+   648→   648→  ],
+   649→   649→}
+   650→   650→
+   651→   651→// ============================================================
+   652→   652→// ASSET CATEGORY
+   653→   653→// ============================================================
+   654→   654→
+   655→   655→export const assetCategoryFormSchema: FormSchema = {
+   656→   656→  code: "assetCategory-default",
+   657→   657→  name: "Add Asset Category",
+   658→   658→  module: "assetCategory",
+   659→   659→  sections: [{
+   660→   660→    id: "sec-1",
+   661→   661→    title: "Category Details",
+   662→   662→    fields: [
+   663→   663→      { id: id("f"), key: "code", label: "Category Code", type: "text", width: "half", validation: { required: true }, placeholder: "LAPTOP" },
+   664→   664→      { id: id("f"), key: "name", label: "Category Name", type: "text", width: "half", validation: { required: true }, placeholder: "Laptops" },
+   665→   665→      { id: id("f"), key: "icon", label: "Icon (lucide name)", type: "text", width: "half", placeholder: "laptop" },
+   666→   666→      { id: id("f"), key: "description", label: "Description", type: "textarea", width: "full" },
+   667→   667→    ],
+   668→   668→  }],
+   669→   669→}
+   670→   670→
+   671→   671→// ============================================================
+   672→   672→// HOLIDAY
+   673→   673→// ============================================================
+   674→   674→
+   675→   675→export const holidayFormSchema: FormSchema = {
+   676→   676→  code: "holiday-default",
+   677→   677→  name: "Add Holiday",
+   678→   678→  module: "holiday",
+   679→   679→  sections: [{
+   680→   680→    id: "sec-1",
+   681→   681→    title: "Holiday Details",
+   682→   682→    fields: [
+   683→   683→      { id: id("f"), key: "name", label: "Holiday Name", type: "text", width: "half", validation: { required: true }, placeholder: "Diwali" },
+   684→   684→      { id: id("f"), key: "date", label: "Date", type: "date", width: "half", validation: { required: true } },
+   685→   685→      { id: id("f"), key: "type", label: "Type", type: "select", width: "half", defaultValue: "National", options: [
+   686→   686→        { label: "National", value: "National" }, { label: "Regional", value: "Regional" }, { label: "Optional", value: "Optional" }, { label: "Restricted", value: "Restricted" },
+   687→   687→      ] },
+   688→   688→      { id: id("f"), key: "country", label: "Country", type: "text", width: "half", defaultValue: "India" },
+   689→   689→      { id: id("f"), key: "state", label: "State", type: "text", width: "half" },
+   690→   690→      { id: id("f"), key: "description", label: "Description", type: "textarea", width: "full" },
+   691→   691→    ],
+   692→   692→  }],
+   693→   693→}
+   694→   694→
+   695→   695→// ============================================================
+   696→   696→// ANNOUNCEMENT
+   697→   697→// ============================================================
+   698→   698→
+   699→   699→export const announcementFormSchema: FormSchema = {
+   700→   700→  code: "announcement-default",
+   701→   701→  name: "New Announcement",
+   702→   702→  module: "announcement",
+   703→   703→  sections: [{
+   704→   704→    id: "sec-1",
+   705→   705→    title: "Announcement",
+   706→   706→    fields: [
+   707→   707→      { id: id("f"), key: "title", label: "Title", type: "text", width: "full", validation: { required: true } },
+   708→   708→      { id: id("f"), key: "body", label: "Body", type: "textarea", width: "full", validation: { required: true } },
+   709→   709→      { id: id("f"), key: "audience", label: "Audience", type: "select", width: "half", defaultValue: "All", options: [
+   710→   710→        { label: "All", value: "All" }, { label: "Entity", value: "Entity" }, { label: "Department", value: "Department" }, { label: "Location", value: "Location" },
+   711→   711→      ] },
+   712→   712→      { id: id("f"), key: "priority", label: "Priority", type: "select", width: "half", defaultValue: "Normal", options: [
+   713→   713→        { label: "Low", value: "Low" }, { label: "Normal", value: "Normal" }, { label: "High", value: "High" }, { label: "Urgent", value: "Urgent" },
+   714→   714→      ] },
+   715→   715→      { id: id("f"), key: "expiryDate", label: "Expiry Date", type: "date", width: "half" },
+   716→   716→    ],
+   717→   717→  }],
+   718→   718→}
+   719→   719→
+   720→   720→// ============================================================
+   721→   721→// WORKFLOW
+   722→   722→// ============================================================
+   723→   723→
+   724→   724→export const workflowFormSchema: FormSchema = {
+   725→   725→  code: "workflow-default",
+   726→   726→  name: "Create Workflow",
+   727→   727→  module: "workflow",
+   728→   728→  sections: [{
+   729→   729→    id: "sec-1",
+   730→   730→    title: "Workflow Details",
+   731→   731→    fields: [
+   732→   732→      { id: id("f"), key: "code", label: "Workflow Code", type: "text", width: "half", validation: { required: true }, placeholder: "LEAVE-2LVL" },
+   733→   733→      { id: id("f"), key: "name", label: "Workflow Name", type: "text", width: "half", validation: { required: true }, placeholder: "Leave Approval (2 Levels)" },
+   734→   734→      { id: id("f"), key: "module", label: "Module", type: "select", width: "half", validation: { required: true }, options: [
+   735→   735→        { label: "Leave", value: "leave" }, { label: "Asset", value: "asset" }, { label: "Attendance", value: "attendance" },
+   736→   736→        { label: "Employee", value: "employee" }, { label: "Expense", value: "expense" }, { label: "Onboarding", value: "onboarding" },
+   737→   737→      ] },
+   738→   738→      { id: id("f"), key: "event", label: "Event", type: "select", width: "half", defaultValue: "apply", options: [
+   739→   739→        { label: "Apply", value: "apply" }, { label: "Create", value: "create" }, { label: "Update", value: "update" }, { label: "Request", value: "request" },
+   740→   740→      ] },
+   741→   741→      { id: id("f"), key: "approvalType", label: "Approval Type", type: "select", width: "half", defaultValue: "Sequential", options: [
+   742→   742→        { label: "Sequential", value: "Sequential" }, { label: "Parallel", value: "Parallel" }, { label: "Auto", value: "Auto" },
+   743→   743→      ] },
+   744→   744→      { id: id("f"), key: "isActive", label: "Active", type: "switch", width: "half", defaultValue: true },
+   745→   745→      { id: id("f"), key: "description", label: "Description", type: "textarea", width: "full" },
+   746→   746→    ],
+   747→   747→  }],
+   748→   748→}
+   749→   749→
+   750→   750→// ============================================================
+   751→   751→// Registry
+   752→   752→// ============================================================
+   753→   753→
+   754→   754→export const defaultFormSchemas: Record<string, FormSchema> = {
+   755→   755→  employee: employeeFormSchema,
+   756→   756→  entity: entityFormSchema,
+   757→   757→  department: departmentFormSchema,
+   758→   758→  designation: designationFormSchema,
+   759→   759→  grade: gradeFormSchema,
+   760→   760→  leaveType: leaveTypeFormSchema,
+   761→   761→  leaveApplication: leaveApplicationFormSchema,
+   762→   762→  shift: shiftFormSchema,
+   763→   763→  roster: rosterFormSchema,
+   764→   764→  asset: assetFormSchema,
+   765→   765→  assetCategory: assetCategoryFormSchema,
+   766→   766→  holiday: holidayFormSchema,
+   767→   767→  announcement: announcementFormSchema,
+   768→   768→  workflow: workflowFormSchema,
+   769→   769→}
+   770→   770→
+   771→   771→export function getDefaultSchema(module: string): FormSchema | undefined {
+   772→   772→  return defaultFormSchemas[module]
+   773→   773→}
+   774→   774→

@@ -25,6 +25,12 @@ function monthsAgo(n: number): Date {
   d.setMonth(d.getMonth() - n)
   return d
 }
+function monthsFromNow(n: number): Date {
+  const d = new Date()
+  d.setHours(12, 0, 0, 0)
+  d.setMonth(d.getMonth() + n)
+  return d
+}
 function yearsAgo(n: number, day = 1, month = 0): Date {
   const d = new Date()
   d.setHours(12, 0, 0, 0)
@@ -52,6 +58,37 @@ async function runSeed() {
     await ensureTenant()
 
     // ---------- WIPE existing data in dependency order (children first) ----------
+    // Phase 2 employee sub-records (must precede employee.deleteMany — FK to Employee)
+    await db.employeeRequest.deleteMany()
+    await db.employeeLetter.deleteMany()
+    await db.employeeHelpdeskTicket.deleteMany()
+    await db.employeeExpense.deleteMany()
+    await db.employeePerformanceReview.deleteMany()
+    await db.employeePerformanceGoal.deleteMany()
+    await db.employeeTraining.deleteMany()
+    await db.employeeCertification.deleteMany()
+    await db.employeeSkill.deleteMany()
+    await db.employeeFormSubmission.deleteMany()
+    await db.employeeCustomFieldValue.deleteMany()
+    await db.employeeRoleMapping.deleteMany()
+    await db.employeeLoginAccess.deleteMany()
+    await db.employeeExit.deleteMany()
+    await db.employeeProbation.deleteMany()
+    await db.employeePromotionHistory.deleteMany()
+    await db.employeeTransferHistory.deleteMany()
+    await db.employeeStatusHistory.deleteMany()
+    await db.employeeAuditLog.deleteMany()
+    await db.employeeTimelineEvent.deleteMany()
+    await db.employeeNote.deleteMany()
+    await db.employeeCompensationHistory.deleteMany()
+    await db.employeeDocument.deleteMany()
+    await db.employeeStatutoryDetail.deleteMany()
+    await db.employeeBankDetail.deleteMany()
+    await db.employeeExperience.deleteMany()
+    await db.employeeEducation.deleteMany()
+    await db.employeeFamilyMember.deleteMany()
+
+    // Phase 1 records
     await db.workflowAction.deleteMany()
     await db.workflowInstance.deleteMany()
     await db.workflowStep.deleteMany()
@@ -226,26 +263,114 @@ async function runSeed() {
       code: string; first: string; last: string; gender: "Male" | "Female"
       dob: Date; doj: Date; mobile: string; personalEmail: string; officialEmail: string
       entity: string; branch: string; dept: string; desig: string; grade: string; loc: string
-      mgrCode: string | null; ctc: number; basic: number; hra: number
+      mgrCode: string | null; ctc: number
       status: string; pan: string; bank: string; account: string; ifsc: string
+      // new personal fields
+      religion?: string; category?: string; marital?: string; blood?: string
+      passport?: string; emergencyName?: string; emergencyRelation?: string; emergencyPhone?: string
+      currentCity?: string; currentState?: string; currentPincode?: string
+      permCity?: string; permState?: string; permPincode?: string
+      workMode?: string; businessUnit?: string; costCenter?: string
+      // exit-related (for "On Notice" employees)
+      resignationDate?: Date; resignationReason?: string
     }
     const empSeeds: EmpSeed[] = [
-      { code: "EMP-0001", first: "Aarav", last: "Sharma", gender: "Male", dob: dateOnly(1990, 4, 15), doj: yearsAgo(2, 15, 0), mobile: "+91-9876543210", personalEmail: "aarav.sharma@gmail.com", officialEmail: "aarav.sharma@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-ENG", desig: "DES-SSWE", grade: "L5-SEN", loc: "LOC-MUM", mgrCode: null, ctc: 2200000, basic: 1100000, hra: 440000, status: "Active", pan: "ABCPS1234A", bank: "HDFC Bank", account: "501000123456789", ifsc: "HDFC0001234" },
-      { code: "EMP-0002", first: "Vivaan", last: "Mehta", gender: "Male", dob: dateOnly(1991, 7, 22), doj: monthsAgo(22), mobile: "+91-9876543211", personalEmail: "vivaan.mehta@gmail.com", officialEmail: "vivaan.mehta@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-ENG", desig: "DES-SSWE", grade: "L5-SEN", loc: "LOC-BLR", mgrCode: "EMP-0001", ctc: 2000000, basic: 1000000, hra: 400000, status: "Active", pan: "BCDPM2345B", bank: "ICICI Bank", account: "012301234567", ifsc: "ICIC0000123" },
-      { code: "EMP-0003", first: "Ananya", last: "Iyer", gender: "Female", dob: dateOnly(1994, 2, 8), doj: monthsAgo(18), mobile: "+91-9876543212", personalEmail: "ananya.iyer@gmail.com", officialEmail: "ananya.iyer@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-HR", desig: "DES-HR-EXEC", grade: "L4-MID", loc: "LOC-MUM", mgrCode: "EMP-0001", ctc: 700000, basic: 350000, hra: 140000, status: "Active", pan: "CDEPI3456C", bank: "SBI", account: "30123456789", ifsc: "SBIN0001234" },
-      { code: "EMP-0004", first: "Aditya", last: "Reddy", gender: "Male", dob: dateOnly(1996, 10, 12), doj: monthsAgo(14), mobile: "+91-9876543213", personalEmail: "aditya.reddy@gmail.com", officialEmail: "aditya.reddy@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-ENG", desig: "DES-SWE", grade: "L4-MID", loc: "LOC-BLR", mgrCode: "EMP-0002", ctc: 1200000, basic: 600000, hra: 240000, status: "Active", pan: "DEFPR4567D", bank: "Axis Bank", account: "917020001234", ifsc: "UTIB0000123" },
-      { code: "EMP-0005", first: "Saanvi", last: "Nair", gender: "Female", dob: dateOnly(1997, 5, 30), doj: monthsAgo(11), mobile: "+91-9876543214", personalEmail: "saanvi.nair@gmail.com", officialEmail: "saanvi.nair@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-ENG", desig: "DES-SWE", grade: "L4-MID", loc: "LOC-BLR", mgrCode: "EMP-0002", ctc: 1100000, basic: 550000, hra: 220000, status: "Active", pan: "EFGPN5678E", bank: "Kotak Mahindra", account: "12341234567", ifsc: "KKBK0001234" },
-      { code: "EMP-0006", first: "Arjun", last: "Gupta", gender: "Male", dob: dateOnly(1989, 1, 18), doj: monthsAgo(17), mobile: "+91-9876543215", personalEmail: "arjun.gupta@gmail.com", officialEmail: "arjun.gupta@acme.com", entity: "ESPL", branch: "DEL-SALES", dept: "DEPT-SAL", desig: "DES-SALES-MGR", grade: "L6-LEAD", loc: "LOC-DEL", mgrCode: "EMP-0001", ctc: 1900000, basic: 950000, hra: 380000, status: "Active", pan: "FGHPG6789F", bank: "HDFC Bank", account: "501009876543", ifsc: "HDFC0001234" },
-      { code: "EMP-0007", first: "Ishita", last: "Verma", gender: "Female", dob: dateOnly(1998, 9, 5), doj: monthsAgo(5), mobile: "+91-9876543216", personalEmail: "ishita.verma@gmail.com", officialEmail: "ishita.verma@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-FIN", desig: "DES-FIN-ANL", grade: "L4-MID", loc: "LOC-MUM", mgrCode: "EMP-0001", ctc: 900000, basic: 450000, hra: 180000, status: "Active", pan: "GHIPV7890G", bank: "ICICI Bank", account: "012309876543", ifsc: "ICIC0000123" },
-      { code: "EMP-0008", first: "Kabir", last: "Singh", gender: "Male", dob: dateOnly(1992, 11, 27), doj: monthsAgo(13), mobile: "+91-9876543217", personalEmail: "kabir.singh@gmail.com", officialEmail: "kabir.singh@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-OPS", desig: "DES-DEVOPS", grade: "L5-SEN", loc: "LOC-BLR", mgrCode: "EMP-0001", ctc: 1700000, basic: 850000, hra: 340000, status: "On Notice", pan: "HIJPS8901H", bank: "Axis Bank", account: "917020009876", ifsc: "UTIB0000123" },
-      { code: "EMP-0009", first: "Aanya", last: "Joshi", gender: "Female", dob: dateOnly(1995, 6, 14), doj: monthsAgo(3), mobile: "+91-9876543218", personalEmail: "aanya.joshi@gmail.com", officialEmail: "aanya.joshi@acme.com", entity: "ESPL", branch: "DEL-SALES", dept: "DEPT-MKT", desig: "DES-SALES-MGR", grade: "L6-LEAD", loc: "LOC-DEL", mgrCode: "EMP-0006", ctc: 1400000, basic: 700000, hra: 280000, status: "Active", pan: "IJKPJ9012I", bank: "SBI", account: "30129876543", ifsc: "SBIN0001234" },
-      { code: "EMP-0010", first: "Reyansh", last: "Kumar", gender: "Male", dob: dateOnly(1993, 3, 19), doj: monthsAgo(2), mobile: "+91-9876543219", personalEmail: "reyansh.kumar@gmail.com", officialEmail: "reyansh.kumar@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-SAL", desig: "DES-SALES-MGR", grade: "L6-LEAD", loc: "LOC-MUM", mgrCode: "EMP-0006", ctc: 1500000, basic: 750000, hra: 300000, status: "Active", pan: "JKLPK0123J", bank: "Kotak Mahindra", account: "12340987654", ifsc: "KKBK0001234" },
-      { code: "EMP-0011", first: "Myra", last: "Desai", gender: "Female", dob: dateOnly(2000, 8, 11), doj: daysAgo(15), mobile: "+91-9876543220", personalEmail: "myra.desai@gmail.com", officialEmail: "myra.desai@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-HR", desig: "DES-HR-EXEC", grade: "L4-MID", loc: "LOC-MUM", mgrCode: "EMP-0003", ctc: 650000, basic: 325000, hra: 130000, status: "Active", pan: "KLMPL1234K", bank: "HDFC Bank", account: "501005678901", ifsc: "HDFC0001234" },
-      { code: "EMP-0012", first: "Vihaan", last: "Rao", gender: "Male", dob: dateOnly(1999, 12, 3), doj: daysAgo(5), mobile: "+91-9876543221", personalEmail: "vihaan.rao@gmail.com", officialEmail: "vihaan.rao@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-OPS", desig: "DES-SWE", grade: "L4-MID", loc: "LOC-BLR", mgrCode: "EMP-0008", ctc: 1000000, basic: 500000, hra: 200000, status: "Active", pan: "LMNPM2345L", bank: "ICICI Bank", account: "012356789012", ifsc: "ICIC0000123" },
+      { code: "EMP-0001", first: "Aarav", last: "Sharma", gender: "Male", dob: dateOnly(1990, 4, 15), doj: yearsAgo(2, 15, 0), mobile: "+91-9876543210", personalEmail: "aarav.sharma@gmail.com", officialEmail: "aarav.sharma@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-ENG", desig: "DES-SSWE", grade: "L5-SEN", loc: "LOC-MUM", mgrCode: null, ctc: 2200000, status: "Active", pan: "ABCPS1234A", bank: "HDFC Bank", account: "501000123456789", ifsc: "HDFC0001234",
+        religion: "Hindu", category: "General", marital: "Married", blood: "B+", passport: "P1234567",
+        emergencyName: "Priya Sharma", emergencyRelation: "Spouse", emergencyPhone: "+91-9876543299",
+        currentCity: "Mumbai", currentState: "Maharashtra", currentPincode: "400069",
+        permCity: "Pune", permState: "Maharashtra", permPincode: "411001",
+        workMode: "Hybrid", businessUnit: "Engineering", costCenter: "CC-ENG-100",
+      },
+      { code: "EMP-0002", first: "Vivaan", last: "Mehta", gender: "Male", dob: dateOnly(1991, 7, 22), doj: monthsAgo(22), mobile: "+91-9876543211", personalEmail: "vivaan.mehta@gmail.com", officialEmail: "vivaan.mehta@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-ENG", desig: "DES-SSWE", grade: "L5-SEN", loc: "LOC-BLR", mgrCode: "EMP-0001", ctc: 2000000, status: "Active", pan: "BCDPM2345B", bank: "ICICI Bank", account: "012301234567", ifsc: "ICIC0000123",
+        religion: "Hindu", category: "OBC", marital: "Single", blood: "O+",
+        emergencyName: "Rajesh Mehta", emergencyRelation: "Father", emergencyPhone: "+91-9876543298",
+        currentCity: "Bangalore", currentState: "Karnataka", currentPincode: "560103",
+        permCity: "Indore", permState: "Madhya Pradesh", permPincode: "452001",
+        workMode: "Work from office", businessUnit: "Engineering", costCenter: "CC-ENG-101",
+      },
+      { code: "EMP-0003", first: "Ananya", last: "Iyer", gender: "Female", dob: dateOnly(1994, 2, 8), doj: monthsAgo(18), mobile: "+91-9876543212", personalEmail: "ananya.iyer@gmail.com", officialEmail: "ananya.iyer@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-HR", desig: "DES-HR-EXEC", grade: "L4-MID", loc: "LOC-MUM", mgrCode: "EMP-0001", ctc: 700000, status: "Active", pan: "CDEPI3456C", bank: "SBI", account: "30123456789", ifsc: "SBIN0001234",
+        religion: "Hindu", category: "General", marital: "Single", blood: "AB+",
+        emergencyName: "Lakshmi Iyer", emergencyRelation: "Mother", emergencyPhone: "+91-9876543297",
+        currentCity: "Mumbai", currentState: "Maharashtra", currentPincode: "400070",
+        permCity: "Chennai", permState: "Tamil Nadu", permPincode: "600001",
+        workMode: "Work from office", businessUnit: "People Ops", costCenter: "CC-HR-200",
+      },
+      { code: "EMP-0004", first: "Aditya", last: "Reddy", gender: "Male", dob: dateOnly(1996, 10, 12), doj: monthsAgo(14), mobile: "+91-9876543213", personalEmail: "aditya.reddy@gmail.com", officialEmail: "aditya.reddy@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-ENG", desig: "DES-SWE", grade: "L4-MID", loc: "LOC-BLR", mgrCode: "EMP-0002", ctc: 1200000, status: "Active", pan: "DEFPR4567D", bank: "Axis Bank", account: "917020001234", ifsc: "UTIB0000123",
+        religion: "Hindu", category: "OBC", marital: "Single", blood: "A+",
+        emergencyName: "Suresh Reddy", emergencyRelation: "Father", emergencyPhone: "+91-9876543296",
+        currentCity: "Bangalore", currentState: "Karnataka", currentPincode: "560102",
+        workMode: "Work from home", businessUnit: "Engineering", costCenter: "CC-ENG-102",
+      },
+      { code: "EMP-0005", first: "Saanvi", last: "Nair", gender: "Female", dob: dateOnly(1997, 5, 30), doj: monthsAgo(11), mobile: "+91-9876543214", personalEmail: "saanvi.nair@gmail.com", officialEmail: "saanvi.nair@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-ENG", desig: "DES-SWE", grade: "L4-MID", loc: "LOC-BLR", mgrCode: "EMP-0002", ctc: 1100000, status: "Active", pan: "EFGPN5678E", bank: "Kotak Mahindra", account: "12341234567", ifsc: "KKBK0001234",
+        religion: "Hindu", category: "General", marital: "Single", blood: "B+",
+        emergencyName: "Geeta Nair", emergencyRelation: "Mother", emergencyPhone: "+91-9876543295",
+        currentCity: "Bangalore", currentState: "Karnataka", currentPincode: "560103",
+        workMode: "Hybrid", businessUnit: "Engineering", costCenter: "CC-ENG-103",
+      },
+      { code: "EMP-0006", first: "Arjun", last: "Gupta", gender: "Male", dob: dateOnly(1989, 1, 18), doj: monthsAgo(17), mobile: "+91-9876543215", personalEmail: "arjun.gupta@gmail.com", officialEmail: "arjun.gupta@acme.com", entity: "ESPL", branch: "DEL-SALES", dept: "DEPT-SAL", desig: "DES-SALES-MGR", grade: "L6-LEAD", loc: "LOC-DEL", mgrCode: "EMP-0001", ctc: 1900000, status: "Active", pan: "FGHPG6789F", bank: "HDFC Bank", account: "501009876543", ifsc: "HDFC0001234",
+        religion: "Hindu", category: "General", marital: "Married", blood: "O+",
+        emergencyName: "Neha Gupta", emergencyRelation: "Spouse", emergencyPhone: "+91-9876543294",
+        currentCity: "New Delhi", currentState: "Delhi", currentPincode: "110001",
+        workMode: "Field work", businessUnit: "Revenue", costCenter: "CC-SAL-300",
+      },
+      { code: "EMP-0007", first: "Ishita", last: "Verma", gender: "Female", dob: dateOnly(1998, 9, 5), doj: monthsAgo(5), mobile: "+91-9876543216", personalEmail: "ishita.verma@gmail.com", officialEmail: "ishita.verma@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-FIN", desig: "DES-FIN-ANL", grade: "L4-MID", loc: "LOC-MUM", mgrCode: "EMP-0001", ctc: 900000, status: "Active", pan: "GHIPV7890G", bank: "ICICI Bank", account: "012309876543", ifsc: "ICIC0000123",
+        religion: "Hindu", category: "General", marital: "Single", blood: "A-",
+        emergencyName: "Manish Verma", emergencyRelation: "Brother", emergencyPhone: "+91-9876543293",
+        currentCity: "Mumbai", currentState: "Maharashtra", currentPincode: "400053",
+        workMode: "Work from office", businessUnit: "Finance", costCenter: "CC-FIN-400",
+      },
+      { code: "EMP-0008", first: "Kabir", last: "Singh", gender: "Male", dob: dateOnly(1992, 11, 27), doj: monthsAgo(13), mobile: "+91-9876543217", personalEmail: "kabir.singh@gmail.com", officialEmail: "kabir.singh@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-OPS", desig: "DES-DEVOPS", grade: "L5-SEN", loc: "LOC-BLR", mgrCode: "EMP-0001", ctc: 1700000, status: "On Notice", pan: "HIJPS8901H", bank: "Axis Bank", account: "917020009876", ifsc: "UTIB0000123",
+        religion: "Sikh", category: "General", marital: "Married", blood: "B+",
+        emergencyName: "Simran Kaur", emergencyRelation: "Spouse", emergencyPhone: "+91-9876543292",
+        currentCity: "Bangalore", currentState: "Karnataka", currentPincode: "560037",
+        workMode: "Work from office", businessUnit: "Operations", costCenter: "CC-OPS-500",
+        resignationDate: daysAgo(15), resignationReason: "Better opportunity abroad",
+      },
+      { code: "EMP-0009", first: "Aanya", last: "Joshi", gender: "Female", dob: dateOnly(1995, 6, 14), doj: monthsAgo(3), mobile: "+91-9876543218", personalEmail: "aanya.joshi@gmail.com", officialEmail: "aanya.joshi@acme.com", entity: "ESPL", branch: "DEL-SALES", dept: "DEPT-MKT", desig: "DES-SALES-MGR", grade: "L6-LEAD", loc: "LOC-DEL", mgrCode: "EMP-0006", ctc: 1400000, status: "Active", pan: "IJKPJ9012I", bank: "SBI", account: "30129876543", ifsc: "SBIN0001234",
+        religion: "Hindu", category: "General", marital: "Married", blood: "AB-",
+        emergencyName: "Rohit Joshi", emergencyRelation: "Spouse", emergencyPhone: "+91-9876543291",
+        currentCity: "New Delhi", currentState: "Delhi", currentPincode: "110017",
+        workMode: "Hybrid", businessUnit: "Revenue", costCenter: "CC-MKT-301",
+      },
+      { code: "EMP-0010", first: "Reyansh", last: "Kumar", gender: "Male", dob: dateOnly(1993, 3, 19), doj: monthsAgo(2), mobile: "+91-9876543219", personalEmail: "reyansh.kumar@gmail.com", officialEmail: "reyansh.kumar@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-SAL", desig: "DES-SALES-MGR", grade: "L6-LEAD", loc: "LOC-MUM", mgrCode: "EMP-0006", ctc: 1500000, status: "Active", pan: "JKLPK0123J", bank: "Kotak Mahindra", account: "12340987654", ifsc: "KKBK0001234",
+        religion: "Hindu", category: "OBC", marital: "Married", blood: "O+",
+        emergencyName: "Pooja Kumar", emergencyRelation: "Spouse", emergencyPhone: "+91-9876543290",
+        currentCity: "Mumbai", currentState: "Maharashtra", currentPincode: "400076",
+        workMode: "Hybrid", businessUnit: "Revenue", costCenter: "CC-SAL-302",
+      },
+      { code: "EMP-0011", first: "Myra", last: "Desai", gender: "Female", dob: dateOnly(2000, 8, 11), doj: daysAgo(15), mobile: "+91-9876543220", personalEmail: "myra.desai@gmail.com", officialEmail: "myra.desai@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-HR", desig: "DES-HR-EXEC", grade: "L4-MID", loc: "LOC-MUM", mgrCode: "EMP-0003", ctc: 650000, status: "Active", pan: "KLMPL1234K", bank: "HDFC Bank", account: "501005678901", ifsc: "HDFC0001234",
+        religion: "Hindu", category: "General", marital: "Single", blood: "A+",
+        emergencyName: "Kiran Desai", emergencyRelation: "Father", emergencyPhone: "+91-9876543289",
+        currentCity: "Mumbai", currentState: "Maharashtra", currentPincode: "400050",
+        workMode: "Work from office", businessUnit: "People Ops", costCenter: "CC-HR-201",
+      },
+      { code: "EMP-0012", first: "Vihaan", last: "Rao", gender: "Male", dob: dateOnly(1999, 12, 3), doj: daysAgo(5), mobile: "+91-9876543221", personalEmail: "vihaan.rao@gmail.com", officialEmail: "vihaan.rao@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-OPS", desig: "DES-SWE", grade: "L4-MID", loc: "LOC-BLR", mgrCode: "EMP-0008", ctc: 1000000, status: "Active", pan: "LMNPM2345L", bank: "ICICI Bank", account: "012356789012", ifsc: "ICIC0000123",
+        religion: "Hindu", category: "General", marital: "Single", blood: "B+",
+        emergencyName: "Latha Rao", emergencyRelation: "Mother", emergencyPhone: "+91-9876543288",
+        currentCity: "Bangalore", currentState: "Karnataka", currentPincode: "560100",
+        workMode: "Work from home", businessUnit: "Operations", costCenter: "CC-OPS-501",
+      },
     ]
 
     const empByCode: Record<string, { id: string; name: string }> = {}
     for (const e of empSeeds) {
+      // Compensation breakdown — consistent with standard Indian payroll
+      // (all annual figures; basic = 50% of CTC, hra = 40% of basic)
+      const ctc = e.ctc
+      const basic = Math.round(ctc * 0.5)
+      const hra = Math.round(basic * 0.4)
+      const conveyanceAllowance = 19200
+      const medicalAllowance = 15000
+      const specialAllowance = Math.max(0, ctc - basic - hra - conveyanceAllowance - medicalAllowance)
+      const pfEmployee = Math.round(basic * 0.12)
+      const pfEmployer = Math.round(basic * 0.12)
+      const esiAmount = ctc / 12 <= 21000 ? Math.round(ctc * 0.0053) : 0
+      const professionalTax = 2400
+      const tdsAmount = Math.round(ctc * 0.10)
+      const grossSalary = basic + hra + specialAllowance + conveyanceAllowance + medicalAllowance
+      const netSalary = grossSalary - pfEmployee - professionalTax - tdsAmount
+
       const rec = await db.employee.create({
         data: {
           tenantId,
@@ -255,19 +380,34 @@ async function runSeed() {
           displayName: `${e.first} ${e.last}`,
           gender: e.gender,
           dateOfBirth: e.dob,
-          maritalStatus: e.gender === "Male" ? "Single" : "Single",
-          bloodGroup: "B+",
+          maritalStatus: e.marital || "Single",
+          bloodGroup: e.blood || "B+",
           nationality: "Indian",
+          religion: e.religion,
+          category: e.category,
           personalEmail: e.personalEmail,
           officialEmail: e.officialEmail,
           mobileNumber: e.mobile,
+          // Identity documents
+          passportNumber: e.passport,
+          physicallyDisabled: false,
+          // Employment
           dateOfJoining: e.doj,
           employmentType: "Full-time",
           workerType: "Permanent",
+          jobType: "On-roll",
           probationStatus: monthsAgo(0).getTime() - e.doj.getTime() > 180 * 24 * 3600 * 1000 ? "Confirmed" : "On Probation",
+          probationStartDate: new Date(e.doj.getTime()),
           probationEndDate: new Date(e.doj.getTime() + 90 * 24 * 3600 * 1000),
+          confirmationDate: monthsAgo(0).getTime() - e.doj.getTime() > 180 * 24 * 3600 * 1000 ? new Date(e.doj.getTime() + 90 * 24 * 3600 * 1000) : null,
           noticePeriod: 60,
+          noticePeriodStartDate: e.status === "On Notice" ? daysAgo(15) : null,
+          lastWorkingDate: e.status === "On Notice" ? daysFromNow(45) : null,
           employeeStatus: e.status,
+          workMode: e.workMode || "Work from office",
+          businessUnit: e.businessUnit,
+          costCenter: e.costCenter,
+          // Organization
           entityId: espl.id,
           branchId: e.branch === "BOM-HQ" ? bomHq.id : e.branch === "BLR-TECH" ? blrTech.id : delSales.id,
           departmentId: depts[e.dept].id,
@@ -275,28 +415,87 @@ async function runSeed() {
           gradeId: grades[e.grade],
           locationId: locs[e.loc],
           reportingManagerId: null, // set after creation below
+          functionalManagerId: null,
+          hrManagerId: null,
+          // Bank
           bankName: e.bank,
+          accountHolderName: `${e.first} ${e.last}`,
           accountNumber: e.account,
+          accountType: "Savings",
           ifscCode: e.ifsc,
+          branchName: `${e.bank} Branch`,
+          upiId: `${e.first.toLowerCase()}.${e.last.toLowerCase()}@okhdfcbank`,
+          // Statutory
           panNumber: e.pan,
           aadhaarNumber: "XXXX-XXXX-" + Math.floor(1000 + Math.random() * 9000),
           uanNumber: "101234567890",
           pfNumber: "BGBNG/" + e.code.replace("EMP-", "") + "/000",
-          currentAddress: "Mumbai, Maharashtra",
-          permanentAddress: "Mumbai, Maharashtra",
-          ctc: e.ctc,
-          basicSalary: e.basic,
-          hra: e.hra,
+          ptLocation: e.currentCity || "Mumbai",
+          pfApplicable: true,
+          esiApplicable: esiAmount > 0,
+          ptApplicable: true,
+          lwfApplicability: "Applicable",
+          gratuityApplicability: "Applicable",
+          taxRegime: "New",
+          tdsDeclarationStatus: "Submitted",
+          // Current address
+          currentAddress: `${e.currentCity || "Mumbai"}, ${e.currentState || "Maharashtra"}`,
+          currentAddressLine2: null,
+          currentCity: e.currentCity,
+          currentState: e.currentState,
+          currentCountry: "India",
+          currentPincode: e.currentPincode,
+          // Permanent address
+          permanentAddress: `${e.permCity || e.currentCity || "Mumbai"}, ${e.permState || e.currentState || "Maharashtra"}`,
+          permanentAddressLine2: null,
+          permanentCity: e.permCity || e.currentCity,
+          permanentState: e.permState || e.currentState,
+          permanentCountry: "India",
+          permanentPincode: e.permPincode || e.currentPincode,
+          sameAsCurrent: (e.permCity || e.currentCity) === e.currentCity,
+          // Emergency contact
+          emergencyContactName: e.emergencyName,
+          emergencyContactRelation: e.emergencyRelation,
+          emergencyContactPhone: e.emergencyPhone,
+          emergencyContactAltPhone: null,
+          emergencyContactEmail: null,
+          emergencyContactAddress: null,
+          communicationPreference: "Email",
+          // Compensation
+          ctc,
+          basicSalary: basic,
+          hra,
+          specialAllowance,
+          conveyanceAllowance,
+          medicalAllowance,
+          bonusAmount: 0,
+          pfEmployee,
+          pfEmployer,
+          esiAmount,
+          professionalTax,
+          tdsAmount,
+          grossSalary,
+          netSalary,
+          // Exit
+          resignationDate: e.resignationDate || null,
+          resignationReason: e.resignationReason || null,
+          exitStatus: e.status === "On Notice" ? "Resignation submitted" : "Not initiated",
         },
       })
       empByCode[e.code] = { id: rec.id, name: `${e.first} ${e.last}` }
     }
-    // Wire up reporting managers
+    // Wire up reporting managers, functional managers, hr manager
     for (const e of empSeeds) {
-      if (e.mgrCode) {
+      const updates: Record<string, unknown> = {}
+      if (e.mgrCode) updates.reportingManagerId = empByCode[e.mgrCode].id
+      // functional manager = same as reporting manager for now
+      if (e.mgrCode) updates.functionalManagerId = empByCode[e.mgrCode].id
+      // hr manager = Ananya (EMP-0003) for everyone except herself (where it's Aarav)
+      updates.hrManagerId = e.code === "EMP-0003" ? empByCode["EMP-0001"].id : empByCode["EMP-0003"].id
+      if (Object.keys(updates).length) {
         await db.employee.update({
           where: { id: empByCode[e.code].id },
-          data: { reportingManagerId: empByCode[e.mgrCode].id },
+          data: updates,
         })
       }
     }
@@ -625,6 +824,628 @@ async function runSeed() {
     })
     await db.workflowStep.create({ data: { workflowId: wfAsset.id, level: 1, approverType: "DepartmentHead", name: "Department Head Approval", slaHours: 48 } })
     counts.workflows = 2
+
+    // ============================================================
+    // PHASE 2 — EMPLOYEE PROFILE SUB-RECORDS (for first 3 employees)
+    // ============================================================
+    const detailEmpCodes = ["EMP-0001", "EMP-0002", "EMP-0003"]
+    const detailEmpIds = detailEmpCodes.map((c) => empByCode[c].id)
+    const subCounts: Record<string, number> = {}
+
+    // Helper to count quickly
+    const bump = (k: string) => { subCounts[k] = (subCounts[k] || 0) + 1 }
+
+    for (let idx = 0; idx < detailEmpCodes.length; idx++) {
+      const code = detailEmpCodes[idx]
+      const empId = detailEmpIds[idx]
+      const e = empSeeds.find((x) => x.code === code)!
+      const ctc = e.ctc
+      const basic = Math.round(ctc * 0.5)
+      const hra = Math.round(basic * 0.4)
+      const doj = e.doj
+
+      // ---- Family members (2-3 each) ----
+      if (code === "EMP-0001") {
+        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Priya Sharma", relationship: "Spouse", gender: "Female", dateOfBirth: dateOnly(1992, 6, 20), mobileNumber: "+91-9876543299", occupation: "Doctor", isDependent: true, isNominee: true, nomineePercentage: 100, insuranceApplicable: true } })
+        bump("family")
+        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Ayaan Sharma", relationship: "Son", gender: "Male", dateOfBirth: dateOnly(2020, 3, 12), isDependent: true, isNominee: false, insuranceApplicable: true } })
+        bump("family")
+        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Ramesh Sharma", relationship: "Father", gender: "Male", dateOfBirth: dateOnly(1958, 8, 5), occupation: "Retired", isDependent: false, isNominee: false } })
+        bump("family")
+      } else if (code === "EMP-0002") {
+        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Rajesh Mehta", relationship: "Father", gender: "Male", dateOfBirth: dateOnly(1960, 1, 18), occupation: "Business", isDependent: true, isNominee: true, nomineePercentage: 100, insuranceApplicable: true } })
+        bump("family")
+        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Sunita Mehta", relationship: "Mother", gender: "Female", dateOfBirth: dateOnly(1963, 5, 22), occupation: "Homemaker", isDependent: true, isNominee: false, insuranceApplicable: true } })
+        bump("family")
+      } else {
+        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Lakshmi Iyer", relationship: "Mother", gender: "Female", dateOfBirth: dateOnly(1965, 11, 30), occupation: "Teacher", isDependent: true, isNominee: true, nomineePercentage: 100, insuranceApplicable: true } })
+        bump("family")
+        await db.employeeFamilyMember.create({ data: { tenantId, employeeId: empId, name: "Krishnan Iyer", relationship: "Father", gender: "Male", dateOfBirth: dateOnly(1962, 7, 14), occupation: "Retired Banker", isDependent: true, isNominee: false } })
+        bump("family")
+      }
+
+      // ---- Education records (UG + PG) ----
+      await db.employeeEducation.create({ data: { tenantId, employeeId: empId, qualification: "UG", degree: "B.E. Computer Science", specialization: "Computer Science", institute: "VJTI Mumbai", university: "Mumbai University", yearOfPassing: 2011, percentage: 78, cgpa: 8.2, educationType: "Full-time", isHighest: false, certificateUrl: null } })
+      bump("education")
+      await db.employeeEducation.create({ data: { tenantId, employeeId: empId, qualification: "PG", degree: "M.Tech Software Systems", specialization: "Software Systems", institute: "BITS Pilani", university: "BITS Pilani", yearOfPassing: 2013, percentage: 82, cgpa: 8.7, educationType: "Full-time", isHighest: true, certificateUrl: null } })
+      bump("education")
+
+      // ---- Experience records (1-2 each) ----
+      await db.employeeExperience.create({
+        data: {
+          tenantId, employeeId: empId,
+          companyName: "Infosys Limited", designation: "Software Engineer", department: "Engineering",
+          startDate: yearsAgo(7, 5), endDate: yearsAgo(3, 5),
+          totalYears: 4.0, reasonForLeaving: "Career growth", previousSalary: 800000,
+          managerName: "Sridhar Rao", managerContact: "+91-9000011111",
+          verificationStatus: "Verified",
+        },
+      })
+      bump("experience")
+      if (code !== "EMP-0003") {
+        await db.employeeExperience.create({
+          data: {
+            tenantId, employeeId: empId,
+            companyName: "TCS Digital", designation: "Senior Engineer", department: "Engineering",
+            startDate: yearsAgo(3, 5), endDate: doj,
+            totalYears: 1.5, reasonForLeaving: "Better opportunity", previousSalary: 1200000,
+            managerName: "Anil Kumar", managerContact: "+91-9000022222",
+            verificationStatus: "Verified",
+          },
+        })
+        bump("experience")
+      }
+
+      // ---- Bank detail (active) ----
+      await db.employeeBankDetail.create({
+        data: {
+          tenantId, employeeId: empId,
+          bankName: e.bank, accountHolderName: `${e.first} ${e.last}`,
+          accountNumber: e.account, ifscCode: e.ifsc,
+          branchName: `${e.bank} Branch`, accountType: "Savings",
+          upiId: `${e.first.toLowerCase()}.${e.last.toLowerCase()}@okhdfcbank`,
+          isActive: true, verified: true, effectiveDate: doj,
+        },
+      })
+      bump("bank")
+
+      // ---- Statutory detail ----
+      await db.employeeStatutoryDetail.create({
+        data: {
+          tenantId, employeeId: empId,
+          panNumber: e.pan,
+          aadhaarNumber: "XXXX-XXXX-1234",
+          uanNumber: "101234567890",
+          pfNumber: "BGBNG/" + code.replace("EMP-", "") + "/000",
+          esiNumber: null,
+          ptLocation: e.currentCity,
+          lwfApplicability: "Applicable",
+          gratuityApplicability: "Applicable",
+          pfApplicable: true, esiApplicable: false, ptApplicable: true,
+          taxRegime: "New",
+          tdsDeclarationStatus: "Submitted",
+          nomineeDetails: JSON.stringify({ name: e.emergencyName, relation: e.emergencyRelation, percent: 100 }),
+          effectiveDate: doj,
+        },
+      })
+      bump("statutory")
+
+      // ---- Documents (3-5 each) ----
+      await db.employeeDocument.create({ data: { tenantId, employeeId: empId, name: "Aadhaar Card", category: "Identity", documentType: "Aadhaar", fileUrl: "/docs/aadhaar.pdf", fileExt: "pdf", fileSize: 240000, status: "Approved", uploadedAt: doj, approvedAt: doj, approvedBy: "Ananya Iyer" } })
+      bump("documents")
+      await db.employeeDocument.create({ data: { tenantId, employeeId: empId, name: "PAN Card", category: "Identity", documentType: "PAN", fileUrl: "/docs/pan.pdf", fileExt: "pdf", fileSize: 180000, status: "Approved", uploadedAt: doj, approvedAt: doj, approvedBy: "Ananya Iyer" } })
+      bump("documents")
+      await db.employeeDocument.create({ data: { tenantId, employeeId: empId, name: "Profile Photo", category: "Identity", documentType: "Photo", fileUrl: "/docs/photo.jpg", fileExt: "jpg", fileSize: 95000, status: "Approved", uploadedAt: doj, approvedAt: doj, approvedBy: "Ananya Iyer" } })
+      bump("documents")
+      await db.employeeDocument.create({ data: { tenantId, employeeId: empId, name: "Resume", category: "Joining", documentType: "Resume", fileUrl: "/docs/resume.pdf", fileExt: "pdf", fileSize: 320000, status: "Uploaded", uploadedAt: doj } })
+      bump("documents")
+      await db.employeeDocument.create({ data: { tenantId, employeeId: empId, name: "Offer Letter", category: "Joining", documentType: "Offer letter", fileUrl: "/docs/offer.pdf", fileExt: "pdf", fileSize: 210000, status: "Approved", uploadedAt: doj, approvedAt: doj, approvedBy: "Ananya Iyer" } })
+      bump("documents")
+      // Expiring soon — passport expiring in 30 days
+      if (e.passport) {
+        await db.employeeDocument.create({ data: { tenantId, employeeId: empId, name: "Passport", category: "Identity", documentType: "Passport", fileUrl: "/docs/passport.pdf", fileExt: "pdf", fileSize: 410000, status: "Expiring soon", expiryDate: daysFromNow(30), uploadedAt: doj, remarks: "Expiring soon — renewal due" } })
+        bump("documents")
+      }
+
+      // ---- Compensation history (joining + annual appraisal) ----
+      await db.employeeCompensationHistory.create({
+        data: {
+          tenantId, employeeId: empId, effectiveDate: doj,
+          oldCtc: null, newCtc: ctc,
+          oldBasic: null, newBasic: basic,
+          oldHra: null, newHra: hra,
+          incrementPercent: null, revisionReason: "Joining",
+          approvedBy: "Ananya Iyer", status: "Approved",
+        },
+      })
+      bump("compensation")
+      // Annual appraisal after 1 year (10% raise)
+      const apprDate = new Date(doj); apprDate.setFullYear(apprDate.getFullYear() + 1)
+      if (apprDate.getTime() < new Date().getTime()) {
+        const newCtc = Math.round(ctc * 1.1)
+        const newBasic = Math.round(newCtc * 0.5)
+        const newHra = Math.round(newBasic * 0.4)
+        await db.employeeCompensationHistory.create({
+          data: {
+            tenantId, employeeId: empId, effectiveDate: apprDate,
+            oldCtc: ctc, newCtc,
+            oldBasic: basic, newBasic,
+            oldHra: hra, newHra,
+            incrementPercent: 10, revisionReason: "Annual appraisal",
+            approvedBy: "Ananya Iyer", status: "Approved",
+          },
+        })
+        bump("compensation")
+      }
+
+      // ---- Notes (2-3 each, mix of categories) ----
+      await db.employeeNote.create({ data: { tenantId, employeeId: empId, category: "General", body: "Onboarding completed. All joining documents verified.", isPrivate: false, visibleToManager: true, createdBy: "Ananya Iyer" } })
+      bump("notes")
+      await db.employeeNote.create({ data: { tenantId, employeeId: empId, category: "Performance", body: "Strong technical skills. Demonstrated leadership in Q2 project delivery.", isPrivate: false, visibleToManager: true, createdBy: "Aarav Sharma" } })
+      bump("notes")
+      if (code !== "EMP-0003") {
+        await db.employeeNote.create({ data: { tenantId, employeeId: empId, category: "Manager feedback", body: "Consistently meets expectations. Ready for next-level responsibility.", isPrivate: true, visibleToManager: true, createdBy: "Vivaan Mehta" } })
+        bump("notes")
+      }
+
+      // ---- Timeline events (5-8 each) ----
+      const tl: Array<{ type: string; title: string; date: Date; desc?: string }> = [
+        { type: "Created", title: "Employee record created", date: new Date(doj.getTime() - 7 * 24 * 3600 * 1000) },
+        { type: "Joined", title: "Joined ACME Corporation", date: doj, desc: `Joined as ${e.desig}` },
+        { type: "Document uploaded", title: "Onboarding documents uploaded", date: new Date(doj.getTime() + 1 * 24 * 3600 * 1000) },
+        { type: "Profile updated", title: "Bank details verified", date: new Date(doj.getTime() + 3 * 24 * 3600 * 1000) },
+        { type: "Salary revised", title: "Annual appraisal", date: apprDate.getTime() < new Date().getTime() ? apprDate : new Date(doj.getTime() + 30 * 24 * 3600 * 1000), desc: "10% increment" },
+        { type: "Profile updated", title: "Probation confirmed", date: new Date(doj.getTime() + 90 * 24 * 3600 * 1000) },
+        { type: "Profile updated", title: "Asset assigned", date: new Date(doj.getTime() + 2 * 24 * 3600 * 1000), desc: "Dell Latitude 5430" },
+        { type: "Profile updated", title: "Profile photo updated", date: daysAgo(45) },
+      ]
+      for (const t of tl) {
+        await db.employeeTimelineEvent.create({ data: { tenantId, employeeId: empId, eventType: t.type, title: t.title, description: t.desc || null, eventDate: t.date, actorName: "Ananya Iyer" } })
+        bump("timeline")
+      }
+
+      // ---- Audit logs (3-5 each) ----
+      const aud: Array<{ module: string; field: string; oldV: string; newV: string; date: Date; action: string }> = [
+        { module: "Personal", field: "officialEmail", oldV: "", newV: e.officialEmail || "", date: new Date(doj.getTime() - 7 * 24 * 3600 * 1000), action: "Create" },
+        { module: "Job", field: "departmentId", oldV: "", newV: depts[e.dept].id, date: doj, action: "Create" },
+        { module: "Bank", field: "accountNumber", oldV: "", newV: e.account, date: new Date(doj.getTime() + 3 * 24 * 3600 * 1000), action: "Update" },
+        { module: "Compensation", field: "ctc", oldV: String(ctc), newV: String(Math.round(ctc * 1.1)), date: apprDate.getTime() < new Date().getTime() ? apprDate : new Date(doj.getTime() + 30 * 24 * 3600 * 1000), action: "Update" },
+        { module: "Personal", field: "currentAddress", oldV: "Mumbai, Maharashtra", newV: `${e.currentCity}, ${e.currentState}`, date: daysAgo(60), action: "Update" },
+      ]
+      for (const a of aud) {
+        await db.employeeAuditLog.create({ data: { tenantId, employeeId: empId, module: a.module, field: a.field, oldValue: a.oldV, newValue: a.newV, action: a.action, changedBy: "Ananya Iyer", createdAt: a.date } })
+        bump("audit")
+      }
+
+      // ---- Status history (1 each) ----
+      await db.employeeStatusHistory.create({ data: { tenantId, employeeId: empId, oldStatus: null, newStatus: "Active", effectiveDate: doj, reason: "New hire onboarding", changedBy: "Ananya Iyer" } })
+      bump("statusHistory")
+
+      // ---- Transfer history (1 for EMP-0002) ----
+      if (code === "EMP-0002") {
+        await db.employeeTransferHistory.create({
+          data: {
+            tenantId, employeeId: empId,
+            oldDepartment: "Sales", newDepartment: "Engineering",
+            oldLocation: "Delhi Office", newLocation: "Bangalore Office",
+            oldManager: "Arjun Gupta", newManager: "Aarav Sharma",
+            oldEntity: "Example Services", newEntity: "Example Services",
+            effectiveDate: new Date(doj.getTime() + 60 * 24 * 3600 * 1000),
+            reason: "Internal transfer to engineering team",
+            status: "Approved", approvedBy: "Ananya Iyer",
+          },
+        })
+        bump("transfers")
+      }
+
+      // ---- Promotion history (1 for EMP-0001) ----
+      if (code === "EMP-0001") {
+        await db.employeePromotionHistory.create({
+          data: {
+            tenantId, employeeId: empId,
+            oldDesignation: "Software Engineer", newDesignation: "Senior Software Engineer",
+            oldGrade: "L4 — Mid", newGrade: "L5 — Senior",
+            oldCtc: Math.round(ctc * 0.9), newCtc: ctc,
+            effectiveDate: new Date(doj.getTime() + 365 * 24 * 3600 * 1000),
+            reason: "Annual appraisal + promotion",
+            status: "Approved", approvedBy: "Ananya Iyer",
+          },
+        })
+        bump("promotions")
+      }
+
+      // ---- Probation record (1 for EMP-0011 if they're marked On Probation) ----
+      // For first 3, mark EMP-0002 as On Probation at start (then confirmed)
+      if (code === "EMP-0002") {
+        await db.employeeProbation.create({
+          data: {
+            tenantId, employeeId: empId,
+            startDate: doj,
+            endDate: new Date(doj.getTime() + 90 * 24 * 3600 * 1000),
+            reviewDueDate: new Date(doj.getTime() + 80 * 24 * 3600 * 1000),
+            status: "Confirmed",
+            managerFeedback: "Excellent problem-solving and team collaboration.",
+            hrFeedback: "Met all KPIs. Confirmed on schedule.",
+            confirmedDate: new Date(doj.getTime() + 90 * 24 * 3600 * 1000),
+            confirmedBy: "Ananya Iyer",
+          },
+        })
+        bump("probation")
+      }
+
+      // ---- Exit record for EMP-0008 (NOT in first 3, but seeded separately) ----
+      // Done outside this loop below.
+
+      // ---- Login access (1 each) ----
+      await db.employeeLoginAccess.create({
+        data: {
+          tenantId, employeeId: empId,
+          username: e.officialEmail?.split("@")[0] || e.first.toLowerCase(),
+          email: e.officialEmail,
+          status: "Active",
+          role: code === "EMP-0003" ? "HR admin" : "Employee",
+          twoFactorEnabled: false,
+          forcePasswordChange: false,
+          passwordResetAt: doj,
+          lastLoginAt: daysAgo(1),
+          lastLoginIp: "10.0.0." + (10 + idx),
+          activeSessions: 1,
+        },
+      })
+      bump("loginAccess")
+
+      // ---- Role mappings (1-2 each) ----
+      await db.employeeRoleMapping.create({
+        data: {
+          tenantId, employeeId: empId,
+          role: code === "EMP-0003" ? "HR admin" : "Employee",
+          scopeType: "Global",
+          assignedBy: "Ananya Iyer",
+          isActive: true,
+        },
+      })
+      bump("roles")
+      if (code === "EMP-0001") {
+        await db.employeeRoleMapping.create({
+          data: {
+            tenantId, employeeId: empId,
+            role: "Manager", scopeType: "Department", scopeRef: depts["DEPT-ENG"].id,
+            assignedBy: "Ananya Iyer", isActive: true,
+          },
+        })
+        bump("roles")
+      }
+
+      // ---- Custom field values (3-4 each) ----
+      const cfv: Array<{ key: string; label: string; value: string; category: string }> = [
+        { key: "tshirtSize", label: "T-Shirt Size", value: e.gender === "Male" ? "L" : "M", category: "Uniform" },
+        { key: "foodPreference", label: "Food Preference", value: "Veg", category: "General" },
+        { key: "transportRoute", label: "Transport Route", value: e.currentCity === "Mumbai" ? "Route 12 - Andheri" : e.currentCity === "Bangalore" ? "Route 5 - Bellandur" : "Route 2 - CP", category: "Accommodation" },
+        { key: "uniformSize", label: "Uniform Size", value: e.gender === "Male" ? "40" : "36", category: "Uniform" },
+      ]
+      for (const c of cfv) {
+        await db.employeeCustomFieldValue.create({
+          data: { tenantId, employeeId: empId, fieldKey: c.key, fieldLabel: c.label, fieldType: "select", value: c.value, category: c.category, isMandatory: false, approvalRequired: false },
+        })
+        bump("customFields")
+      }
+
+      // ---- Form submissions (1-2 each) ----
+      await db.employeeFormSubmission.create({
+        data: {
+          tenantId, employeeId: empId,
+          formCode: "joining", formName: "Joining Form", version: 1,
+          data: JSON.stringify({ personalEmail: e.personalEmail, mobile: e.mobile, emergencyName: e.emergencyName, emergencyPhone: e.emergencyPhone }),
+          status: "Submitted", submittedAt: new Date(doj.getTime() + 1 * 24 * 3600 * 1000),
+          approvedAt: new Date(doj.getTime() + 2 * 24 * 3600 * 1000), approvedBy: "Ananya Iyer",
+        },
+      })
+      bump("forms")
+      await db.employeeFormSubmission.create({
+        data: {
+          tenantId, employeeId: empId,
+          formCode: "policy_declaration", formName: "Policy Declaration", version: 1,
+          data: JSON.stringify({ acceptedCodeOfConduct: true, acceptedItPolicy: true, acceptedRemoteWorkPolicy: true }),
+          status: "Approved", submittedAt: new Date(doj.getTime() + 3 * 24 * 3600 * 1000),
+          approvedAt: new Date(doj.getTime() + 5 * 24 * 3600 * 1000), approvedBy: "Ananya Iyer",
+        },
+      })
+      bump("forms")
+
+      // ---- Skills (3-4 each) ----
+      const skills: Array<{ name: string; cat: string; prof: string; yrs: number }> = [
+        { name: "TypeScript", cat: "Technical", prof: "Expert", yrs: 5 },
+        { name: "React", cat: "Technical", prof: "Advanced", yrs: 4 },
+        { name: "Node.js", cat: "Technical", prof: "Advanced", yrs: 4 },
+        { name: "Communication", cat: "Soft", prof: "Advanced", yrs: 6 },
+      ]
+      if (code === "EMP-0003") {
+        skills.length = 0
+        skills.push(
+          { name: "Recruitment", cat: "Domain", prof: "Advanced", yrs: 4 },
+          { name: "HR Compliance", cat: "Domain", prof: "Expert", yrs: 4 },
+          { name: "Excel", cat: "Tool", prof: "Advanced", yrs: 6 },
+          { name: "Onboarding", cat: "Domain", prof: "Expert", yrs: 4 },
+        )
+      }
+      for (const s of skills) {
+        await db.employeeSkill.create({
+          data: {
+            tenantId, employeeId: empId,
+            name: s.name, category: s.cat, proficiency: s.prof,
+            yearsOfExperience: s.yrs, verifiedByManager: true,
+            lastUsedDate: daysAgo(7),
+          },
+        })
+        bump("skills")
+      }
+
+      // ---- Certifications (1-2 each, one with expiry 60 days from now) ----
+      await db.employeeCertification.create({
+        data: {
+          tenantId, employeeId: empId,
+          name: "AWS Certified Developer - Associate",
+          issuingAuthority: "Amazon Web Services",
+          issueDate: yearsAgo(1, 10),
+          expiryDate: daysFromNow(60),
+          certificateId: "AWS-DEV-" + code.replace("EMP-", "0"),
+          certificateUrl: "/docs/aws-cert.pdf",
+        },
+      })
+      bump("certifications")
+      if (code !== "EMP-0003") {
+        await db.employeeCertification.create({
+          data: {
+            tenantId, employeeId: empId,
+            name: "Scrum Master (PSM I)",
+            issuingAuthority: "Scrum.org",
+            issueDate: yearsAgo(2, 4),
+            expiryDate: null,
+            certificateId: "PSM-" + code.replace("EMP-", "0"),
+            certificateUrl: "/docs/psm.pdf",
+          },
+        })
+        bump("certifications")
+      }
+
+      // ---- Training (1-2 each: one Completed, one In Progress) ----
+      await db.employeeTraining.create({
+        data: {
+          tenantId, employeeId: empId,
+          courseName: "Information Security Awareness",
+          trainingType: "Online",
+          startDate: new Date(doj.getTime() + 5 * 24 * 3600 * 1000),
+          endDate: new Date(doj.getTime() + 12 * 24 * 3600 * 1000),
+          status: "Completed", score: 92,
+          certificateUrl: "/docs/security-cert.pdf",
+          trainerFeedback: "Good understanding of security best practices.",
+        },
+      })
+      bump("training")
+      await db.employeeTraining.create({
+        data: {
+          tenantId, employeeId: empId,
+          courseName: "Leadership Excellence Program",
+          trainingType: "Classroom",
+          startDate: daysAgo(30),
+          endDate: null,
+          status: "In Progress",
+        },
+      })
+      bump("training")
+
+      // ---- Performance goals (1-2 each) ----
+      await db.employeePerformanceGoal.create({
+        data: {
+          tenantId, employeeId: empId,
+          title: "Deliver Q3 product roadmap",
+          description: "Lead the engineering team to ship the new analytics module by end of Q3.",
+          kra: "Engineering Delivery", kpi: "On-time delivery rate",
+          targetValue: "100%", achievedValue: "80%", progress: 80, weightage: 40,
+          cycle: "FY" + new Date().getFullYear() + "-H2",
+          status: "Manager reviewed",
+          startDate: monthsAgo(3), endDate: monthsFromNow(3),
+        },
+      })
+      bump("goals")
+      if (code !== "EMP-0003") {
+        await db.employeePerformanceGoal.create({
+          data: {
+            tenantId, employeeId: empId,
+            title: "Mentor 2 junior engineers",
+            description: "Pair-program with new hires and conduct weekly 1:1s.",
+            kra: "Team Development", kpi: "Mentee satisfaction score",
+            targetValue: "4.5/5", achievedValue: "4.2/5", progress: 75, weightage: 20,
+            cycle: "FY" + new Date().getFullYear() + "-H2",
+            status: "Submitted",
+            startDate: monthsAgo(3), endDate: monthsFromNow(3),
+          },
+        })
+        bump("goals")
+      }
+
+      // ---- Performance review (1 each) ----
+      await db.employeePerformanceReview.create({
+        data: {
+          tenantId, employeeId: empId,
+          cycle: "FY" + (new Date().getFullYear() - 1),
+          type: "Final",
+          reviewerName: "Aarav Sharma",
+          rating: 4.2,
+          comments: "Strong performer. Delivered key projects on time. Ready for next-level responsibility.",
+          promotionRecommended: code === "EMP-0001",
+          incrementRecommended: 12,
+          status: "Finalized",
+          reviewDate: monthsAgo(2),
+          finalizedAt: monthsAgo(1),
+        },
+      })
+      bump("reviews")
+
+      // ---- Expenses (1-2 each) ----
+      await db.employeeExpense.create({
+        data: {
+          tenantId, employeeId: empId,
+          category: "Travel", amount: 12500, currency: "INR",
+          expenseDate: daysAgo(20),
+          description: "Client visit travel — Bangalore to Mumbai",
+          billUrl: "/bills/travel-1.pdf", project: "Phoenix", client: "Acme Corp",
+          status: "Paid", paymentStatus: "Paid",
+          approvedBy: "Aarav Sharma", approvedAt: daysAgo(18), paidAt: daysAgo(10),
+        },
+      })
+      bump("expenses")
+      await db.employeeExpense.create({
+        data: {
+          tenantId, employeeId: empId,
+          category: "Food", amount: 850, currency: "INR",
+          expenseDate: daysAgo(5),
+          description: "Team lunch with client",
+          billUrl: "/bills/food-1.pdf",
+          status: "Submitted",
+        },
+      })
+      bump("expenses")
+
+      // ---- Helpdesk tickets (1-2 each) ----
+      await db.employeeHelpdeskTicket.create({
+        data: {
+          tenantId, employeeId: empId,
+          ticketCode: `TKT-${String((idx * 2) + 1).padStart(4, "0")}`,
+          subject: "Laptop running slow",
+          category: "IT", priority: "Medium",
+          status: "Resolved",
+          description: "My laptop is taking a long time to boot and applications are sluggish.",
+          assignedTo: "IT Helpdesk",
+          slaHours: 24, slaStatus: "Within SLA",
+          resolution: "Replaced HDD with SSD. Performance restored.",
+          resolvedAt: daysAgo(10),
+          feedback: "Quick resolution, thanks!", rating: 5,
+        },
+      })
+      bump("tickets")
+      await db.employeeHelpdeskTicket.create({
+        data: {
+          tenantId, employeeId: empId,
+          ticketCode: `TKT-${String((idx * 2) + 2).padStart(4, "0")}`,
+          subject: "Salary slip not generated",
+          category: "Payroll", priority: "High",
+          status: "Open",
+          description: "Last month's salary slip is not showing in the portal.",
+          assignedTo: "Payroll Team",
+          slaHours: 48, slaStatus: "Within SLA",
+        },
+      })
+      bump("tickets")
+
+      // ---- Letters (1-2 each) ----
+      await db.employeeLetter.create({
+        data: {
+          tenantId, employeeId: empId,
+          letterType: "Appointment",
+          letterCode: `LTR-${String((idx * 2) + 1).padStart(4, "0")}`,
+          issuedDate: doj,
+          subject: "Letter of Appointment",
+          body: `Dear ${e.first}, we are pleased to confirm your appointment as ${e.desig} at ACME Corporation.`,
+          status: "Issued",
+          issuedBy: "Ananya Iyer",
+          version: 1,
+        },
+      })
+      bump("letters")
+      if (monthsAgo(0).getTime() - doj.getTime() > 90 * 24 * 3600 * 1000) {
+        await db.employeeLetter.create({
+          data: {
+            tenantId, employeeId: empId,
+            letterType: "Confirmation",
+            letterCode: `LTR-${String((idx * 2) + 2).padStart(4, "0")}`,
+            issuedDate: new Date(doj.getTime() + 95 * 24 * 3600 * 1000),
+            subject: "Letter of Confirmation",
+            body: `Dear ${e.first}, we are pleased to confirm your successful completion of probation.`,
+            status: "Issued",
+            issuedBy: "Ananya Iyer",
+            version: 1,
+          },
+        })
+        bump("letters")
+      }
+
+      // ---- Requests (1-2 each) ----
+      await db.employeeRequest.create({
+        data: {
+          tenantId, employeeId: empId,
+          requestType: "WFH",
+          title: "Work from home — 2 days",
+          description: "Requesting WFH for next Monday and Tuesday due to personal reasons.",
+          payload: JSON.stringify({ dates: [daysFromNow(3), daysFromNow(4)] }),
+          status: "Approved",
+          pendingWith: "Aarav Sharma",
+          submittedAt: daysAgo(7),
+          decidedAt: daysAgo(5),
+          decidedBy: "Aarav Sharma",
+          remarks: "Approved. Please be available on Slack.",
+        },
+      })
+      bump("requests")
+      await db.employeeRequest.create({
+        data: {
+          tenantId, employeeId: empId,
+          requestType: "Document update",
+          title: "Update personal email",
+          description: "I would like to update my personal email address.",
+          payload: JSON.stringify({ field: "personalEmail", oldValue: e.personalEmail, newValue: e.first.toLowerCase() + ".new@gmail.com" }),
+          status: "Pending",
+          pendingWith: "Ananya Iyer",
+          submittedAt: daysAgo(2),
+        },
+      })
+      bump("requests")
+    } // end of per-employee sub-record loop
+
+    // ---- Exit record for EMP-0008 (Kabir Singh, On Notice) ----
+    {
+      const empId = empByCode["EMP-0008"].id
+      await db.employeeExit.create({
+        data: {
+          tenantId, employeeId: empId,
+          resignationDate: daysAgo(15),
+          lastWorkingDate: daysFromNow(45),
+          reason: "Better opportunity abroad",
+          status: "Manager approved",
+          noticePeriodDays: 60,
+          noticeRecoveryDays: 0,
+          clearanceHR: false, clearanceIT: false, clearanceAdmin: false,
+          clearanceFinance: false, clearanceManager: true, clearancePayroll: false,
+          approvedBy: "Aarav Sharma",
+          approvedAt: daysAgo(7),
+        },
+      })
+      subCounts.exits = 1
+      // Status history for EMP-0008
+      await db.employeeStatusHistory.create({
+        data: {
+          tenantId, employeeId: empId, oldStatus: "Active", newStatus: "On Notice",
+          effectiveDate: daysAgo(15), reason: "Resignation submitted",
+          changedBy: "Ananya Iyer",
+        },
+      })
+      subCounts.statusHistory = (subCounts.statusHistory || 0) + 1
+      // Timeline event
+      await db.employeeTimelineEvent.create({
+        data: {
+          tenantId, employeeId: empId, eventType: "Resignation submitted",
+          title: "Resignation submitted",
+          description: "Better opportunity abroad",
+          eventDate: daysAgo(15), actorName: "Kabir Singh",
+        },
+      })
+      subCounts.timeline = (subCounts.timeline || 0) + 1
+    }
+
+    // Add subCounts to counts
+    for (const [k, v] of Object.entries(subCounts)) {
+      counts[`emp_${k}`] = v
+    }
 
     return ok({ ok: true, counts })
   } catch (err: any) {

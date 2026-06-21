@@ -1,0 +1,576 @@
+     1→// ============================================================
+     2→// Employee Profile — Tab configuration & role-based visibility
+     3→// ------------------------------------------------------------
+     4→// Single source of truth for the 32 employee-profile tabs.
+     5→// Each tab has: id, label, icon (lucide name), short description,
+     6→// and the list of "section cards" the tab will surface (used by
+     7→// the stub placeholders, and as a guide for the real implementers
+     8→// 8-c-1 / 8-c-2 / 8-c-3 who will overwrite select stubs).
+     9→// ============================================================
+    10→
+    11→import type { LucideIcon } from "lucide-react"
+    12→import {
+    13→  LayoutDashboard, User, Briefcase, MapPin, Users, GraduationCap, Building2,
+    14→  Landmark, ScrollText, FileText, Clock, CalendarDays, Wallet, TrendingUp,
+    15→  Target, Award, BookOpen, Laptop, Receipt, LifeBuoy, Inbox, Mail, GitBranch,
+    16→  ShieldCheck, StickyNote, ClipboardCheck, ArrowLeftRight, LogOut, KeyRound,
+    17→  Shield, SlidersHorizontal, ClipboardList, Lock,
+    18→} from "lucide-react"
+    19→
+    20→export type EmployeeRole =
+    21→  | "Super Admin"
+    22→  | "Organization Admin"
+    23→  | "HR Admin"
+    24→  | "Payroll Admin"
+    25→  | "Finance Admin"
+    26→  | "Department Head"
+    27→  | "Reporting Manager"
+    28→  | "Employee"
+    29→  | "Recruiter"
+    30→  | "IT Admin"
+    31→  | "Auditor"
+    32→
+    33→export interface TabSection {
+    34→  title: string
+    35→  icon: LucideIcon
+    36→  hint: string
+    37→}
+    38→
+    39→export interface ProfileTab {
+    40→  id: string
+    41→  label: string
+    42→  icon: LucideIcon
+    43→  description: string
+    44→  sections: TabSection[]
+    45→}
+    46→
+    47→// ----------------------------------------------------------------
+    48→// The 32 tabs in the EXACT order required by the Phase 2 spec.
+    49→// ----------------------------------------------------------------
+    50→export const PROFILE_TABS: ProfileTab[] = [
+    51→  {
+    52→    id: "overview",
+    53→    label: "Overview",
+    54→    icon: LayoutDashboard,
+    55→    description:
+    56→      "A quick, glanceable snapshot of the employee — key identity, current job, today's attendance, leave balance, payroll summary, document status and pending tasks all in one view.",
+    57→    sections: [
+    58→      { title: "Employee Summary", icon: User, hint: "Name, code, photo, status, contact quick row." },
+    59→      { title: "Job Summary", icon: Briefcase, hint: "Designation, department, entity, grade, manager." },
+    60→      { title: "Attendance Today", icon: Clock, hint: "Today's clock-in/out, work hours, late status." },
+    61→      { title: "Leave Balance", icon: CalendarDays, hint: "Opening, accrued, used & closing balance per type." },
+    62→      { title: "Payroll Summary", icon: Wallet, hint: "Current month gross, deductions, net pay." },
+    63→      { title: "Documents Status", icon: FileText, hint: "Submitted / pending mandatory documents." },
+    64→      { title: "Pending Tasks", icon: Inbox, hint: "Approvals, requests & forms awaiting action." },
+    65→      { title: "Recent Activity", icon: GitBranch, hint: "Latest profile, leave & payroll events." },
+    66→      { title: "Profile Completion", icon: Target, hint: "Completeness % across all profile sections." },
+    67→      { title: "Upcoming Events", icon: CalendarDays, hint: "Birthdays, anniversaries, holidays." },
+    68→      { title: "Manager Details", icon: Users, hint: "Reporting, functional & HR manager cards." },
+    69→      { title: "Emergency Contact", icon: LifeBuoy, hint: "Primary emergency contact snapshot." },
+    70→    ],
+    71→  },
+    72→  {
+    73→    id: "personal",
+    74→    label: "Personal Information",
+    75→    icon: User,
+    76→    description:
+    77→      "Personal & demographic details — identity fields, personal contact, gender, date of birth, marital status, blood group, nationality, photo and personal identifiers (passport, driving licence, voter ID).",
+    78→    sections: [
+    79→      { title: "Identity Details", icon: User, hint: "First / middle / last name, display name, gender." },
+    80→      { title: "Demographics", icon: Users, hint: "DOB, marital status, blood group, nationality, religion, category." },
+    81→      { title: "Personal Contact", icon: Mail, hint: "Personal email, mobile, alternate number." },
+    82→      { title: "Photo & Display", icon: LayoutDashboard, hint: "Profile photo, display name, communication preference." },
+    83→      { title: "Personal Identifiers", icon: ScrollText, hint: "Passport, driving licence, voter ID numbers." },
+    84→      { title: "Disability & Accessibility", icon: LifeBuoy, hint: "Physically disabled flag, disability details." },
+    85→    ],
+    86→  },
+    87→  {
+    88→    id: "job",
+    89→    label: "Job Details",
+    90→    icon: Briefcase,
+    91→    description:
+    92→      "Current employment terms and organizational placement — employment type, worker type, entity/branch/department/designation/grade, managers, work mode, business unit, cost center, probation & confirmation.",
+    93→    sections: [
+    94→      { title: "Employment Type", icon: Briefcase, hint: "Full-time/Part-time/Contract, worker type, on/off-roll." },
+    95→      { title: "Organizational Placement", icon: Building2, hint: "Entity, branch, department, designation, grade, location." },
+    96→      { title: "Probation & Confirmation", icon: ClipboardCheck, hint: "Status, start/end dates, confirmation date." },
+    97→      { title: "Notice Period", icon: Clock, hint: "Notice days, start date, last working date." },
+    98→      { title: "Reporting Structure", icon: Users, hint: "Reporting, functional and HR managers." },
+    99→      { title: "Work Configuration", icon: LayoutDashboard, hint: "Work mode, business unit, cost center." },
+   100→      { title: "Policy Assignments", icon: ScrollText, hint: "Leave / attendance / payroll / shift policies." },
+   101→    ],
+   102→  },
+   103→  {
+   104→    id: "contact",
+   105→    label: "Contact & Address",
+   106→    icon: MapPin,
+   107→    description:
+   108→      "Address book and emergency contacts — current & permanent addresses, official and personal contact channels, emergency contact(s), and communication preferences.",
+   109→    sections: [
+   110→      { title: "Current Address", icon: MapPin, hint: "Street, line 2, city, state, country, pincode, landmark." },
+   111→      { title: "Permanent Address", icon: MapPin, hint: "Same-as-current toggle, full permanent address." },
+   112→      { title: "Official Contact", icon: Mail, hint: "Official email, mobile, alternate number." },
+   113→      { title: "Personal Contact", icon: Mail, hint: "Personal email and personal mobile." },
+   114→      { title: "Emergency Contacts", icon: LifeBuoy, hint: "Name, relation, phone, alt phone, email, address." },
+   115→      { title: "Communication Preferences", icon: SlidersHorizontal, hint: "Email / SMS / WhatsApp opt-ins." },
+   116→    ],
+   117→  },
+   118→  {
+   119→    id: "family",
+   120→    label: "Family Details",
+   121→    icon: Users,
+   122→    description:
+   123→      "Family members, dependents and nominees — relationships, dates of birth, occupations, dependency status, and nominee allocation across PF/gratuity/insurance.",
+   124→    sections: [
+   125→      { title: "Family Members", icon: Users, hint: "Name, relation, DOB, occupation, contact." },
+   126→      { title: "Dependents", icon: User, hint: "Dependent flag, age, dependency type." },
+   127→      { title: "Nominees", icon: ShieldCheck, hint: "PF, gratuity, insurance nominee allocation %." },
+   128→      { title: "Spouse & Children", icon: Users, hint: "Marital partner & child records." },
+   129→    ],
+   130→  },
+   131→  {
+   132→    id: "education",
+   133→    label: "Education",
+   134→    icon: GraduationCap,
+   135→    description:
+   136→      "Academic qualifications and certifications — schooling, graduation, post-graduation, additional certifications, specializations and languages known.",
+   137→    sections: [
+   138→      { title: "Education Records", icon: GraduationCap, hint: "Institution, degree, specialisation, year, % / CGPA." },
+   139→      { title: "Certifications", icon: Award, hint: "Course, issuer, year, validity." },
+   140→      { title: "Specializations", icon: Target, hint: "Domain / skill specialisations." },
+   141→      { title: "Languages Known", icon: BookOpen, hint: "Language, read / write / speak proficiency." },
+   142→    ],
+   143→  },
+   144→  {
+   145→    id: "experience",
+   146→    label: "Experience",
+   147→    icon: Building2,
+   148→    description:
+   149→      "Previous employments and total experience — employer, designation, duration, reason for leaving, drawn salary, and gap analysis between roles.",
+   150→    sections: [
+   151→      { title: "Previous Employment", icon: Building2, hint: "Employer, designation, from-to, last drawn." },
+   152→      { title: "Total Experience", icon: Clock, hint: "Relevant & total years of experience." },
+   153→      { title: "Gap Analysis", icon: TrendingUp, hint: "Employment gaps and reasons." },
+   154→      { title: "Reporting History", icon: Users, hint: "Past managers at previous employers." },
+   155→    ],
+   156→  },
+   157→  {
+   158→    id: "bank",
+   159→    label: "Bank Details",
+   160→    icon: Landmark,
+   161→    description:
+   162→      "Bank account(s) used for payroll disbursement — primary account, holder details, IFSC, branch, account type, UPI ID, and historical bank account changes.",
+   163→    sections: [
+   164→      { title: "Primary Account", icon: Landmark, hint: "Bank, account no, IFSC, branch, type." },
+   165→      { title: "Account Holder", icon: User, hint: "Holder name, communication address proof." },
+   166→      { title: "UPI Details", icon: Wallet, hint: "UPI ID for reimbursements." },
+   167→      { title: "Bank History", icon: GitBranch, hint: "Past account changes with effective dates." },
+   168→      { title: "Bank Proof Documents", icon: FileText, hint: "Cancelled cheque / passbook upload." },
+   169→    ],
+   170→  },
+   171→  {
+   172→    id: "statutory",
+   173→    label: "Statutory Details",
+   174→    icon: ScrollText,
+   175→    description:
+   176→      "Statutory compliance information — PAN, Aadhaar, UAN, PF, ESI, Professional Tax, LWF, gratuity applicability, tax regime and TDS declaration status.",
+   177→    sections: [
+   178→      { title: "PAN", icon: ScrollText, hint: "PAN number, name on card, status." },
+   179→      { title: "Aadhaar", icon: ShieldCheck, hint: "Aadhaar number (masked), verified status." },
+   180→      { title: "UAN / PF", icon: Landmark, hint: "UAN, PF number, PF applicability." },
+   181→      { title: "ESI", icon: LifeBuoy, hint: "ESI number, dispensary, ESI applicability." },
+   182→      { title: "Professional Tax", icon: Receipt, hint: "PT location, applicability." },
+   183→      { title: "LWF & Gratuity", icon: ScrollText, hint: "LWF applicability, gratuity eligibility." },
+   184→      { title: "Tax Regime & TDS", icon: Wallet, hint: "Old / New regime, TDS declaration status." },
+   185→    ],
+   186→  },
+   187→  {
+   188→    id: "documents",
+   189→    label: "Documents",
+   190→    icon: FileText,
+   191→    description:
+   192→      "Document vault for the employee — KYC, employment, education, payroll, statutory, exit, and company-issued letters with version history and expiry reminders.",
+   193→    sections: [
+   194→      { title: "KYC Documents", icon: ScrollText, hint: "PAN, Aadhaar, passport, DL, voter ID uploads." },
+   195→      { title: "Employment Documents", icon: Briefcase, hint: "Offer, appointment, increment, relieving letters." },
+   196→      { title: "Education Certificates", icon: GraduationCap, hint: "Degree, mark sheets, course certificates." },
+   197→      { title: "Payroll Documents", icon: Wallet, hint: "Payslips, Form 16, bank proof." },
+   198→      { title: "Company Letters", icon: Mail, hint: "Confirmation, promotion, transfer, warning letters." },
+   199→      { title: "Document Categories", icon: FileText, hint: "Personal / Employment / Statutory / Legal." },
+   200→    ],
+   201→  },
+   202→  {
+   203→    id: "attendance",
+   204→    label: "Attendance",
+   205→    icon: Clock,
+   206→    description:
+   207→      "Daily attendance records, regularization, summary and trends — today's punch, monthly calendar, late/early marks, regularizations, overtime and attendance %.",
+   208→    sections: [
+   209→      { title: "Attendance Summary", icon: LayoutDashboard, hint: "Present, absent, late, WFH counts this month." },
+   210→      { title: "Today's Attendance", icon: Clock, hint: "Today's clock-in, clock-out, work hours, status." },
+   211→      { title: "Monthly Calendar", icon: CalendarDays, hint: "Color-coded daily attendance calendar." },
+   212→      { title: "Regularization Requests", icon: Inbox, hint: "Pending / approved regularizations." },
+   213→      { title: "Attendance Trends", icon: TrendingUp, hint: "7-day / 30-day present-vs-absent trend." },
+   214→      { title: "Overtime", icon: Clock, hint: "Approved OT hours for the period." },
+   215→    ],
+   216→  },
+   217→  {
+   218→    id: "leave",
+   219→    label: "Leave",
+   220→    icon: CalendarDays,
+   221→    description:
+   222→      "Leave entitlement, applications, balances and comp-off — opening, accrued, used, closing balance per leave type, application history, and leave calendar.",
+   223→    sections: [
+   224→      { title: "Leave Balance Summary", icon: CalendarDays, hint: "Per-type opening, accrued, used, closing." },
+   225→      { title: "Leave Applications", icon: Inbox, hint: "Recent applications with status." },
+   226→      { title: "Leave Policy", icon: ScrollText, hint: "Assigned leave policy & entitlement rules." },
+   227→      { title: "Comp-Off Balance", icon: Award, hint: "Earned comp-off leaves & expiry." },
+   228→      { title: "Leave Calendar", icon: CalendarDays, hint: "Approved / pending leaves overlaid on calendar." },
+   229→      { title: "Leave Trends", icon: TrendingUp, hint: "Leave usage over last 6 months." },
+   230→    ],
+   231→  },
+   232→  {
+   233→    id: "payroll",
+   234→    label: "Payroll",
+   235→    icon: Wallet,
+   236→    description:
+   237→      "Salary structure, monthly payslips, payroll inputs and deductions — current CTC breakdown, monthly net/gross, deductions (PF/ESI/PT/TDS), bank file status.",
+   238→    sections: [
+   239→      { title: "Salary Structure", icon: Wallet, hint: "Earnings & deductions component break-up." },
+   240→      { title: "Monthly Payslips", icon: FileText, hint: "Year-wise payslip downloads." },
+   241→      { title: "Payroll Inputs", icon: Inbox, hint: "Variable pay, reimbursement, one-time inputs." },
+   242→      { title: "Deductions", icon: Receipt, hint: "PF, ESI, PT, TDS, loan recovery summary." },
+   243→      { title: "Net Pay", icon: TrendingUp, hint: "Monthly net pay trend for the FY." },
+   244→      { title: "Bank File Status", icon: Landmark, hint: "Bank credit confirmation & bank file run." },
+   245→    ],
+   246→  },
+   247→  {
+   248→    id: "compensation",
+   249→    label: "Compensation History",
+   250→    icon: TrendingUp,
+   251→    description:
+   252→      "Salary revision history across the employee's tenure — current CTC, past revisions, component breakdown, promotion-linked revisions, annual increments and effective dates.",
+   253→    sections: [
+   254→      { title: "Current CTC", icon: Wallet, hint: "Annual CTC, gross, net, effective date." },
+   255→      { title: "Revision History", icon: GitBranch, hint: "All salary revisions with effective dates." },
+   256→      { title: "Component Breakdown", icon: Receipt, hint: "Basic, HRA, allowances, deductions per revision." },
+   257→      { title: "Promotion-linked Revisions", icon: TrendingUp, hint: "Revisions tied to promotions." },
+   258→      { title: "Annual Increments", icon: CalendarDays, hint: "Yearly increment cycle & %." },
+   259→    ],
+   260→  },
+   261→  {
+   262→    id: "performance",
+   263→    label: "Performance",
+   264→    icon: Target,
+   265→    description:
+   266→      "Goals, KRAs/KPIs, appraisal cycles, ratings, 360-degree feedback and performance improvement plans (PIP) — full performance management lifecycle.",
+   267→    sections: [
+   268→      { title: "Current Goals", icon: Target, hint: "Active KPIs/KRAs with target vs actual." },
+   269→      { title: "Appraisal Cycles", icon: CalendarDays, hint: "Annual / half-yearly / quarterly cycles." },
+   270→      { title: "Performance Ratings", icon: Award, hint: "Final rating per cycle with normalization." },
+   271→      { title: "360 Feedback", icon: Users, hint: "Peer, manager, HR, client feedback." },
+   272→      { title: "PIP", icon: TrendingUp, hint: "Active PIP goals, review dates, decision." },
+   273→      { title: "Continuous Feedback", icon: Mail, hint: "On-the-fly feedback shared & received." },
+   274→    ],
+   275→  },
+   276→  {
+   277→    id: "skills",
+   278→    label: "Skills & Certifications",
+   279→    icon: Award,
+   280→    description:
+   281→      "Skill matrix, certifications and proficiency — employee skill mapping with rating, manager validation, skill gap analysis and recommended trainings.",
+   282→    sections: [
+   283→      { title: "Skill Matrix", icon: Award, hint: "Skill, rating, last assessed, manager validated." },
+   284→      { title: "Certifications", icon: ShieldCheck, hint: "Held certifications with validity & issuer." },
+   285→      { title: "Skill Gap Analysis", icon: Target, hint: "Required vs held skills per role." },
+   286→      { title: "Training Recommendations", icon: BookOpen, hint: "Suggested trainings based on gaps." },
+   287→      { title: "Manager Validation", icon: ClipboardCheck, hint: "Pending validations from manager." },
+   288→    ],
+   289→  },
+   290→  {
+   291→    id: "training",
+   292→    label: "Training",
+   293→    icon: BookOpen,
+   294→    description:
+   295→      "Learning & development records — assigned and completed trainings, course progress, training calendar, nominations, attendance and feedback.",
+   296→    sections: [
+   297→      { title: "Assigned Trainings", icon: BookOpen, hint: "Active course assignments & due dates." },
+   298→      { title: "Completed Trainings", icon: Award, hint: "Completed courses with score & cert." },
+   299→      { title: "Training Calendar", icon: CalendarDays, hint: "Upcoming sessions employee is nominated for." },
+   300→      { title: "Course Progress", icon: TrendingUp, hint: "% completion per active course." },
+   301→      { title: "Nominations", icon: Inbox, hint: "Pending nominations awaiting approval." },
+   302→      { title: "Feedback", icon: Mail, hint: "Post-training feedback submitted." },
+   303→    ],
+   304→  },
+   305→  {
+   306→    id: "assets",
+   307→    label: "Assets",
+   308→    icon: Laptop,
+   309→    description:
+   310→      "Company-issued assets — currently assigned assets, assignment history, asset requests, returns, and software licenses tied to the employee.",
+   311→    sections: [
+   312→      { title: "Current Assets", icon: Laptop, hint: "Assigned assets with code, serial, condition." },
+   313→      { title: "Asset History", icon: GitBranch, hint: "Past assignments with issue/return dates." },
+   314→      { title: "Asset Requests", icon: Inbox, hint: "Pending / approved / rejected requests." },
+   315→      { title: "Asset Returns", icon: LogOut, hint: "Scheduled returns during exit." },
+   316→      { title: "Software Licenses", icon: KeyRound, hint: "Software license seats assigned." },
+   317→    ],
+   318→  },
+   319→  {
+   320→    id: "expenses",
+   321→    label: "Expenses",
+   322→    icon: Receipt,
+   323→    description:
+   324→      "Expense claims and reimbursements — pending/approved/rejected claims, line items, advances, settlements, and category-wise reports.",
+   325→    sections: [
+   326→      { title: "Pending Claims", icon: Inbox, hint: "Submitted claims awaiting approval." },
+   327→      { title: "Approved Claims", icon: Award, hint: "Approved claims awaiting payment." },
+   328→      { title: "Rejected Claims", icon: LogOut, hint: "Rejected claims with reason." },
+   329→      { title: "Advances", icon: Wallet, hint: "Travel / salary / project advances & balance." },
+   330→      { title: "Settlements", icon: Receipt, hint: "Settled claims & recovery." },
+   331→      { title: "Reports", icon: TrendingUp, hint: "Category-wise & monthly expense reports." },
+   332→    ],
+   333→  },
+   334→  {
+   335→    id: "helpdesk",
+   336→    label: "Helpdesk",
+   337→    icon: LifeBuoy,
+   338→    description:
+   339→      "Support tickets raised by or for the employee — open/closed tickets by category, SLA compliance, escalations and resolution feedback.",
+   340→    sections: [
+   341→      { title: "Open Tickets", icon: LifeBuoy, hint: "Tickets in Open / Assigned / In-progress." },
+   342→      { title: "Closed Tickets", icon: ShieldCheck, hint: "Resolved / closed tickets archive." },
+   343→      { title: "Ticket Categories", icon: SlidersHorizontal, hint: "HR / IT / Finance / Payroll / Admin / POSH." },
+   344→      { title: "SLA Compliance", icon: Clock, hint: "TAT adherence per ticket." },
+   345→      { title: "Escalations", icon: TrendingUp, hint: "Escalated tickets & reasons." },
+   346→    ],
+   347→  },
+   348→  {
+   349→    id: "requests",
+   350→    label: "Requests",
+   351→    icon: Inbox,
+   352→    description:
+   353→      "Profile update requests and self-service requests raised by the employee — pending/approved/rejected requests, field-level changes, and workflow status.",
+   354→    sections: [
+   355→      { title: "Pending Requests", icon: Inbox, hint: "Awaiting reviewer action." },
+   356→      { title: "Approved Requests", icon: Award, hint: "Approved & applied changes." },
+   357→      { title: "Rejected Requests", icon: LogOut, hint: "Rejected with reviewer comment." },
+   358→      { title: "Field Changes", icon: SlidersHorizontal, hint: "Old vs new value diff per request." },
+   359→      { title: "Workflow Status", icon: GitBranch, hint: "Current step & approver." },
+   360→    ],
+   361→  },
+   362→  {
+   363→    id: "letters",
+   364→    label: "Letters",
+   365→    icon: Mail,
+   366→    description:
+   367→      "Letters generated and issued to the employee — offer, appointment, confirmation, increment, promotion, transfer, warning, experience, relieving letters with digital signatures.",
+   368→    sections: [
+   369→      { title: "Issued Letters", icon: Mail, hint: "Letters issued to employee with PDF." },
+   370→      { title: "Letter Templates", icon: FileText, hint: "Available templates for this employee." },
+   371→      { title: "Pending Letters", icon: Inbox, hint: "Letters queued for issuance / approval." },
+   372→      { title: "Signatures", icon: ShieldCheck, hint: "Digital signatures applied." },
+   373→      { title: "Letter History", icon: GitBranch, hint: "Audit trail of generated letters." },
+   374→    ],
+   375→  },
+   376→  {
+   377→    id: "timeline",
+   378→    label: "Timeline",
+   379→    icon: GitBranch,
+   380→    description:
+   381→      "Lifecycle events and activity feed — joining, promotions, transfers, manager changes, salary revisions, probation, confirmation, document uploads, leave approvals, regularization, resignation and exit.",
+   382→    sections: [
+   383→      { title: "Lifecycle Events", icon: GitBranch, hint: "Major career milestones chronologically." },
+   384→      { title: "Career Milestones", icon: TrendingUp, hint: "Promotions, transfers, role changes." },
+   385→      { title: "Document Activity", icon: FileText, hint: "Uploads and document status changes." },
+   386→      { title: "Status Changes", icon: ShieldCheck, hint: "Employment status transitions." },
+   387→      { title: "Activity Feed", icon: Inbox, hint: "All timestamped activity entries." },
+   388→    ],
+   389→  },
+   390→  {
+   391→    id: "audit",
+   392→    label: "Audit History",
+   393→    icon: ShieldCheck,
+   394→    description:
+   395→      "Audit log of all changes to the employee record — recent changes, field-level audit, user activity, login audit and sensitive actions (salary change, status change, document download).",
+   396→    sections: [
+   397→      { title: "Recent Changes", icon: GitBranch, hint: "Latest field-level changes with user & timestamp." },
+   398→      { title: "Field-level Audit", icon: SlidersHorizontal, hint: "Old vs new for each modified field." },
+   399→      { title: "User Activity", icon: Users, hint: "Actions performed by users on this record." },
+   400→      { title: "Login Audit", icon: KeyRound, hint: "Employee login history & sessions." },
+   401→      { title: "Sensitive Actions", icon: Shield, hint: "Salary change, status change, document download." },
+   402→    ],
+   403→  },
+   404→  {
+   405→    id: "notes",
+   406→    label: "Notes",
+   407→    icon: StickyNote,
+   408→    description:
+   409→      "HR and manager notes against the employee — pinned notes, private notes, general notes and a chronological note history with author and timestamps.",
+   410→    sections: [
+   411→      { title: "HR Notes", icon: StickyNote, hint: "Notes added by HR team, visibility HR-only." },
+   412→      { title: "Manager Notes", icon: Users, hint: "Notes added by reporting manager." },
+   413→      { title: "Pinned Notes", icon: ShieldCheck, hint: "Important notes pinned to top." },
+   414→      { title: "Private Notes", icon: Lock, hint: "Private notes visible only to author." },
+   415→      { title: "Note History", icon: GitBranch, hint: "Full chronological note feed." },
+   416→    ],
+   417→  },
+   418→  {
+   419→    id: "probation",
+   420→    label: "Probation",
+   421→    icon: ClipboardCheck,
+   422→    description:
+   423→      "Probation tracking — probation period, start/end dates, confirmation status, probation reviews, extensions, and the probation appraisal.",
+   424→    sections: [
+   425→      { title: "Probation Period", icon: Clock, hint: "Start, end, duration in days." },
+   426→      { title: "Confirmation Status", icon: ShieldCheck, hint: "Confirmed / On Probation / Extended / Not Confirmed." },
+   427→      { title: "Probation Reviews", icon: ClipboardCheck, hint: "Scheduled review dates & outcomes." },
+   428→      { title: "Extension History", icon: GitBranch, hint: "Probation extensions with reason." },
+   429→      { title: "Probation Appraisal", icon: Target, hint: "Appraisal form tied to probation." },
+   430→    ],
+   431→  },
+   432→  {
+   433→    id: "transfer-promotion",
+   434→    label: "Transfer & Promotion",
+   435→    icon: ArrowLeftRight,
+   436→    description:
+   437→      "Career movements — transfer history (department/location/entity/manager changes), promotion history (designation/grade changes), lateral moves, and pending movements.",
+   438→    sections: [
+   439→      { title: "Transfer History", icon: ArrowLeftRight, hint: "Past transfers with from→to & date." },
+   440→      { title: "Promotion History", icon: TrendingUp, hint: "Past promotions with grade/designation change." },
+   441→      { title: "Lateral Moves", icon: ArrowLeftRight, hint: "Same-grade role changes." },
+   442→      { title: "Reporting Changes", icon: Users, hint: "Historical reporting manager changes." },
+   443→      { title: "Pending Movements", icon: Inbox, hint: "Approved-but-effective-future movements." },
+   444→    ],
+   445→  },
+   446→  {
+   447→    id: "exit",
+   448→    label: "Exit / Separation",
+   449→    icon: LogOut,
+   450→    description:
+   451→      "Offboarding lifecycle — resignation, notice period, exit clearance (HR/IT/Admin/Finance/Manager), exit interview, full & final settlement, and asset returns.",
+   452→    sections: [
+   453→      { title: "Resignation", icon: LogOut, hint: "Resignation date, reason, last working day." },
+   454→      { title: "Notice Period", icon: Clock, hint: "Notice start, end, buyout / waiver." },
+   455→      { title: "Clearance Checklist", icon: ClipboardCheck, hint: "HR / IT / Admin / Finance / Manager no-dues." },
+   456→      { title: "Exit Interview", icon: Mail, hint: "Interview form, feedback, rehire eligibility." },
+   457→      { title: "FnF Settlement", icon: Wallet, hint: "Leave encashment, recovery, gratuity, final salary." },
+   458→      { title: "Asset Returns", icon: Laptop, hint: "Outstanding assets pending return." },
+   459→    ],
+   460→  },
+   461→  {
+   462→    id: "login-access",
+   463→    label: "Login & Access",
+   464→    icon: KeyRound,
+   465→    description:
+   466→      "System access — login credentials, active sessions, password policy compliance, 2FA status, access history and last login details.",
+   467→    sections: [
+   468→      { title: "Login Credentials", icon: KeyRound, hint: "Username, official email, status (active/locked)." },
+   469→      { title: "Active Sessions", icon: Users, hint: "Active login sessions & devices." },
+   470→      { title: "Password Policy", icon: Shield, hint: "Last changed, expiry, history count." },
+   471→      { title: "2FA Status", icon: ShieldCheck, hint: "Enabled/disabled, method, last verified." },
+   472→      { title: "Access History", icon: GitBranch, hint: "Successful / failed login attempts." },
+   473→      { title: "Last Login", icon: Clock, hint: "Last login timestamp, IP, device." },
+   474→    ],
+   475→  },
+   476→  {
+   477→    id: "roles",
+   478→    label: "Roles & Permissions",
+   479→    icon: Shield,
+   480→    description:
+   481→      "RBAC for the employee — assigned roles, permission matrix per module, data scope (own / team / department / location / entity / org), and field-level access overrides.",
+   482→    sections: [
+   483→      { title: "Assigned Roles", icon: Shield, hint: "Primary and secondary roles mapped." },
+   484→      { title: "Permissions Matrix", icon: SlidersHorizontal, hint: "View / Create / Edit / Delete per module." },
+   485→      { title: "Data Scope", icon: Users, hint: "Own / team / dept / location / entity / org." },
+   486→      { title: "Field-level Access", icon: ShieldCheck, hint: "Sensitive field visibility (salary etc.)." },
+   487→      { title: "Role History", icon: GitBranch, hint: "Role assignment / revocation timeline." },
+   488→    ],
+   489→  },
+   490→  {
+   491→    id: "custom-fields",
+   492→    label: "Custom Fields",
+   493→    icon: SlidersHorizontal,
+   494→    description:
+   495→      "Tenant-specific custom fields captured for the employee — custom field values grouped by section, custom categories, and any custom reports that use these fields.",
+   496→    sections: [
+   497→      { title: "Custom Field Values", icon: SlidersHorizontal, hint: "All captured custom fields with value." },
+   498→      { title: "Custom Sections", icon: LayoutDashboard, hint: "Grouped custom field sections." },
+   499→      { title: "Field Categories", icon: FileText, hint: "Categories custom fields belong to." },
+   500→      { title: "Custom Reports", icon: TrendingUp, hint: "Reports leveraging custom fields." },
+   501→    ],
+   502→  },
+   503→  {
+   504→    id: "forms",
+   505→    label: "Forms",
+   506→    icon: ClipboardList,
+   507→    description:
+   508→      "Custom form submissions — submitted forms, pending forms, available form templates the employee can fill, and submission history with audit trail.",
+   509→    sections: [
+   510→      { title: "Submitted Forms", icon: ClipboardList, hint: "Forms submitted by / for the employee." },
+   511→      { title: "Pending Forms", icon: Inbox, hint: "Forms awaiting submission by employee." },
+   512→      { title: "Available Forms", icon: FileText, hint: "Form templates assignable to this employee." },
+   513→      { title: "Form Templates", icon: SlidersHorizontal, hint: "Tenant-wide custom form library." },
+   514→      { title: "Submission History", icon: GitBranch, hint: "Version history of form submissions." },
+   515→    ],
+   516→  },
+   517→]
+   518→
+   519→// Sanity guard — keep the contract honest.
+   520→export const PROFILE_TAB_IDS = PROFILE_TABS.map((t) => t.id)
+   521→export const PROFILE_TAB_COUNT = PROFILE_TABS.length
+   522→
+   523→// ----------------------------------------------------------------
+   524→// Role-based tab visibility.
+   525→// Phase 2 currently defaults to showing ALL tabs (no auth wired
+   526→// yet). This map is structured for future RBAC enforcement: each
+   527→// role lists the tab ids it is allowed to see. Use getVisibleTabs()
+   528→// to resolve the visible set for a given role.
+   529→// ----------------------------------------------------------------
+   530→export const TAB_VISIBILITY: Record<EmployeeRole, "all" | string[]> = {
+   531→  "Super Admin": "all",
+   532→  "Organization Admin": "all",
+   533→  "HR Admin": "all",
+   534→  "Payroll Admin": [
+   535→    "overview", "personal", "job", "bank", "statutory", "payroll",
+   536→    "compensation", "documents", "timeline", "audit", "notes",
+   537→    "login-access", "custom-fields",
+   538→  ],
+   539→  "Finance Admin": [
+   540→    "overview", "job", "bank", "statutory", "payroll", "compensation",
+   541→    "expenses", "documents", "timeline", "audit",
+   542→  ],
+   543→  "Department Head": [
+   544→    "overview", "personal", "job", "contact", "attendance", "leave",
+   545→    "performance", "skills", "training", "timeline", "notes",
+   546→    "transfer-promotion", "probation",
+   547→  ],
+   548→  "Reporting Manager": [
+   549→    "overview", "personal", "job", "contact", "attendance", "leave",
+   550→    "performance", "skills", "training", "timeline", "notes",
+   551→    "transfer-promotion", "probation",
+   552→  ],
+   553→  Employee: [
+   554→    "overview", "personal", "job", "contact", "family", "education",
+   555→    "documents", "attendance", "leave", "payroll", "skills", "training",
+   556→    "assets", "expenses", "helpdesk", "requests", "letters", "timeline",
+   557→  ],
+   558→  Recruiter: ["overview", "personal", "job", "documents", "timeline"],
+   559→  "IT Admin": [
+   560→    "overview", "personal", "job", "assets", "login-access", "roles",
+   561→    "audit", "timeline",
+   562→  ],
+   563→  Auditor: [
+   564→    "overview", "job", "audit", "timeline", "notes", "transfer-promotion",
+   565→    "exit", "login-access", "roles",
+   566→  ],
+   567→}
+   568→
+   569→export function getVisibleTabs(role: EmployeeRole | string | undefined): ProfileTab[] {
+   570→  const r = (role || "HR Admin") as EmployeeRole
+   571→  const vis = TAB_VISIBILITY[r] ?? "all"
+   572→  if (vis === "all") return PROFILE_TABS
+   573→  const allowed = new Set(vis)
+   574→  return PROFILE_TABS.filter((t) => allowed.has(t.id))
+   575→}
+   576→

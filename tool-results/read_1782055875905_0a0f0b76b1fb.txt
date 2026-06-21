@@ -1,0 +1,758 @@
+     1→'use client'
+     2→
+     3→import * as React from "react"
+     4→import { motion } from "framer-motion"
+     5→import { toast } from "sonner"
+     6→import {
+     7→  Users, Plus, Pencil, Trash2, Mail, Phone, MapPin, Calendar,
+     8→  Briefcase, Banknote, FileText, User as UserIcon, Clock, ExternalLink,
+     9→} from "lucide-react"
+    10→import type { LucideIcon } from "lucide-react"
+    11→import {
+    12→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+    13→} from "@/components/ui/dialog"
+    14→import {
+    15→  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
+    16→} from "@/components/ui/sheet"
+    17→import {
+    18→  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+    19→  AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel,
+    20→} from "@/components/ui/alert-dialog"
+    21→import { Button } from "@/components/ui/button"
+    22→import { Badge } from "@/components/ui/badge"
+    23→import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+    24→import {
+    25→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    26→} from "@/components/ui/select"
+    27→import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+    28→import { ScrollArea } from "@/components/ui/scroll-area"
+    29→import { Separator } from "@/components/ui/separator"
+    30→import {
+    31→  PageHeader, ListToolbar, DataTable, StatusBadge, EmptyState, Column,
+    32→} from "@/components/hrms/ui"
+    33→import { DynamicForm, FieldValue } from "@/components/dynamic-form/dynamic-form"
+    34→import { employeeFormSchema } from "@/lib/form-schemas"
+    35→import type { FormValues, FormField as FormFieldDef, FieldType } from "@/lib/types"
+    36→
+    37→// ============================================================
+    38→// Utilities
+    39→// ============================================================
+    40→
+    41→function getInitials(first?: string | null, middle?: string | null, last?: string | null) {
+    42→  const f = (first || "").trim().charAt(0).toUpperCase()
+    43→  const m = (middle || "").trim().charAt(0).toUpperCase()
+    44→  const l = (last || "").trim().charAt(0).toUpperCase()
+    45→  // Prefer first + last; fall back to first + middle if no last
+    46→  const out = l ? f + l : (m ? f + m : f)
+    47→  return out || "?"
+    48→}
+    49→
+    50→function formatDate(iso?: string | null): string {
+    51→  if (!iso) return "—"
+    52→  try {
+    53→    return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+    54→  } catch {
+    55→    return "—"
+    56→  }
+    57→}
+    58→
+    59→function formatCurrency(v?: number | null): string {
+    60→  if (v === undefined || v === null) return "—"
+    61→  return "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(v)
+    62→}
+    63→
+    64→function toFormValues(rec: any): FormValues {
+    65→  if (!rec) return {}
+    66→  const out: FormValues = {}
+    67→  for (const [k, v] of Object.entries(rec)) {
+    68→    if (v instanceof Date) out[k] = v.toISOString()
+    69→    else out[k] = v
+    70→  }
+    71→  return out
+    72→}
+    73→
+    74→function useDebounce<T>(value: T, delay: number): T {
+    75→  const [debounced, setDebounced] = React.useState(value)
+    76→  React.useEffect(() => {
+    77→    const t = setTimeout(() => setDebounced(value), delay)
+    78→    return () => clearTimeout(t)
+    79→  }, [value, delay])
+    80→  return debounced
+    81→}
+    82→
+    83→// Build a FormFieldDef for FieldValue rendering
+    84→function fd(key: string, label: string, type: FieldType = "text"): FormFieldDef {
+    85→  return { id: `f-${key}`, key, label, type }
+    86→}
+    87→
+    88→const EMPLOYEE_STATUS_OPTIONS = [
+    89→  { label: "All Status", value: "all" },
+    90→  { label: "Active", value: "Active" },
+    91→  { label: "On Notice", value: "On Notice" },
+    92→  { label: "Resigned", value: "Resigned" },
+    93→  { label: "Inactive", value: "Inactive" },
+    94→]
+    95→
+    96→// ============================================================
+    97→// Main Employees Module
+    98→// ============================================================
+    99→
+   100→export function EmployeesModule() {
+   101→  // List state
+   102→  const [rows, setRows] = React.useState<any[]>([])
+   103→  const [loading, setLoading] = React.useState(true)
+   104→  const [search, setSearch] = React.useState("")
+   105→  const [departmentFilter, setDepartmentFilter] = React.useState<string>("")
+   106→  const [statusFilter, setStatusFilter] = React.useState<string>("")
+   107→  const [departments, setDepartments] = React.useState<any[]>([])
+   108→
+   109→  // Detail sheet state
+   110→  const [sheetOpen, setSheetOpen] = React.useState(false)
+   111→  const [selectedId, setSelectedId] = React.useState<string | null>(null)
+   112→  const [selectedEmp, setSelectedEmp] = React.useState<any | null>(null)
+   113→  const [loadingDetail, setLoadingDetail] = React.useState(false)
+   114→
+   115→  // Add/Edit dialog state
+   116→  const [dialogOpen, setDialogOpen] = React.useState(false)
+   117→  const [editing, setEditing] = React.useState<any | null>(null)
+   118→  const [saving, setSaving] = React.useState(false)
+   119→
+   120→  // Delete state
+   121→  const [deletingId, setDeletingId] = React.useState<string | null>(null)
+   122→
+   123→  const debouncedSearch = useDebounce(search, 300)
+   124→
+   125→  const load = React.useCallback(async () => {
+   126→    setLoading(true)
+   127→    try {
+   128→      const params = new URLSearchParams()
+   129→      if (debouncedSearch) params.set("q", debouncedSearch)
+   130→      if (departmentFilter) params.set("departmentId", departmentFilter)
+   131→      if (statusFilter) params.set("status", statusFilter)
+   132→      const url = `/api/employees${params.toString() ? "?" + params.toString() : ""}`
+   133→      const res = await fetch(url, { cache: "no-store" })
+   134→      if (!res.ok) throw new Error("Request failed")
+   135→      const data = await res.json()
+   136→      setRows(data.items || [])
+   137→    } catch {
+   138→      toast.error("Failed to load employees")
+   139→    } finally {
+   140→      setLoading(false)
+   141→    }
+   142→  }, [debouncedSearch, departmentFilter, statusFilter])
+   143→
+   144→  React.useEffect(() => {
+   145→    load()
+   146→  }, [load])
+   147→
+   148→  // Load departments for filter
+   149→  React.useEffect(() => {
+   150→    fetch("/api/departments", { cache: "no-store" })
+   151→      .then((r) => r.json())
+   152→      .then((data) => setDepartments(data.items || []))
+   153→      .catch(() => {})
+   154→  }, [])
+   155→
+   156→  // Open detail sheet
+   157→  const onView = async (row: any) => {
+   158→    setSelectedId(row.id)
+   159→    setSheetOpen(true)
+   160→    setLoadingDetail(true)
+   161→    setSelectedEmp(row) // initial data from list (lighter)
+   162→    try {
+   163→      const res = await fetch(`/api/employees/${row.id}`, { cache: "no-store" })
+   164→      if (!res.ok) throw new Error()
+   165→      const data = await res.json()
+   166→      setSelectedEmp(data)
+   167→    } catch {
+   168→      toast.error("Failed to load employee details")
+   169→    } finally {
+   170→      setLoadingDetail(false)
+   171→    }
+   172→  }
+   173→
+   174→  const onAdd = () => {
+   175→    setEditing(null)
+   176→    setDialogOpen(true)
+   177→  }
+   178→
+   179→  const onEdit = (emp: any) => {
+   180→    setEditing(emp)
+   181→    setDialogOpen(true)
+   182→    setSheetOpen(false)
+   183→  }
+   184→
+   185→  const onSubmit = async (values: FormValues) => {
+   186→    setSaving(true)
+   187→    try {
+   188→      const isEdit = !!editing
+   189→      const url = isEdit ? `/api/employees/${editing.id}` : "/api/employees"
+   190→      const method = isEdit ? "PATCH" : "POST"
+   191→      const res = await fetch(url, {
+   192→        method,
+   193→        headers: { "Content-Type": "application/json" },
+   194→        body: JSON.stringify(values),
+   195→      })
+   196→      if (!res.ok) {
+   197→        const err = await res.json().catch(() => ({}))
+   198→        throw new Error(err.error || `Failed to ${isEdit ? "update" : "create"} employee`)
+   199→      }
+   200→      toast.success(isEdit ? "Employee updated" : "Employee created")
+   201→      setDialogOpen(false)
+   202→      setEditing(null)
+   203→      await load()
+   204→      // Refresh detail if we were editing the currently selected employee
+   205→      if (isEdit && selectedId) {
+   206→        try {
+   207→          const detail = await fetch(`/api/employees/${selectedId}`, { cache: "no-store" }).then((r) => r.json())
+   208→          setSelectedEmp(detail)
+   209→        } catch {}
+   210→      }
+   211→    } catch (e: any) {
+   212→      toast.error(e.message || "Something went wrong")
+   213→    } finally {
+   214→      setSaving(false)
+   215→    }
+   216→  }
+   217→
+   218→  const onConfirmDelete = async () => {
+   219→    if (!deletingId) return
+   220→    try {
+   221→      const res = await fetch(`/api/employees/${deletingId}`, { method: "DELETE" })
+   222→      if (!res.ok) {
+   223→        const err = await res.json().catch(() => ({}))
+   224→        throw new Error(err.error || "Failed to delete")
+   225→      }
+   226→      toast.success("Employee deleted")
+   227→      if (selectedId === deletingId) {
+   228→        setSheetOpen(false)
+   229→        setSelectedId(null)
+   230→        setSelectedEmp(null)
+   231→      }
+   232→      setDeletingId(null)
+   233→      await load()
+   234→    } catch (e: any) {
+   235→      toast.error(e.message || "Failed to delete")
+   236→    }
+   237→  }
+   238→
+   239→  const columns: Column<any>[] = [
+   240→    {
+   241→      key: "name",
+   242→      header: "Employee",
+   243→      render: (e) => (
+   244→        <div className="flex items-center gap-3">
+   245→          <Avatar className="h-9 w-9 border border-border/60">
+   246→            <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 text-xs font-semibold">
+   247→              {getInitials(e.firstName, e.middleName, e.lastName)}
+   248→            </AvatarFallback>
+   249→          </Avatar>
+   250→          <div className="min-w-0">
+   251→            <div className="font-medium text-foreground truncate">
+   252→              {e.firstName} {e.middleName || ""} {e.lastName || ""}
+   253→            </div>
+   254→            <div className="text-xs text-muted-foreground font-mono">{e.employeeCode}</div>
+   255→          </div>
+   256→        </div>
+   257→      ),
+   258→    },
+   259→    {
+   260→      key: "designation",
+   261→      header: "Designation",
+   262→      render: (e) =>
+   263→        e.designation ? <span className="text-sm">{e.designation.name}</span> : <span className="text-muted-foreground/50 italic text-sm">—</span>,
+   264→    },
+   265→    {
+   266→      key: "department",
+   267→      header: "Department",
+   268→      render: (e) =>
+   269→        e.department ? <span className="text-sm">{e.department.name}</span> : <span className="text-muted-foreground/50 italic text-sm">—</span>,
+   270→    },
+   271→    {
+   272→      key: "entity",
+   273→      header: "Entity",
+   274→      render: (e) =>
+   275→        e.entity ? <span className="text-sm">{e.entity.tradeName || e.entity.legalName}</span> : <span className="text-muted-foreground/50 italic text-sm">—</span>,
+   276→    },
+   277→    {
+   278→      key: "location",
+   279→      header: "Location",
+   280→      render: (e) =>
+   281→        e.location ? <span className="text-sm">{e.location.name}</span> : <span className="text-muted-foreground/50 italic text-sm">—</span>,
+   282→    },
+   283→    {
+   284→      key: "status",
+   285→      header: "Status",
+   286→      render: (e) => <StatusBadge status={e.employeeStatus} />,
+   287→    },
+   288→    {
+   289→      key: "dateOfJoining",
+   290→      header: "Joined",
+   291→      render: (e) => <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(e.dateOfJoining)}</span>,
+   292→    },
+   293→    {
+   294→      key: "_actions",
+   295→      header: "",
+   296→      width: "120px",
+   297→      className: "text-right",
+   298→      render: (e) => (
+   299→        <div className="flex items-center justify-end gap-0.5" onClick={(ev) => ev.stopPropagation()}>
+   300→          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => onView(e)} title="View profile">
+   301→            <ExternalLink className="h-3.5 w-3.5" />
+   302→          </Button>
+   303→          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => onEdit(e)} title="Edit">
+   304→            <Pencil className="h-3.5 w-3.5" />
+   305→          </Button>
+   306→          <Button
+   307→            size="sm" variant="ghost"
+   308→            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+   309→            onClick={() => setDeletingId(e.id)}
+   310→            title="Delete"
+   311→          >
+   312→            <Trash2 className="h-3.5 w-3.5" />
+   313→          </Button>
+   314→        </div>
+   315→      ),
+   316→    },
+   317→  ]
+   318→
+   319→  return (
+   320→    <div className="space-y-5">
+   321→      <motion.div
+   322→        initial={{ opacity: 0, y: 6 }}
+   323→        animate={{ opacity: 1, y: 0 }}
+   324→        transition={{ duration: 0.18, ease: "easeOut" }}
+   325→      >
+   326→        <PageHeader
+   327→          title="Employees"
+   328→          description="Manage employee master records — the core of your HRMS."
+   329→          icon={Users}
+   330→          badge={
+   331→            <Badge variant="secondary" className="ml-1.5 font-medium">
+   332→              {loading ? "…" : `${rows.length} ${rows.length === 1 ? "employee" : "employees"}`}
+   333→            </Badge>
+   334→          }
+   335→        />
+   336→
+   337→        <ListToolbar
+   338→          search={search}
+   339→          onSearch={setSearch}
+   340→          onAdd={onAdd}
+   341→          addLabel="Add Employee"
+   342→          extra={
+   343→            <div className="flex items-center gap-2 flex-wrap">
+   344→              <Select
+   345→                value={departmentFilter || "all"}
+   346→                onValueChange={(v) => setDepartmentFilter(v === "all" ? "" : v)}
+   347→              >
+   348→                <SelectTrigger className="w-[180px] h-9">
+   349→                  <SelectValue placeholder="All Departments" />
+   350→                </SelectTrigger>
+   351→                <SelectContent className="max-h-72">
+   352→                  <SelectItem value="all">All Departments</SelectItem>
+   353→                  {departments.map((d) => (
+   354→                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+   355→                  ))}
+   356→                </SelectContent>
+   357→              </Select>
+   358→              <Select
+   359→                value={statusFilter || "all"}
+   360→                onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}
+   361→              >
+   362→                <SelectTrigger className="w-[150px] h-9">
+   363→                  <SelectValue placeholder="All Status" />
+   364→                </SelectTrigger>
+   365→                <SelectContent>
+   366→                  {EMPLOYEE_STATUS_OPTIONS.map((o) => (
+   367→                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+   368→                  ))}
+   369→                </SelectContent>
+   370→              </Select>
+   371→            </div>
+   372→          }
+   373→        />
+   374→
+   375→        <DataTable
+   376→          columns={columns}
+   377→          rows={rows}
+   378→          loading={loading}
+   379→          onRowClick={onView}
+   380→          emptyState={
+   381→            <EmptyState
+   382→              icon={Users}
+   383→              title={search || departmentFilter || statusFilter ? "No employees match your filters" : "No employees yet"}
+   384→              description={search || departmentFilter || statusFilter ? "Try adjusting your search or filters." : "Add your first employee to get started."}
+   385→              action={
+   386→                !search && !departmentFilter && !statusFilter ? (
+   387→                  <Button size="sm" onClick={onAdd} className="gap-1.5">
+   388→                    <Plus className="h-4 w-4" /> Add Employee
+   389→                  </Button>
+   390→                ) : undefined
+   391→              }
+   392→            />
+   393→          }
+   394→        />
+   395→      </motion.div>
+   396→
+   397→      {/* Add/Edit Dialog */}
+   398→      <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditing(null) }}>
+   399→        <DialogContent className="sm:max-w-3xl max-h-[88vh] overflow-y-auto">
+   400→          <DialogHeader>
+   401→            <DialogTitle>{editing ? "Edit Employee" : "Add Employee"}</DialogTitle>
+   402→            <DialogDescription>
+   403→              Fill in the employee details below. Fields marked <span className="text-destructive">*</span> are required.
+   404→            </DialogDescription>
+   405→          </DialogHeader>
+   406→          <DynamicForm
+   407→            schema={employeeFormSchema}
+   408→            initialValues={editing ? toFormValues(editing) : undefined}
+   409→            onSubmit={onSubmit}
+   410→            onCancel={() => { setDialogOpen(false); setEditing(null) }}
+   411→            submitLabel={editing ? "Update Employee" : "Create Employee"}
+   412→            loading={saving}
+   413→          />
+   414→        </DialogContent>
+   415→      </Dialog>
+   416→
+   417→      {/* Profile Sheet */}
+   418→      <Sheet open={sheetOpen} onOpenChange={(o) => { setSheetOpen(o); if (!o) { setSelectedId(null); setSelectedEmp(null) } }}>
+   419→        <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col">
+   420→          {selectedEmp ? (
+   421→            <EmployeeProfile
+   422→              emp={selectedEmp}
+   423→              loading={loadingDetail}
+   424→              onEdit={() => onEdit(selectedEmp)}
+   425→              onDelete={() => setDeletingId(selectedEmp.id)}
+   426→            />
+   427→          ) : (
+   428→            <div className="flex items-center justify-center h-full py-20">
+   429→              <div className="text-sm text-muted-foreground">Loading employee...</div>
+   430→            </div>
+   431→          )}
+   432→        </SheetContent>
+   433→      </Sheet>
+   434→
+   435→      {/* Delete confirmation */}
+   436→      <AlertDialog open={!!deletingId} onOpenChange={(o) => { if (!o) setDeletingId(null) }}>
+   437→        <AlertDialogContent>
+   438→          <AlertDialogHeader>
+   439→            <AlertDialogTitle>Delete this employee?</AlertDialogTitle>
+   440→            <AlertDialogDescription>
+   441→              This action cannot be undone. The employee record and all related data (leave, attendance, assets, etc.) will be permanently deleted.
+   442→            </AlertDialogDescription>
+   443→          </AlertDialogHeader>
+   444→          <AlertDialogFooter>
+   445→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+   446→            <AlertDialogAction
+   447→              onClick={onConfirmDelete}
+   448→              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+   449→            >
+   450→              Delete
+   451→            </AlertDialogAction>
+   452→          </AlertDialogFooter>
+   453→        </AlertDialogContent>
+   454→      </AlertDialog>
+   455→    </div>
+   456→  )
+   457→}
+   458→
+   459→// ============================================================
+   460→// Employee Profile Drawer (Sheet content)
+   461→// ============================================================
+   462→
+   463→function EmployeeProfile({
+   464→  emp, loading, onEdit, onDelete,
+   465→}: {
+   466→  emp: any
+   467→  loading: boolean
+   468→  onEdit: () => void
+   469→  onDelete: () => void
+   470→}) {
+   471→  const fullName = [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(" ")
+   472→  const [tab, setTab] = React.useState("overview")
+   473→
+   474→  return (
+   475→    <>
+   476→      <SheetHeader className="border-b bg-gradient-to-br from-emerald-500/5 via-teal-500/5 to-cyan-500/5 px-6 py-5">
+   477→        <div className="flex items-start gap-4">
+   478→          <Avatar className="h-16 w-16 border-2 border-background shadow-soft shrink-0">
+   479→            <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-500 text-white text-xl font-semibold">
+   480→              {getInitials(emp.firstName, emp.middleName, emp.lastName)}
+   481→            </AvatarFallback>
+   482→          </Avatar>
+   483→          <div className="min-w-0 flex-1">
+   484→            <SheetTitle className="text-lg font-semibold truncate">{fullName}</SheetTitle>
+   485→            <SheetDescription className="flex items-center gap-2 mt-1 flex-wrap">
+   486→              <span className="font-mono text-xs">{emp.employeeCode}</span>
+   487→              {emp.designation && <span className="text-xs">· {emp.designation.name}</span>}
+   488→            </SheetDescription>
+   489→            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+   490→              <StatusBadge status={emp.employeeStatus} />
+   491→              {emp.employmentType && <Badge variant="outline" className="text-xs">{emp.employmentType}</Badge>}
+   492→              {emp.grade && <Badge variant="outline" className="text-xs">{emp.grade.name}</Badge>}
+   493→            </div>
+   494→          </div>
+   495→        </div>
+   496→
+   497→        {/* Contact quick row */}
+   498→        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
+   499→          {emp.officialEmail && (
+   500→            <div className="flex items-center gap-1.5 min-w-0">
+   501→              <Mail className="h-3 w-3 shrink-0" />
+   502→              <span className="truncate">{emp.officialEmail}</span>
+   503→            </div>
+   504→          )}
+   505→          {emp.mobileNumber && (
+   506→            <div className="flex items-center gap-1.5">
+   507→              <Phone className="h-3 w-3 shrink-0" /> {emp.mobileNumber}
+   508→            </div>
+   509→          )}
+   510→          {emp.dateOfJoining && (
+   511→            <div className="flex items-center gap-1.5">
+   512→              <Calendar className="h-3 w-3 shrink-0" /> Joined {formatDate(emp.dateOfJoining)}
+   513→            </div>
+   514→          )}
+   515→        </div>
+   516→      </SheetHeader>
+   517→
+   518→      <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
+   519→        <div className="border-b px-4">
+   520→          <TabsList className="bg-transparent h-auto p-0 justify-start gap-1">
+   521→            <TabsTrigger value="overview" className="rounded-b-none">Overview</TabsTrigger>
+   522→            <TabsTrigger value="timeline" className="rounded-b-none">Timeline</TabsTrigger>
+   523→            <TabsTrigger value="documents" className="rounded-b-none">Documents</TabsTrigger>
+   524→            <TabsTrigger value="leave" className="rounded-b-none">Leave Balance</TabsTrigger>
+   525→          </TabsList>
+   526→        </div>
+   527→
+   528→        <ScrollArea className="flex-1">
+   529→          <TabsContent value="overview" className="p-6 pt-5 m-0 mt-0 focus-visible:outline-none">
+   530→            <OverviewTab emp={emp} />
+   531→          </TabsContent>
+   532→          <TabsContent value="timeline" className="p-6 pt-5 m-0 mt-0 focus-visible:outline-none">
+   533→            <TimelineTab emp={emp} />
+   534→          </TabsContent>
+   535→          <TabsContent value="documents" className="p-6 pt-5 m-0 mt-0 focus-visible:outline-none">
+   536→            <DocumentsTab emp={emp} />
+   537→          </TabsContent>
+   538→          <TabsContent value="leave" className="p-6 pt-5 m-0 mt-0 focus-visible:outline-none">
+   539→            <LeaveTab emp={emp} />
+   540→          </TabsContent>
+   541→        </ScrollArea>
+   542→      </Tabs>
+   543→
+   544→      <SheetFooter className="border-t flex-row justify-end gap-2 px-6 py-3">
+   545→        <Button variant="outline" size="sm" onClick={onDelete} className="gap-1.5 text-destructive hover:text-destructive">
+   546→          <Trash2 className="h-3.5 w-3.5" /> Delete
+   547→        </Button>
+   548→        <Button size="sm" onClick={onEdit} className="gap-1.5">
+   549→          <Pencil className="h-3.5 w-3.5" /> Edit
+   550→        </Button>
+   551→      </SheetFooter>
+   552→    </>
+   553→  )
+   554→}
+   555→
+   556→// ============================================================
+   557→// Profile sub-tabs
+   558→// ============================================================
+   559→
+   560→function FieldGrid({ items }: { items: { field: FormFieldDef; value: unknown }[] }) {
+   561→  return (
+   562→    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5">
+   563→      {items.map(({ field, value }) => (
+   564→        <div key={field.key} className="space-y-0.5 min-w-0">
+   565→          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{field.label}</div>
+   566→          <FieldValue field={field} value={value} />
+   567→        </div>
+   568→      ))}
+   569→    </div>
+   570→  )
+   571→}
+   572→
+   573→function SectionTitle({ icon: Icon, title }: { icon: LucideIcon; title: string }) {
+   574→  return (
+   575→    <h3 className="text-sm font-semibold text-foreground mb-3.5 flex items-center gap-1.5">
+   576→      <Icon className="h-4 w-4 text-emerald-500" /> {title}
+   577→    </h3>
+   578→  )
+   579→}
+   580→
+   581→function OverviewTab({ emp }: { emp: any }) {
+   582→  return (
+   583→    <div className="space-y-6">
+   584→      <section>
+   585→        <SectionTitle icon={UserIcon} title="Basic Details" />
+   586→        <FieldGrid items={[
+   587→          { field: fd("displayName", "Display Name"), value: emp.displayName },
+   588→          { field: fd("gender", "Gender"), value: emp.gender },
+   589→          { field: fd("dateOfBirth", "Date of Birth", "date"), value: emp.dateOfBirth },
+   590→          { field: fd("maritalStatus", "Marital Status"), value: emp.maritalStatus },
+   591→          { field: fd("bloodGroup", "Blood Group"), value: emp.bloodGroup },
+   592→          { field: fd("nationality", "Nationality"), value: emp.nationality },
+   593→          { field: fd("personalEmail", "Personal Email", "email"), value: emp.personalEmail },
+   594→          { field: fd("mobileNumber", "Mobile Number", "phone"), value: emp.mobileNumber },
+   595→          { field: fd("alternateNumber", "Alternate Number", "phone"), value: emp.alternateNumber },
+   596→        ]} />
+   597→      </section>
+   598→
+   599→      <Separator />
+   600→
+   601→      <section>
+   602→        <SectionTitle icon={Briefcase} title="Employment Details" />
+   603→        <FieldGrid items={[
+   604→          { field: fd("dateOfJoining", "Date of Joining", "date"), value: emp.dateOfJoining },
+   605→          { field: fd("employmentType", "Employment Type"), value: emp.employmentType },
+   606→          { field: fd("workerType", "Worker Type"), value: emp.workerType },
+   607→          { field: fd("probationStatus", "Probation Status"), value: emp.probationStatus },
+   608→          { field: fd("probationEndDate", "Probation End Date", "date"), value: emp.probationEndDate },
+   609→          { field: fd("confirmationDate", "Confirmation Date", "date"), value: emp.confirmationDate },
+   610→          { field: fd("noticePeriod", "Notice Period (days)", "number"), value: emp.noticePeriod },
+   611→          { field: fd("employeeStatus", "Employee Status"), value: emp.employeeStatus },
+   612→          { field: fd("entity", "Entity"), value: emp.entity?.tradeName || emp.entity?.legalName },
+   613→          { field: fd("department", "Department"), value: emp.department?.name },
+   614→          { field: fd("designation", "Designation"), value: emp.designation?.name },
+   615→          { field: fd("grade", "Grade"), value: emp.grade?.name },
+   616→          { field: fd("branch", "Branch"), value: emp.branch?.name },
+   617→          { field: fd("location", "Location"), value: emp.location?.name },
+   618→          {
+   619→            field: fd("reportingManager", "Reporting Manager"),
+   620→            value: emp.reportingManager
+   621→              ? `${emp.reportingManager.firstName} ${emp.reportingManager.lastName || ""} (${emp.reportingManager.employeeCode})`
+   622→              : null,
+   623→          },
+   624→        ]} />
+   625→      </section>
+   626→
+   627→      <Separator />
+   628→
+   629→      <section>
+   630→        <SectionTitle icon={Banknote} title="Bank & Compensation" />
+   631→        <FieldGrid items={[
+   632→          { field: fd("ctc", "Annual CTC", "currency"), value: emp.ctc },
+   633→          { field: fd("basicSalary", "Basic Salary (monthly)", "currency"), value: emp.basicSalary },
+   634→          { field: fd("hra", "HRA (monthly)", "currency"), value: emp.hra },
+   635→          { field: fd("bankName", "Bank Name"), value: emp.bankName },
+   636→          { field: fd("accountNumber", "Account Number"), value: emp.accountNumber },
+   637→          { field: fd("ifscCode", "IFSC Code"), value: emp.ifscCode },
+   638→          { field: fd("branchName", "Bank Branch"), value: emp.branchName },
+   639→        ]} />
+   640→      </section>
+   641→
+   642→      <Separator />
+   643→
+   644→      <section>
+   645→        <SectionTitle icon={FileText} title="Statutory Details" />
+   646→        <FieldGrid items={[
+   647→          { field: fd("panNumber", "PAN"), value: emp.panNumber },
+   648→          { field: fd("aadhaarNumber", "Aadhaar"), value: emp.aadhaarNumber },
+   649→          { field: fd("uanNumber", "UAN"), value: emp.uanNumber },
+   650→          { field: fd("pfNumber", "PF Number"), value: emp.pfNumber },
+   651→          { field: fd("esiNumber", "ESI Number"), value: emp.esiNumber },
+   652→        ]} />
+   653→      </section>
+   654→
+   655→      <Separator />
+   656→
+   657→      <section>
+   658→        <SectionTitle icon={MapPin} title="Address" />
+   659→        <div className="space-y-4">
+   660→          <div className="space-y-0.5">
+   661→            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Current Address</div>
+   662→            <p className="text-sm whitespace-pre-line">
+   663→              {emp.currentAddress || <span className="text-muted-foreground/50 italic">—</span>}
+   664→            </p>
+   665→          </div>
+   666→          <div className="space-y-0.5">
+   667→            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Permanent Address</div>
+   668→            <p className="text-sm whitespace-pre-line">
+   669→              {emp.permanentAddress || <span className="text-muted-foreground/50 italic">—</span>}
+   670→            </p>
+   671→          </div>
+   672→        </div>
+   673→      </section>
+   674→    </div>
+   675→  )
+   676→}
+   677→
+   678→function TimelineTab({ emp }: { emp: any }) {
+   679→  type Event = { id: string; title: string; description?: string; date?: string | null; icon: LucideIcon }
+   680→  const events: Event[] = [
+   681→    {
+   682→      id: "created",
+   683→      title: "Employee record created",
+   684→      description: "Profile added to the system",
+   685→      date: emp.createdAt,
+   686→      icon: FileText,
+   687→    },
+   688→    {
+   689→      id: "joined",
+   690→      title: "Onboarded",
+   691→      description: "Date of joining",
+   692→      date: emp.dateOfJoining,
+   693→      icon: UserIcon,
+   694→    },
+   695→    ...(emp.probationEndDate
+   696→      ? [{ id: "probation", title: "Probation period end", description: "Scheduled probation completion", date: emp.probationEndDate, icon: Clock as LucideIcon }]
+   697→      : []),
+   698→    ...(emp.confirmationDate
+   699→      ? [{ id: "confirmed", title: "Confirmed as permanent employee", date: emp.confirmationDate, icon: Briefcase as LucideIcon }]
+   700→      : []),
+   701→  ].filter((e) => e.date) as Event[]
+   702→
+   703→  if (events.length === 0) {
+   704→    return <EmptyState icon={Clock} title="No timeline events" description="Milestones will appear here as the employee progresses." />
+   705→  }
+   706→
+   707→  return (
+   708→    <div className="space-y-4">
+   709→      <p className="text-xs text-muted-foreground">Key milestones and activity for {emp.firstName}.</p>
+   710→      <div className="relative pl-7">
+   711→        <div className="absolute left-[10px] top-1 bottom-1 w-px bg-border" />
+   712→        {events.map((ev) => (
+   713→          <div key={ev.id} className="relative pb-5 last:pb-0">
+   714→            <div className="absolute -left-[18px] top-0.5 grid h-5 w-5 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-500/15 ring-2 ring-background">
+   715→              <ev.icon className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />
+   716→            </div>
+   717→            <div className="ml-1">
+   718→              <p className="text-sm font-medium text-foreground">{ev.title}</p>
+   719→              {ev.description && <p className="text-xs text-muted-foreground mt-0.5">{ev.description}</p>}
+   720→              <p className="text-xs text-muted-foreground mt-1">{formatDate(ev.date)}</p>
+   721→            </div>
+   722→          </div>
+   723→        ))}
+   724→      </div>
+   725→    </div>
+   726→  )
+   727→}
+   728→
+   729→function DocumentsTab({ emp }: { emp: any }) {
+   730→  return (
+   731→    <div className="space-y-4">
+   732→      <p className="text-xs text-muted-foreground">
+   733→        Document vault for {emp.firstName} {emp.lastName || ""}.
+   734→      </p>
+   735→      <EmptyState
+   736→        icon={FileText}
+   737→        title="No documents uploaded"
+   738→        description="Document management (KYC, contracts, certificates) will be available in an upcoming release."
+   739→      />
+   740→    </div>
+   741→  )
+   742→}
+   743→
+   744→function LeaveTab({ emp }: { emp: any }) {
+   745→  return (
+   746→    <div className="space-y-4">
+   747→      <p className="text-xs text-muted-foreground">
+   748→        Leave entitlement & balance summary for {emp.firstName}.
+   749→      </p>
+   750→      <EmptyState
+   751→        icon={Calendar}
+   752→        title="No leave balances"
+   753→        description="Leave balances will appear here once leave policies are assigned to this employee."
+   754→      />
+   755→    </div>
+   756→  )
+   757→}
+   758→

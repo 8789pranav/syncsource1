@@ -214,21 +214,37 @@ model Employee {
   maritalStatus   String?
   bloodGroup      String?
   nationality     String   @default("Indian")
+  religion        String?
+  category        String?  // General | OBC | SC | ST
   profilePhotoUrl String?
   personalEmail   String?
   officialEmail   String?
   mobileNumber    String?
   alternateNumber String?
 
+  // Identity documents
+  passportNumber  String?
+  drivingLicense  String?
+  voterId         String?
+  physicallyDisabled Boolean @default(false)
+  disabilityDetails String?
+
   // Employment
   dateOfJoining   DateTime?
-  employmentType  String   @default("Full-time") // Full-time | Part-time | Contract | Intern
+  employmentType  String   @default("Full-time") // Full-time | Part-time | Contract | Intern | Consultant | Apprentice | Temporary
   workerType      String   @default("Permanent")
-  probationStatus String?  // On Probation | Confirmed
+  jobType         String?  // On-roll | Off-roll
+  probationStatus String?  // On Probation | Confirmed | Extended | Not Confirmed
+  probationStartDate DateTime?
   probationEndDate DateTime?
   confirmationDate DateTime?
   noticePeriod    Int?     // days
+  noticePeriodStartDate DateTime?
+  lastWorkingDate DateTime?
   employeeStatus   String  @default("Active") // Active | On Notice | Resigned | Terminated | Absconded | Retired | Inactive | Alumni
+  workMode        String   @default("Work from office") // Work from office | Work from home | Hybrid | Field work
+  businessUnit    String?
+  costCenter      String?
 
   entityId        String?
   entity          Entity?  @relation(fields: [entityId], references: [id])
@@ -243,12 +259,24 @@ model Employee {
   locationId      String?
   location        Location? @relation(fields: [locationId], references: [id])
   reportingManagerId String?
+  functionalManagerId String?
+  hrManagerId     String?
+
+  // Policy assignments
+  leavePolicyId       String?
+  attendancePolicyId  String?
+  payrollPolicyId     String?
+  shiftPolicyId       String?
+  holidayCalendarId   String?
 
   // Bank
   bankName        String?
+  accountHolderName String?
   accountNumber   String?
+  accountType     String?  // Savings | Current | Salary
   ifscCode        String?
   branchName      String?
+  upiId           String?
 
   // Statutory
   panNumber       String?
@@ -256,10 +284,39 @@ model Employee {
   uanNumber       String?
   pfNumber        String?
   esiNumber       String?
+  ptLocation      String?
+  pfApplicable    Boolean  @default(true)
+  esiApplicable   Boolean  @default(false)
+  ptApplicable    Boolean  @default(true)
+  lwfApplicability String?
+  gratuityApplicability String?
+  taxRegime       String?  // Old | New
+  tdsDeclarationStatus String? // Pending | Submitted | Verified
 
   // Address
   currentAddress  String?
+  currentAddressLine2 String?
+  currentCity     String?
+  currentState    String?
+  currentCountry  String?
+  currentPincode  String?
+  currentLandmark String?
   permanentAddress String?
+  permanentAddressLine2 String?
+  permanentCity   String?
+  permanentState  String?
+  permanentCountry String?
+  permanentPincode String?
+  sameAsCurrent   Boolean  @default(false)
+
+  // Emergency contact
+  emergencyContactName    String?
+  emergencyContactRelation String?
+  emergencyContactPhone   String?
+  emergencyContactAltPhone String?
+  emergencyContactEmail   String?
+  emergencyContactAddress String?
+  communicationPreference String? // Email | SMS | WhatsApp
 
   // Dynamic / custom data
   customData      String?  // JSON string of custom fields
@@ -268,6 +325,22 @@ model Employee {
   ctc             Float?
   basicSalary     Float?
   hra             Float?
+  specialAllowance Float?
+  conveyanceAllowance Float?
+  medicalAllowance Float?
+  bonusAmount     Float?
+  pfEmployee      Float?
+  pfEmployer      Float?
+  esiAmount       Float?
+  professionalTax Float?
+  tdsAmount       Float?
+  grossSalary     Float?
+  netSalary       Float?
+
+  // Exit
+  resignationDate DateTime?
+  resignationReason String?
+  exitStatus      String?  // Not initiated | Resignation submitted | Manager approved | HR approved | Clearance pending | FnF pending | Exit completed
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -280,6 +353,36 @@ model Employee {
   assetAssignments   AssetAssignment[]
   assetRequests      AssetRequest[]
   profileUpdateRequests ProfileUpdateRequest[]
+
+  // Employee profile sub-records (Phase 2 — Employee module expansion)
+  familyMembers      EmployeeFamilyMember[]
+  educationRecords   EmployeeEducation[]
+  experienceRecords  EmployeeExperience[]
+  bankHistory        EmployeeBankDetail[]
+  statutoryDetails   EmployeeStatutoryDetail[]
+  documents          EmployeeDocument[]
+  compensationHistory EmployeeCompensationHistory[]
+  notes              EmployeeNote[]
+  timelineEvents     EmployeeTimelineEvent[]
+  auditLogs          EmployeeAuditLog[]
+  statusHistory      EmployeeStatusHistory[]
+  transferHistory    EmployeeTransferHistory[]
+  promotionHistory   EmployeePromotionHistory[]
+  probationReviews   EmployeeProbation[]
+  exitRecords        EmployeeExit[]
+  loginAccess        EmployeeLoginAccess[]
+  roleMappings       EmployeeRoleMapping[]
+  customFieldValues  EmployeeCustomFieldValue[]
+  formSubmissions    EmployeeFormSubmission[]
+  skills             EmployeeSkill[]
+  certifications     EmployeeCertification[]
+  trainings          EmployeeTraining[]
+  performanceGoals   EmployeePerformanceGoal[]
+  performanceReviews EmployeePerformanceReview[]
+  expenses           EmployeeExpense[]
+  helpdeskTickets    EmployeeHelpdeskTicket[]
+  letters            EmployeeLetter[]
+  requests           EmployeeRequest[]
 
   @@unique([tenantId, employeeCode])
 }
@@ -295,6 +398,557 @@ model ProfileUpdateRequest {
   requestedAt DateTime @default(now())
   reviewedAt  DateTime?
   reviewedBy  String?
+}
+
+// ============================================================
+// EMPLOYEE PROFILE SUB-RECORDS (Phase 2 — Employee module)
+// ============================================================
+
+model EmployeeFamilyMember {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name          String
+  relationship  String?  // Spouse | Son | Daughter | Father | Mother | Brother | Sister | Other
+  gender        String?
+  dateOfBirth   DateTime?
+  mobileNumber  String?
+  occupation    String?
+  isDependent   Boolean  @default(false)
+  isNominee     Boolean  @default(false)
+  nomineePercentage Float?
+  insuranceApplicable Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeEducation {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  qualification String?  // 10th | 12th | Diploma | UG | PG | PhD | Certification
+  degree        String?
+  specialization String?
+  institute     String?
+  university    String?
+  yearOfPassing Int?
+  percentage    Float?
+  cgpa          Float?
+  educationType String?  // Full-time | Part-time | Distance | Online
+  isHighest     Boolean  @default(false)
+  certificateUrl String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeExperience {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  companyName   String
+  designation   String?
+  department    String?
+  startDate     DateTime?
+  endDate       DateTime?
+  totalYears    Float?
+  reasonForLeaving String?
+  previousSalary Float?
+  managerName   String?
+  managerContact String?
+  experienceLetterUrl String?
+  relievingLetterUrl String?
+  lastPayslipUrl String?
+  verificationStatus String? // Pending | Verified | Not Verified
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeBankDetail {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  bankName      String
+  accountHolderName String?
+  accountNumber String
+  ifscCode      String?
+  branchName    String?
+  accountType   String?  // Savings | Current | Salary
+  upiId         String?
+  chequeUrl     String?
+  isActive      Boolean  @default(true)
+  verified      Boolean  @default(false)
+  effectiveDate DateTime @default(now())
+  endDate       DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeStatutoryDetail {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  panNumber     String?
+  aadhaarNumber String?
+  uanNumber     String?
+  pfNumber      String?
+  esiNumber     String?
+  ptLocation    String?
+  lwfApplicability String?
+  gratuityApplicability String?
+  pfApplicable  Boolean  @default(true)
+  esiApplicable Boolean  @default(false)
+  ptApplicable  Boolean  @default(true)
+  taxRegime     String?  // Old | New
+  tdsDeclarationStatus String?
+  nomineeDetails String? // JSON
+  documentUrl   String?
+  effectiveDate DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeDocument {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name          String
+  category      String?  // Identity | Address | Education | Experience | Bank | Joining | Payroll | Company Letter | Exit | Other
+  documentType  String?  // Aadhaar | PAN | Passport | Photo | Resume | Offer letter | etc.
+  fileUrl       String?
+  fileExt       String?  // pdf | jpg | png
+  fileSize      Int?
+  status        String   @default("Pending") // Pending | Uploaded | Approved | Rejected | Expired | Expiring soon
+  expiryDate    DateTime?
+  uploadedAt    DateTime @default(now())
+  approvedAt    DateTime?
+  approvedBy    String?
+  remarks       String?
+  visibleToEmployee Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeCompensationHistory {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  effectiveDate DateTime
+  oldCtc        Float?
+  newCtc        Float?
+  oldBasic      Float?
+  newBasic      Float?
+  oldHra        Float?
+  newHra        Float?
+  incrementPercent Float?
+  revisionReason String? // Annual appraisal | Promotion | Off-cycle | Joining
+  promotionMapping String?
+  approvedBy    String?
+  status        String   @default("Approved") // Draft | Approved | Rejected
+  letterUrl     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeNote {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  category      String   @default("General") // General | Performance | Disciplinary | Medical | HR discussion | Manager feedback | Exit discussion
+  body          String
+  isPrivate     Boolean  @default(false)
+  visibleToManager Boolean @default(false)
+  attachmentUrl String?
+  createdBy     String?  // user name
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeTimelineEvent {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  eventType     String   // Created | Joined | Profile updated | Document uploaded | Leave approved | Attendance regularized | Salary revised | Promoted | Transferred | Manager changed | Probation confirmed | Asset assigned | Resignation submitted | Exit completed | Status changed
+  title         String
+  description   String?
+  eventDate     DateTime @default(now())
+  actorId       String?
+  actorName     String?
+  metadata      String?  // JSON
+  createdAt     DateTime @default(now())
+}
+
+model EmployeeAuditLog {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  module        String?  // Personal | Job | Bank | Statutory | Document | etc.
+  field         String?
+  oldValue      String?
+  newValue      String?
+  action        String?  // Create | Update | Delete
+  changedBy     String?
+  reason        String?
+  ipAddress     String?
+  userAgent     String?
+  approvalRef   String?
+  createdAt     DateTime @default(now())
+}
+
+model EmployeeStatusHistory {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  oldStatus     String?
+  newStatus     String
+  effectiveDate DateTime @default(now())
+  reason        String?
+  changedBy     String?
+  createdAt     DateTime @default(now())
+}
+
+model EmployeeTransferHistory {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  oldDepartment String?
+  newDepartment String?
+  oldLocation   String?
+  newLocation   String?
+  oldManager    String?
+  newManager    String?
+  oldEntity     String?
+  newEntity     String?
+  effectiveDate DateTime
+  reason        String?
+  status        String   @default("Approved") // Pending | Approved | Rejected
+  approvedBy    String?
+  createdAt     DateTime @default(now())
+}
+
+model EmployeePromotionHistory {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  oldDesignation String?
+  newDesignation String?
+  oldGrade      String?
+  newGrade      String?
+  oldCtc        Float?
+  newCtc        Float?
+  effectiveDate DateTime
+  reason        String?
+  status        String   @default("Approved") // Pending | Approved | Rejected
+  approvedBy    String?
+  letterUrl     String?
+  createdAt     DateTime @default(now())
+}
+
+model EmployeeProbation {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  startDate     DateTime
+  endDate       DateTime
+  reviewDueDate DateTime?
+  status        String   @default("On Probation") // On Probation | Review pending | Extended | Confirmed | Not Confirmed
+  managerFeedback String?
+  hrFeedback    String?
+  extendedEndDate DateTime?
+  confirmedDate DateTime?
+  confirmedBy   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeExit {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  resignationDate DateTime
+  lastWorkingDate DateTime?
+  reason        String?
+  status        String   @default("Resignation submitted") // Resignation submitted | Manager approved | HR approved | Clearance pending | FnF pending | Exit completed | Rejected
+  noticePeriodDays Int?
+  noticeRecoveryDays Int?
+  noticeRecoveryAmount Float?
+  exitInterviewNotes String?
+  clearanceHR   Boolean  @default(false)
+  clearanceIT   Boolean  @default(false)
+  clearanceAdmin Boolean @default(false)
+  clearanceFinance Boolean @default(false)
+  clearanceManager Boolean @default(false)
+  clearancePayroll Boolean @default(false)
+  finalSettlement Float?
+  relievingLetterUrl String?
+  experienceLetterUrl String?
+  approvedBy    String?
+  approvedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeLoginAccess {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  username      String?
+  email         String?
+  status        String   @default("Active") // Active | Inactive | Blocked | Locked
+  role          String?  // Employee | Manager | HR admin | Payroll admin | Finance admin | IT admin | Auditor | Sub-admin
+  twoFactorEnabled Boolean @default(false)
+  forcePasswordChange Boolean @default(true)
+  passwordResetAt DateTime?
+  lastLoginAt   DateTime?
+  lastLoginIp   String?
+  activeSessions Int     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeRoleMapping {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  role          String   // Employee | Manager | HR admin | Payroll admin | Finance admin | IT admin | Auditor | Sub-admin
+  scopeType     String?  // Global | Entity | Department | Location
+  scopeRef      String?
+  modulePermissions String? // JSON
+  fieldPermissions  String? // JSON
+  reportPermissions String? // JSON
+  assignedAt    DateTime @default(now())
+  assignedBy    String?
+  isActive      Boolean  @default(true)
+}
+
+model EmployeeCustomFieldValue {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  fieldKey      String
+  fieldLabel    String?
+  fieldType     String?  // text | number | date | select | multiselect | checkbox
+  value         String?
+  category      String?  // General | Project | Accommodation | Uniform | Other
+  isMandatory   Boolean  @default(false)
+  approvalRequired Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([employeeId, fieldKey])
+}
+
+model EmployeeFormSubmission {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  formCode      String   // joining | policy_declaration | asset_declaration | medical | nominee | travel | wfh | custom
+  formName      String?
+  version       Int      @default(1)
+  data          String?  // JSON of submitted values
+  status        String   @default("Draft") // Draft | Submitted | Approved | Rejected
+  submittedAt   DateTime?
+  approvedAt    DateTime?
+  approvedBy    String?
+  remarks       String?
+  pdfUrl        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeSkill {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name          String
+  category      String?  // Technical | Soft | Domain | Tool | Language
+  proficiency   String?  // Beginner | Intermediate | Advanced | Expert
+  yearsOfExperience Float?
+  verifiedByManager Boolean @default(false)
+  lastUsedDate  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeCertification {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name          String
+  issuingAuthority String?
+  issueDate     DateTime?
+  expiryDate    DateTime?
+  certificateId String?
+  certificateUrl String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeTraining {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  courseName    String
+  trainingType  String?  // Online | Classroom | On-the-job | External
+  startDate     DateTime?
+  endDate       DateTime?
+  status        String   @default("Assigned") // Assigned | In Progress | Completed | Pending | Cancelled
+  score         Float?
+  certificateUrl String?
+  trainerFeedback String?
+  employeeFeedback String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeePerformanceGoal {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  kra           String?  // Key Result Area
+  kpi           String?  // Key Performance Indicator
+  targetValue   String?
+  achievedValue String?
+  progress      Float?   // 0-100
+  weightage     Float?
+  cycle         String?  // FY2026-Q1 | FY2026-H1 | FY2026
+  status        String   @default("Draft") // Draft | Submitted | Manager reviewed | HR reviewed | Finalized
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeePerformanceReview {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  cycle         String   // FY2026 | FY2026-H1
+  type          String?  // Self | Manager | HR | Final | 360
+  reviewerName  String?
+  rating        Float?   // 1-5
+  comments      String?
+  promotionRecommended Boolean @default(false)
+  incrementRecommended Float?
+  status        String   @default("Draft") // Draft | Submitted | Manager reviewed | HR reviewed | Finalized
+  pipStatus     String?  // None | Active | Completed | Cancelled
+  pipNotes      String?
+  reviewDate    DateTime?
+  finalizedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeExpense {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  category      String?  // Travel | Food | Stay | Conveyance | Mobile | Internet | Other
+  amount        Float
+  currency      String   @default("INR")
+  expenseDate   DateTime @default(now())
+  description   String?
+  billUrl       String?
+  project       String?
+  client        String?
+  status        String   @default("Draft") // Draft | Submitted | Approved | Rejected | Paid | Cancelled
+  paymentStatus String?  // Pending | Paid | Reimbursed
+  approvedBy    String?
+  approvedAt    DateTime?
+  paidAt        DateTime?
+  remarks       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeHelpdeskTicket {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  ticketCode    String
+  subject       String
+  category      String?  // HR | IT | Payroll | Finance | Admin | Facilities | POSH | Whistleblower
+  priority      String   @default("Medium") // Low | Medium | High | Urgent
+  status        String   @default("Open") // Open | In Progress | Resolved | Closed | Reopened
+  description   String?
+  assignedTo    String?
+  slaHours      Int?
+  slaStatus     String?  // Within SLA | Breaching | Breached
+  resolution    String?
+  resolvedAt    DateTime?
+  feedback      String?
+  rating        Int?
+  attachmentUrl String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([tenantId, ticketCode])
+}
+
+model EmployeeLetter {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  letterType    String   // Offer | Appointment | Confirmation | Increment | Promotion | Transfer | Warning | Experience | Relieving | Termination | Internship | NDA
+  letterCode    String?
+  issuedDate    DateTime @default(now())
+  subject       String?
+  body          String?
+  pdfUrl        String?
+  status        String   @default("Generated") // Draft | Generated | Issued | E-signed | Cancelled
+  issuedBy      String?
+  approvedBy    String?
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeRequest {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  requestType   String   // Leave | Attendance regularization | Profile update | Document update | Bank update | Expense claim | Asset request | Travel | WFH | Shift change | Resignation
+  referenceId   String?  // id of related record (leave application id, etc.)
+  title         String
+  description   String?
+  payload       String?  // JSON of request-specific fields
+  status        String   @default("Pending") // Draft | Pending | Approved | Rejected | Cancelled | Withdrawn
+  pendingWith   String?
+  submittedAt   DateTime @default(now())
+  decidedAt     DateTime?
+  decidedBy     String?
+  remarks       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 // ============================================================

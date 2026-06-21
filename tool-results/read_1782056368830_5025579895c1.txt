@@ -1,0 +1,635 @@
+     1→// Comprehensive seed endpoint for the HRMS demo tenant.
+     2→// GET or POST /api/seed → wipes & re-creates demo data for the default tenant.
+     3→// Returns { ok: true, counts: {...} }
+     4→
+     5→import { db } from "@/lib/db"
+     6→import { ensureTenant, ok, bad } from "@/lib/api-helpers"
+     7→import { defaultFormSchemas } from "@/lib/form-schemas"
+     8→
+     9→// ---------- date helpers ----------
+    10→function daysAgo(n: number): Date {
+    11→  const d = new Date()
+    12→  d.setHours(12, 0, 0, 0)
+    13→  d.setDate(d.getDate() - n)
+    14→  return d
+    15→}
+    16→function daysFromNow(n: number): Date {
+    17→  const d = new Date()
+    18→  d.setHours(12, 0, 0, 0)
+    19→  d.setDate(d.getDate() + n)
+    20→  return d
+    21→}
+    22→function monthsAgo(n: number): Date {
+    23→  const d = new Date()
+    24→  d.setHours(12, 0, 0, 0)
+    25→  d.setMonth(d.getMonth() - n)
+    26→  return d
+    27→}
+    28→function yearsAgo(n: number, day = 1, month = 0): Date {
+    29→  const d = new Date()
+    30→  d.setHours(12, 0, 0, 0)
+    31→  d.setFullYear(d.getFullYear() - n)
+    32→  d.setMonth(month)
+    33→  d.setDate(day)
+    34→  return d
+    35→}
+    36→function dateOnly(year: number, month: number, day: number): Date {
+    37→  const d = new Date(year, month, day, 12, 0, 0, 0)
+    38→  return d
+    39→}
+    40→
+    41→export async function GET() {
+    42→  return runSeed()
+    43→}
+    44→
+    45→export async function POST() {
+    46→  return runSeed()
+    47→}
+    48→
+    49→async function runSeed() {
+    50→  try {
+    51→    // Ensure tenant exists first (creates ACME default tenant if absent)
+    52→    await ensureTenant()
+    53→
+    54→    // ---------- WIPE existing data in dependency order (children first) ----------
+    55→    await db.workflowAction.deleteMany()
+    56→    await db.workflowInstance.deleteMany()
+    57→    await db.workflowStep.deleteMany()
+    58→    await db.workflow.deleteMany()
+    59→    await db.formSchema.deleteMany()
+    60→    await db.auditLog.deleteMany()
+    61→    await db.announcement.deleteMany()
+    62→    await db.assetAssignment.deleteMany()
+    63→    await db.assetRequest.deleteMany()
+    64→    await db.asset.deleteMany()
+    65→    await db.assetCategory.deleteMany()
+    66→    await db.holiday.deleteMany()
+    67→    await db.attendance.deleteMany()
+    68→    await db.rosterEntry.deleteMany()
+    69→    await db.roster.deleteMany()
+    70→    await db.shiftAssignment.deleteMany()
+    71→    await db.shift.deleteMany()
+    72→    await db.leaveApplication.deleteMany()
+    73→    await db.leaveBalance.deleteMany()
+    74→    await db.leavePolicyItem.deleteMany()
+    75→    await db.leavePolicy.deleteMany()
+    76→    await db.leaveType.deleteMany()
+    77→    await db.profileUpdateRequest.deleteMany()
+    78→    await db.employee.deleteMany()
+    79→    await db.designation.deleteMany()
+    80→    await db.grade.deleteMany()
+    81→    await db.department.deleteMany()
+    82→    await db.branch.deleteMany()
+    83→    await db.location.deleteMany()
+    84→    await db.entity.deleteMany()
+    85→
+    86→    const tenantId = await ensureTenant()
+    87→    const counts: Record<string, number> = {}
+    88→
+    89→    // ---------- ENTITIES ----------
+    90→    const espl = await db.entity.create({
+    91→      data: {
+    92→        tenantId,
+    93→        code: "ESPL",
+    94→        legalName: "Example Services Private Limited",
+    95→        tradeName: "Example Services",
+    96→        pan: "AABCE1234F",
+    97→        gstin: "27AABCE1234F1Z5",
+    98→        tan: "MUME12345B",
+    99→        pfNumber: "BGBNG0012345000",
+   100→        esiNumber: "BGBNG0012345000",
+   101→        address: "Plot 14, MIDC Marol, Andheri East",
+   102→        city: "Mumbai",
+   103→        state: "Maharashtra",
+   104→        country: "India",
+   105→        currency: "INR",
+   106→        payrollApplicable: true,
+   107→        attendanceApplicable: true,
+   108→        leaveApplicable: true,
+   109→        status: "Active",
+   110→      },
+   111→    })
+   112→    const et = await db.entity.create({
+   113→      data: {
+   114→        tenantId,
+   115→        code: "ET",
+   116→        legalName: "Example Technologies Private Limited",
+   117→        tradeName: "Example Tech",
+   118→        pan: "AABCT5678G",
+   119→        gstin: "29AABCT5678G1Z2",
+   120→        tan: "BLRE98765C",
+   121→        pfNumber: "BGKAR0012345000",
+   122→        esiNumber: "BGKAR0012345000",
+   123→        address: "Outer Ring Road, Bellandur",
+   124→        city: "Bangalore",
+   125→        state: "Karnataka",
+   126→        country: "India",
+   127→        currency: "INR",
+   128→        payrollApplicable: true,
+   129→        attendanceApplicable: true,
+   130→        leaveApplicable: true,
+   131→        status: "Active",
+   132→      },
+   133→    })
+   134→    counts.entities = 2
+   135→
+   136→    // ---------- BRANCHES (linked to ESPL) ----------
+   137→    const bomHq = await db.branch.create({
+   138→      data: {
+   139→        tenantId, entityId: espl.id, code: "BOM-HQ",
+   140→        name: "Mumbai HQ", address: "Plot 14, MIDC Marol, Andheri East",
+   141→        city: "Mumbai", state: "Maharashtra", country: "India",
+   142→        lat: 19.1136, lng: 72.8697, workingDays: "Mon,Tue,Wed,Thu,Fri", status: "Active",
+   143→      },
+   144→    })
+   145→    const blrTech = await db.branch.create({
+   146→      data: {
+   147→        tenantId, entityId: espl.id, code: "BLR-TECH",
+   148→        name: "Bangalore Tech", address: "Outer Ring Road, Bellandur",
+   149→        city: "Bangalore", state: "Karnataka", country: "India",
+   150→        lat: 12.9279, lng: 77.6271, workingDays: "Mon,Tue,Wed,Thu,Fri", status: "Active",
+   151→      },
+   152→    })
+   153→    const delSales = await db.branch.create({
+   154→      data: {
+   155→        tenantId, entityId: espl.id, code: "DEL-SALES",
+   156→        name: "Delhi Sales", address: "Connaught Place, New Delhi",
+   157→        city: "New Delhi", state: "Delhi", country: "India",
+   158→        lat: 28.6315, lng: 77.2167, workingDays: "Mon,Tue,Wed,Thu,Fri", status: "Active",
+   159→      },
+   160→    })
+   161→    counts.branches = 3
+   162→
+   163→    // ---------- DEPARTMENTS (under ESPL) ----------
+   164→    const deptDefs = [
+   165→      { code: "DEPT-HR", name: "Human Resources" },
+   166→      { code: "DEPT-ENG", name: "Engineering" },
+   167→      { code: "DEPT-SAL", name: "Sales" },
+   168→      { code: "DEPT-FIN", name: "Finance" },
+   169→      { code: "DEPT-MKT", name: "Marketing" },
+   170→      { code: "DEPT-OPS", name: "Operations" },
+   171→    ]
+   172→    const depts: Record<string, { id: string; name: string }> = {}
+   173→    for (const d of deptDefs) {
+   174→      const rec = await db.department.create({
+   175→        data: { tenantId, entityId: espl.id, code: d.code, name: d.name, status: "Active" },
+   176→      })
+   177→      depts[d.code] = { id: rec.id, name: rec.name }
+   178→    }
+   179→    counts.departments = 6
+   180→
+   181→    // ---------- GRADES ----------
+   182→    const grades: Record<string, string> = {}
+   183→    const gradeDefs = [
+   184→      { code: "L4-MID", name: "L4 — Mid", hierarchyLevel: 4, minSalary: 500000, maxSalary: 1200000, leaveEligibility: 18, approvalAuthority: false },
+   185→      { code: "L5-SEN", name: "L5 — Senior", hierarchyLevel: 5, minSalary: 1200000, maxSalary: 2200000, leaveEligibility: 22, approvalAuthority: true },
+   186→      { code: "L6-LEAD", name: "L6 — Lead", hierarchyLevel: 6, minSalary: 2200000, maxSalary: 3500000, leaveEligibility: 26, approvalAuthority: true },
+   187→    ]
+   188→    for (const g of gradeDefs) {
+   189→      const rec = await db.grade.create({ data: { tenantId, ...g, status: "Active" } })
+   190→      grades[g.code] = rec.id
+   191→    }
+   192→    counts.grades = 3
+   193→
+   194→    // ---------- DESIGNATIONS (mapped to grades) ----------
+   195→    const desigs: Record<string, string> = {}
+   196→    const desigDefs = [
+   197→      { code: "DES-HR-EXEC", name: "HR Executive", gradeId: grades["L4-MID"], level: 1 },
+   198→      { code: "DES-SWE", name: "Software Engineer", gradeId: grades["L4-MID"], level: 2 },
+   199→      { code: "DES-SSWE", name: "Senior Software Engineer", gradeId: grades["L5-SEN"], level: 3 },
+   200→      { code: "DES-SALES-MGR", name: "Sales Manager", gradeId: grades["L6-LEAD"], level: 3 },
+   201→      { code: "DES-FIN-ANL", name: "Finance Analyst", gradeId: grades["L4-MID"], level: 2 },
+   202→      { code: "DES-DEVOPS", name: "DevOps Engineer", gradeId: grades["L5-SEN"], level: 3 },
+   203→    ]
+   204→    for (const d of desigDefs) {
+   205→      const rec = await db.designation.create({ data: { tenantId, ...d, status: "Active" } })
+   206→      desigs[d.code] = rec.id
+   207→    }
+   208→    counts.designations = 6
+   209→
+   210→    // ---------- LOCATIONS ----------
+   211→    const locs: Record<string, string> = {}
+   212→    const locDefs = [
+   213→      { code: "LOC-MUM", name: "Mumbai Office", address: "Andheri East, Mumbai", city: "Mumbai", state: "Maharashtra", country: "India", geoFenceRadius: 100, timezone: "Asia/Kolkata", attendanceMode: "Web" },
+   214→      { code: "LOC-BLR", name: "Bangalore Office", address: "Bellandur, Bangalore", city: "Bangalore", state: "Karnataka", country: "India", geoFenceRadius: 100, timezone: "Asia/Kolkata", attendanceMode: "Web" },
+   215→      { code: "LOC-DEL", name: "Delhi Office", address: "Connaught Place, New Delhi", city: "New Delhi", state: "Delhi", country: "India", geoFenceRadius: 100, timezone: "Asia/Kolkata", attendanceMode: "Web" },
+   216→    ]
+   217→    for (const l of locDefs) {
+   218→      const rec = await db.location.create({ data: { tenantId, ...l, status: "Active" } })
+   219→      locs[l.code] = rec.id
+   220→    }
+   221→    counts.locations = 3
+   222→
+   223→    // ---------- EMPLOYEES (12) ----------
+   224→    // Realistic Indian names; varied departments/designations/grades/locations; manager hierarchy.
+   225→    type EmpSeed = {
+   226→      code: string; first: string; last: string; gender: "Male" | "Female"
+   227→      dob: Date; doj: Date; mobile: string; personalEmail: string; officialEmail: string
+   228→      entity: string; branch: string; dept: string; desig: string; grade: string; loc: string
+   229→      mgrCode: string | null; ctc: number; basic: number; hra: number
+   230→      status: string; pan: string; bank: string; account: string; ifsc: string
+   231→    }
+   232→    const empSeeds: EmpSeed[] = [
+   233→      { code: "EMP-0001", first: "Aarav", last: "Sharma", gender: "Male", dob: dateOnly(1990, 4, 15), doj: yearsAgo(2, 15, 0), mobile: "+91-9876543210", personalEmail: "aarav.sharma@gmail.com", officialEmail: "aarav.sharma@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-ENG", desig: "DES-SSWE", grade: "L5-SEN", loc: "LOC-MUM", mgrCode: null, ctc: 2200000, basic: 1100000, hra: 440000, status: "Active", pan: "ABCPS1234A", bank: "HDFC Bank", account: "501000123456789", ifsc: "HDFC0001234" },
+   234→      { code: "EMP-0002", first: "Vivaan", last: "Mehta", gender: "Male", dob: dateOnly(1991, 7, 22), doj: monthsAgo(22), mobile: "+91-9876543211", personalEmail: "vivaan.mehta@gmail.com", officialEmail: "vivaan.mehta@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-ENG", desig: "DES-SSWE", grade: "L5-SEN", loc: "LOC-BLR", mgrCode: "EMP-0001", ctc: 2000000, basic: 1000000, hra: 400000, status: "Active", pan: "BCDPM2345B", bank: "ICICI Bank", account: "012301234567", ifsc: "ICIC0000123" },
+   235→      { code: "EMP-0003", first: "Ananya", last: "Iyer", gender: "Female", dob: dateOnly(1994, 2, 8), doj: monthsAgo(18), mobile: "+91-9876543212", personalEmail: "ananya.iyer@gmail.com", officialEmail: "ananya.iyer@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-HR", desig: "DES-HR-EXEC", grade: "L4-MID", loc: "LOC-MUM", mgrCode: "EMP-0001", ctc: 700000, basic: 350000, hra: 140000, status: "Active", pan: "CDEPI3456C", bank: "SBI", account: "30123456789", ifsc: "SBIN0001234" },
+   236→      { code: "EMP-0004", first: "Aditya", last: "Reddy", gender: "Male", dob: dateOnly(1996, 10, 12), doj: monthsAgo(14), mobile: "+91-9876543213", personalEmail: "aditya.reddy@gmail.com", officialEmail: "aditya.reddy@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-ENG", desig: "DES-SWE", grade: "L4-MID", loc: "LOC-BLR", mgrCode: "EMP-0002", ctc: 1200000, basic: 600000, hra: 240000, status: "Active", pan: "DEFPR4567D", bank: "Axis Bank", account: "917020001234", ifsc: "UTIB0000123" },
+   237→      { code: "EMP-0005", first: "Saanvi", last: "Nair", gender: "Female", dob: dateOnly(1997, 5, 30), doj: monthsAgo(11), mobile: "+91-9876543214", personalEmail: "saanvi.nair@gmail.com", officialEmail: "saanvi.nair@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-ENG", desig: "DES-SWE", grade: "L4-MID", loc: "LOC-BLR", mgrCode: "EMP-0002", ctc: 1100000, basic: 550000, hra: 220000, status: "Active", pan: "EFGPN5678E", bank: "Kotak Mahindra", account: "12341234567", ifsc: "KKBK0001234" },
+   238→      { code: "EMP-0006", first: "Arjun", last: "Gupta", gender: "Male", dob: dateOnly(1989, 1, 18), doj: monthsAgo(17), mobile: "+91-9876543215", personalEmail: "arjun.gupta@gmail.com", officialEmail: "arjun.gupta@acme.com", entity: "ESPL", branch: "DEL-SALES", dept: "DEPT-SAL", desig: "DES-SALES-MGR", grade: "L6-LEAD", loc: "LOC-DEL", mgrCode: "EMP-0001", ctc: 1900000, basic: 950000, hra: 380000, status: "Active", pan: "FGHPG6789F", bank: "HDFC Bank", account: "501009876543", ifsc: "HDFC0001234" },
+   239→      { code: "EMP-0007", first: "Ishita", last: "Verma", gender: "Female", dob: dateOnly(1998, 9, 5), doj: monthsAgo(5), mobile: "+91-9876543216", personalEmail: "ishita.verma@gmail.com", officialEmail: "ishita.verma@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-FIN", desig: "DES-FIN-ANL", grade: "L4-MID", loc: "LOC-MUM", mgrCode: "EMP-0001", ctc: 900000, basic: 450000, hra: 180000, status: "Active", pan: "GHIPV7890G", bank: "ICICI Bank", account: "012309876543", ifsc: "ICIC0000123" },
+   240→      { code: "EMP-0008", first: "Kabir", last: "Singh", gender: "Male", dob: dateOnly(1992, 11, 27), doj: monthsAgo(13), mobile: "+91-9876543217", personalEmail: "kabir.singh@gmail.com", officialEmail: "kabir.singh@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-OPS", desig: "DES-DEVOPS", grade: "L5-SEN", loc: "LOC-BLR", mgrCode: "EMP-0001", ctc: 1700000, basic: 850000, hra: 340000, status: "On Notice", pan: "HIJPS8901H", bank: "Axis Bank", account: "917020009876", ifsc: "UTIB0000123" },
+   241→      { code: "EMP-0009", first: "Aanya", last: "Joshi", gender: "Female", dob: dateOnly(1995, 6, 14), doj: monthsAgo(3), mobile: "+91-9876543218", personalEmail: "aanya.joshi@gmail.com", officialEmail: "aanya.joshi@acme.com", entity: "ESPL", branch: "DEL-SALES", dept: "DEPT-MKT", desig: "DES-SALES-MGR", grade: "L6-LEAD", loc: "LOC-DEL", mgrCode: "EMP-0006", ctc: 1400000, basic: 700000, hra: 280000, status: "Active", pan: "IJKPJ9012I", bank: "SBI", account: "30129876543", ifsc: "SBIN0001234" },
+   242→      { code: "EMP-0010", first: "Reyansh", last: "Kumar", gender: "Male", dob: dateOnly(1993, 3, 19), doj: monthsAgo(2), mobile: "+91-9876543219", personalEmail: "reyansh.kumar@gmail.com", officialEmail: "reyansh.kumar@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-SAL", desig: "DES-SALES-MGR", grade: "L6-LEAD", loc: "LOC-MUM", mgrCode: "EMP-0006", ctc: 1500000, basic: 750000, hra: 300000, status: "Active", pan: "JKLPK0123J", bank: "Kotak Mahindra", account: "12340987654", ifsc: "KKBK0001234" },
+   243→      { code: "EMP-0011", first: "Myra", last: "Desai", gender: "Female", dob: dateOnly(2000, 8, 11), doj: daysAgo(15), mobile: "+91-9876543220", personalEmail: "myra.desai@gmail.com", officialEmail: "myra.desai@acme.com", entity: "ESPL", branch: "BOM-HQ", dept: "DEPT-HR", desig: "DES-HR-EXEC", grade: "L4-MID", loc: "LOC-MUM", mgrCode: "EMP-0003", ctc: 650000, basic: 325000, hra: 130000, status: "Active", pan: "KLMPL1234K", bank: "HDFC Bank", account: "501005678901", ifsc: "HDFC0001234" },
+   244→      { code: "EMP-0012", first: "Vihaan", last: "Rao", gender: "Male", dob: dateOnly(1999, 12, 3), doj: daysAgo(5), mobile: "+91-9876543221", personalEmail: "vihaan.rao@gmail.com", officialEmail: "vihaan.rao@acme.com", entity: "ESPL", branch: "BLR-TECH", dept: "DEPT-OPS", desig: "DES-SWE", grade: "L4-MID", loc: "LOC-BLR", mgrCode: "EMP-0008", ctc: 1000000, basic: 500000, hra: 200000, status: "Active", pan: "LMNPM2345L", bank: "ICICI Bank", account: "012356789012", ifsc: "ICIC0000123" },
+   245→    ]
+   246→
+   247→    const empByCode: Record<string, { id: string; name: string }> = {}
+   248→    for (const e of empSeeds) {
+   249→      const rec = await db.employee.create({
+   250→        data: {
+   251→          tenantId,
+   252→          employeeCode: e.code,
+   253→          firstName: e.first,
+   254→          lastName: e.last,
+   255→          displayName: `${e.first} ${e.last}`,
+   256→          gender: e.gender,
+   257→          dateOfBirth: e.dob,
+   258→          maritalStatus: e.gender === "Male" ? "Single" : "Single",
+   259→          bloodGroup: "B+",
+   260→          nationality: "Indian",
+   261→          personalEmail: e.personalEmail,
+   262→          officialEmail: e.officialEmail,
+   263→          mobileNumber: e.mobile,
+   264→          dateOfJoining: e.doj,
+   265→          employmentType: "Full-time",
+   266→          workerType: "Permanent",
+   267→          probationStatus: monthsAgo(0).getTime() - e.doj.getTime() > 180 * 24 * 3600 * 1000 ? "Confirmed" : "On Probation",
+   268→          probationEndDate: new Date(e.doj.getTime() + 90 * 24 * 3600 * 1000),
+   269→          noticePeriod: 60,
+   270→          employeeStatus: e.status,
+   271→          entityId: espl.id,
+   272→          branchId: e.branch === "BOM-HQ" ? bomHq.id : e.branch === "BLR-TECH" ? blrTech.id : delSales.id,
+   273→          departmentId: depts[e.dept].id,
+   274→          designationId: desigs[e.desig],
+   275→          gradeId: grades[e.grade],
+   276→          locationId: locs[e.loc],
+   277→          reportingManagerId: null, // set after creation below
+   278→          bankName: e.bank,
+   279→          accountNumber: e.account,
+   280→          ifscCode: e.ifsc,
+   281→          panNumber: e.pan,
+   282→          aadhaarNumber: "XXXX-XXXX-" + Math.floor(1000 + Math.random() * 9000),
+   283→          uanNumber: "101234567890",
+   284→          pfNumber: "BGBNG/" + e.code.replace("EMP-", "") + "/000",
+   285→          currentAddress: "Mumbai, Maharashtra",
+   286→          permanentAddress: "Mumbai, Maharashtra",
+   287→          ctc: e.ctc,
+   288→          basicSalary: e.basic,
+   289→          hra: e.hra,
+   290→        },
+   291→      })
+   292→      empByCode[e.code] = { id: rec.id, name: `${e.first} ${e.last}` }
+   293→    }
+   294→    // Wire up reporting managers
+   295→    for (const e of empSeeds) {
+   296→      if (e.mgrCode) {
+   297→        await db.employee.update({
+   298→          where: { id: empByCode[e.code].id },
+   299→          data: { reportingManagerId: empByCode[e.mgrCode].id },
+   300→        })
+   301→      }
+   302→    }
+   303→    counts.employees = empSeeds.length
+   304→
+   305→    // ---------- LEAVE TYPES (5) ----------
+   306→    const ltDefs = [
+   307→      { code: "CL", name: "Casual Leave", color: "#10b981", isPaid: true, yearlyAccrual: 12, carryForward: true, carryForwardLimit: 6, halfDayAllowed: true, genderApplicability: "All" },
+   308→      { code: "SL", name: "Sick Leave", color: "#f59e0b", isPaid: true, yearlyAccrual: 7, carryForward: false, halfDayAllowed: false, attachmentRequired: false, genderApplicability: "All" },
+   309→      { code: "EL", name: "Earned Leave", color: "#06b6d4", isPaid: true, yearlyAccrual: 15, carryForward: true, carryForwardLimit: 30, encashment: true, genderApplicability: "All" },
+   310→      { code: "PL", name: "Privilege Leave", color: "#d946ef", isPaid: true, yearlyAccrual: 12, carryForward: false, halfDayAllowed: true, genderApplicability: "All" },
+   311→      { code: "CO", name: "Comp Off", color: "#f43f5e", isPaid: true, monthlyAccrual: 1, yearlyAccrual: 0, carryForward: false, genderApplicability: "All" },
+   312→    ]
+   313→    const leaveTypes: Record<string, string> = {}
+   314→    for (const t of ltDefs) {
+   315→      const rec = await db.leaveType.create({
+   316→        data: { tenantId, ...t, fullDayAllowed: true, hourlyAllowed: false, openingBalance: 0, negativeAllowed: false, reasonRequired: true, minDays: 1, backdatedAllowed: true, futureAllowed: true, status: "Active" },
+   317→      })
+   318→      leaveTypes[t.code] = rec.id
+   319→    }
+   320→    counts.leaveTypes = ltDefs.length
+   321→
+   322→    // ---------- LEAVE POLICY + items ----------
+   323→    const stdPolicy = await db.leavePolicy.create({
+   324→      data: {
+   325→        tenantId, name: "Standard Policy", code: "STD-POLICY",
+   326→        description: "Standard leave policy applicable to all full-time employees.",
+   327→        effectiveDate: yearsAgo(1), status: "Active",
+   328→      },
+   329→    })
+   330→    for (const t of ltDefs) {
+   331→      await db.leavePolicyItem.create({
+   332→        data: {
+   333→          leavePolicyId: stdPolicy.id,
+   334→          leaveTypeId: leaveTypes[t.code],
+   335→          allocation: t.yearlyAccrual || 12,
+   336→        },
+   337→      })
+   338→    }
+   339→    counts.leavePolicies = 1
+   340→
+   341→    // ---------- LEAVE APPLICATIONS (3: 1 approved, 1 pending, 1 rejected) ----------
+   342→    const today = new Date(); today.setHours(0, 0, 0, 0)
+   343→    // Approved leave covering today (so dashboard's onLeaveToday = 1)
+   344→    const emp5 = empByCode["EMP-0005"].id
+   345→    const emp3 = empByCode["EMP-0003"].id
+   346→    const emp7 = empByCode["EMP-0007"].id
+   347→    await db.leaveApplication.create({
+   348→      data: {
+   349→        tenantId, employeeId: emp5, leaveTypeId: leaveTypes["CL"],
+   350→        fromDate: daysAgo(1), toDate: daysFromNow(1), days: 3, halfDay: false,
+   351→        reason: "Family function out of town", status: "Approved",
+   352→        appliedAt: daysAgo(5), decisionAt: daysAgo(4),
+   353→        decisionBy: empByCode["EMP-0002"].id, decisionComment: "Approved. Enjoy!",
+   354→      },
+   355→    })
+   356→    await db.leaveApplication.create({
+   357→      data: {
+   358→        tenantId, employeeId: emp3, leaveTypeId: leaveTypes["SL"],
+   359→        fromDate: daysFromNow(2), toDate: daysFromNow(2), days: 1, halfDay: false,
+   360→        reason: "Medical appointment", status: "Pending",
+   361→        appliedAt: daysAgo(1),
+   362→      },
+   363→    })
+   364→    await db.leaveApplication.create({
+   365→      data: {
+   366→        tenantId, employeeId: emp7, leaveTypeId: leaveTypes["PL"],
+   367→        fromDate: daysAgo(10), toDate: daysAgo(8), days: 3, halfDay: false,
+   368→        reason: "Personal work", status: "Rejected",
+   369→        appliedAt: daysAgo(12), decisionAt: daysAgo(11),
+   370→        decisionBy: empByCode["EMP-0001"].id, decisionComment: "Critical project deadline. Please apply next month.",
+   371→      },
+   372→    })
+   373→    counts.leaveApplications = 3
+   374→
+   375→    // ---------- SHIFTS (3) ----------
+   376→    const shiftGeneral = await db.shift.create({
+   377→      data: {
+   378→        tenantId, code: "GEN", name: "General Shift",
+   379→        startTime: "09:00", endTime: "18:00", breakStart: "13:00", breakEnd: "14:00",
+   380→        workingHours: 8, graceMinutes: 15, halfDayHours: 4, fullDayHours: 8,
+   381→        isNightShift: false, isFlexible: false, autoPunchOut: false, overtimeEligible: true,
+   382→        color: "#10b981", status: "Active",
+   383→      },
+   384→    })
+   385→    const shiftEarly = await db.shift.create({
+   386→      data: {
+   387→        tenantId, code: "EARLY", name: "Early Shift",
+   388→        startTime: "06:00", endTime: "15:00", breakStart: "11:00", breakEnd: "12:00",
+   389→        workingHours: 8, graceMinutes: 10, halfDayHours: 4, fullDayHours: 8,
+   390→        isNightShift: false, isFlexible: false, autoPunchOut: false, overtimeEligible: true,
+   391→        color: "#06b6d4", status: "Active",
+   392→      },
+   393→    })
+   394→    const shiftNight = await db.shift.create({
+   395→      data: {
+   396→        tenantId, code: "NIGHT", name: "Night Shift",
+   397→        startTime: "22:00", endTime: "07:00", breakStart: "02:00", breakEnd: "03:00",
+   398→        workingHours: 8, graceMinutes: 15, halfDayHours: 4, fullDayHours: 8,
+   399→        isNightShift: true, isFlexible: false, autoPunchOut: false, overtimeEligible: true,
+   400→        color: "#d946ef", status: "Active",
+   401→      },
+   402→    })
+   403→    counts.shifts = 3
+   404→
+   405→    // ---------- ROSTERS (2: 1 Published, 1 Draft) for current week ----------
+   406→    const mondayThisWeek = new Date(today)
+   407→    const dow = mondayThisWeek.getDay() // 0 Sun ... 6 Sat
+   408→    mondayThisWeek.setDate(mondayThisWeek.getDate() - ((dow + 6) % 7))
+   409→    const fridayThisWeek = new Date(mondayThisWeek); fridayThisWeek.setDate(mondayThisWeek.getDate() + 4)
+   410→
+   411→    const rosterPub = await db.roster.create({
+   412→      data: {
+   413→        tenantId, name: "Engineering Weekly Roster", code: "ENG-ROSTER-W1",
+   414→        startDate: mondayThisWeek, endDate: fridayThisWeek, cycle: "Weekly",
+   415→        status: "Published", publishedAt: daysAgo(2),
+   416→      },
+   417→    })
+   418→    const rosterDraft = await db.roster.create({
+   419→      data: {
+   420→        tenantId, name: "Operations Draft Roster", code: "OPS-ROSTER-W1",
+   421→        startDate: mondayThisWeek, endDate: fridayThisWeek, cycle: "Weekly",
+   422→        status: "Draft",
+   423→      },
+   424→    })
+   425→    // Roster entries — 3 for published roster (EMP-1 General Mon-Wed)
+   426→    for (let i = 0; i < 3; i++) {
+   427→      const d = new Date(mondayThisWeek); d.setDate(d.getDate() + i)
+   428→      await db.rosterEntry.create({
+   429→        data: {
+   430→          rosterId: rosterPub.id, employeeId: empByCode["EMP-0001"].id, shiftId: shiftGeneral.id,
+   431→          date: d, isWeeklyOff: false, isHoliday: false,
+   432→        },
+   433→      })
+   434→    }
+   435→    // 2 entries for draft roster (EMP-8 Night Mon, EMP-12 General Tue)
+   436→    const dMon = new Date(mondayThisWeek)
+   437→    const dTue = new Date(mondayThisWeek); dTue.setDate(dTue.getDate() + 1)
+   438→    await db.rosterEntry.create({
+   439→      data: { rosterId: rosterDraft.id, employeeId: empByCode["EMP-0008"].id, shiftId: shiftNight.id, date: dMon, isWeeklyOff: false, isHoliday: false },
+   440→    })
+   441→    await db.rosterEntry.create({
+   442→      data: { rosterId: rosterDraft.id, employeeId: empByCode["EMP-0012"].id, shiftId: shiftEarly.id, date: dTue, isWeeklyOff: false, isHoliday: false },
+   443→    })
+   444→    counts.rosters = 2
+   445→
+   446→    // ---------- HOLIDAYS (8 for current year) ----------
+   447→    const yr = new Date().getFullYear()
+   448→    const holDefs = [
+   449→      { name: "Republic Day", date: dateOnly(yr, 0, 26), type: "National", description: "National holiday" },
+   450→      { name: "Holi", date: dateOnly(yr, 2, 14), type: "Regional", description: "Festival of colors", state: "Maharashtra" },
+   451→      { name: "Good Friday", date: dateOnly(yr, 3, 18), type: "National", description: "Christian holiday" },
+   452→      { name: "Independence Day", date: dateOnly(yr, 7, 15), type: "National", description: "National holiday" },
+   453→      { name: "Ganesh Chaturthi", date: dateOnly(yr, 7, 27), type: "Regional", description: "Hindu festival", state: "Maharashtra" },
+   454→      { name: "Gandhi Jayanti", date: dateOnly(yr, 9, 2), type: "National", description: "Birth anniversary of Mahatma Gandhi" },
+   455→      { name: "Dussehra", date: dateOnly(yr, 9, 21), type: "Regional", description: "Hindu festival" },
+   456→      { name: "Diwali", date: dateOnly(yr, 10, 1), type: "Regional", description: "Festival of lights" },
+   457→    ]
+   458→    for (const h of holDefs) {
+   459→      await db.holiday.create({ data: { tenantId, ...h, country: "India" } })
+   460→    }
+   461→    counts.holidays = holDefs.length
+   462→
+   463→    // ---------- ATTENDANCE (5 records for first employee, last 5 working days) ----------
+   464→    // Skip weekends: walk back from today, pick last 5 weekdays.
+   465→    const workingDays: Date[] = []
+   466→    const cursor = new Date(today)
+   467→    while (workingDays.length < 5) {
+   468→      const d = cursor.getDay()
+   469→      if (d !== 0 && d !== 6) workingDays.push(new Date(cursor))
+   470→      cursor.setDate(cursor.getDate() - 1)
+   471→    }
+   472→    const attStatuses = [
+   473→      { status: "Present", isLate: false, workHours: 8.5, source: "Web", remarks: "On time" },
+   474→      { status: "Late", isLate: true, workHours: 8.0, source: "Web", remarks: "Traffic delay" },
+   475→      { status: "WFH", isLate: false, workHours: 8.0, source: "Mobile", remarks: "Work from home" },
+   476→      { status: "Present", isLate: false, workHours: 9.0, source: "Web", remarks: "Stayed late" },
+   477→      { status: "Present", isLate: false, workHours: 8.0, source: "Web", remarks: "" },
+   478→    ]
+   479→    for (let i = 0; i < 5; i++) {
+   480→      const d = workingDays[i]
+   481→      const clockIn = new Date(d); clockIn.setHours(9, attStatuses[i].isLate ? 25 : 5, 0, 0)
+   482→      const clockOut = new Date(d); clockOut.setHours(18, 10, 0, 0)
+   483→      await db.attendance.create({
+   484→        data: {
+   485→          tenantId, employeeId: empByCode["EMP-0001"].id,
+   486→          date: d, clockIn, clockOut,
+   487→          status: attStatuses[i].status,
+   488→          workHours: attStatuses[i].workHours,
+   489→          overtimeHours: Math.max(0, attStatuses[i].workHours - 8),
+   490→          isLate: attStatuses[i].isLate,
+   491→          isEarlyGoing: false,
+   492→          remarks: attStatuses[i].remarks,
+   493→          source: attStatuses[i].source,
+   494→        },
+   495→      })
+   496→    }
+   497→    counts.attendance = 5
+   498→
+   499→    // ---------- ASSET CATEGORIES (3) ----------
+   500→    const catLaptops = await db.assetCategory.create({ data: { tenantId, code: "LAPTOPS", name: "Laptops", icon: "Laptop", description: "Company-issued laptops" } })
+   501→    const catMobile = await db.assetCategory.create({ data: { tenantId, code: "MOBILE", name: "Mobile", icon: "Smartphone", description: "Mobile phones" } })
+   502→    const catAcc = await db.assetCategory.create({ data: { tenantId, code: "ACCESSORIES", name: "Accessories", icon: "Mouse", description: "Monitors, keyboards, mice, etc." } })
+   503→    counts.assetCategories = 3
+   504→
+   505→    // ---------- ASSETS (6: 2 laptops assigned, 1 in stock, 1 mobile, 1 monitor, 1 keyboard) ----------
+   506→    const ast1 = await db.asset.create({
+   507→      data: { tenantId, assetCode: "AST-LP-001", name: "Dell Latitude 5430", categoryId: catLaptops.id, serialNumber: "DL5430-001", assetTag: "LP-001", purchaseDate: yearsAgo(1, 10), purchaseValue: 95000, condition: "Good", status: "Assigned", assignedToId: empByCode["EMP-0001"].id, assignedDate: yearsAgo(2), notes: "Primary work laptop" },
+   508→    })
+   509→    const ast2 = await db.asset.create({
+   510→      data: { tenantId, assetCode: "AST-LP-002", name: "HP EliteBook 840", categoryId: catLaptops.id, serialNumber: "HP840-002", assetTag: "LP-002", purchaseDate: yearsAgo(1, 6), purchaseValue: 102000, condition: "Good", status: "Assigned", assignedToId: empByCode["EMP-0002"].id, assignedDate: monthsAgo(22), notes: "Primary work laptop" },
+   511→    })
+   512→    const ast3 = await db.asset.create({
+   513→      data: { tenantId, assetCode: "AST-LP-003", name: "Lenovo ThinkPad T14", categoryId: catLaptops.id, serialNumber: "LNV-T14-003", assetTag: "LP-003", purchaseDate: monthsAgo(3), purchaseValue: 110000, condition: "Good", status: "In Stock", notes: "Spare laptop for new joiners" },
+   514→    })
+   515→    await db.asset.create({
+   516→      data: { tenantId, assetCode: "AST-MB-001", name: "iPhone 14", categoryId: catMobile.id, serialNumber: "IP14-001", assetTag: "MB-001", purchaseDate: monthsAgo(6), purchaseValue: 79000, condition: "Good", status: "In Stock", notes: "Sales team pool device" },
+   517→    })
+   518→    await db.asset.create({
+   519→      data: { tenantId, assetCode: "AST-ACC-001", name: "Dell 27\" Monitor", categoryId: catAcc.id, serialNumber: "DELL27-001", assetTag: "ACC-001", purchaseDate: monthsAgo(4), purchaseValue: 22000, condition: "Good", status: "In Stock", notes: "External monitor" },
+   520→    })
+   521→    await db.asset.create({
+   522→      data: { tenantId, assetCode: "AST-ACC-002", name: "Logitech Keyboard", categoryId: catAcc.id, serialNumber: "LOG-K380-002", assetTag: "ACC-002", purchaseDate: monthsAgo(2), purchaseValue: 3500, condition: "Good", status: "In Stock", notes: "Wireless keyboard" },
+   523→    })
+   524→    counts.assets = 6
+   525→
+   526→    // Asset assignments (2 records for the 2 assigned laptops)
+   527→    await db.assetAssignment.create({ data: { assetId: ast1.id, employeeId: empByCode["EMP-0001"].id, assignedDate: yearsAgo(2), condition: "Good", acknowledged: true, notes: "Initial assignment" } })
+   528→    await db.assetAssignment.create({ data: { assetId: ast2.id, employeeId: empByCode["EMP-0002"].id, assignedDate: monthsAgo(22), condition: "Good", acknowledged: true, notes: "Initial assignment" } })
+   529→
+   530→    // ---------- ASSET REQUESTS (2: 1 pending, 1 approved) ----------
+   531→    await db.assetRequest.create({
+   532→      data: { tenantId, employeeId: empByCode["EMP-0004"].id, categoryId: catLaptops.id, requestType: "New", reason: "Need a dedicated laptop for development work", status: "Pending", priority: "High" },
+   533→    })
+   534→    await db.assetRequest.create({
+   535→      data: { tenantId, employeeId: empByCode["EMP-0012"].id, categoryId: catAcc.id, requestType: "New", reason: "Need external monitor for coding", status: "Approved", priority: "Medium" },
+   536→    })
+   537→    counts.assetRequests = 2
+   538→
+   539→    // ---------- ANNOUNCEMENTS (2) ----------
+   540→    await db.announcement.create({
+   541→      data: { tenantId, title: "Welcome to Nexus HR", body: "We're excited to roll out our new HRMS. Please complete your profile and explore the dashboard.", audience: "All", publishDate: daysAgo(7), priority: "Normal" },
+   542→    })
+   543→    await db.announcement.create({
+   544→      data: { tenantId, title: "Q3 Town Hall — Save the Date", body: "Our quarterly town hall is scheduled for next Friday at 4 PM IST. Please plan to attend.", audience: "All", publishDate: daysAgo(2), priority: "High" },
+   545→    })
+   546→    counts.announcements = 2
+   547→
+   548→    // ---------- AUDIT LOGS (3) ----------
+   549→    await db.auditLog.create({ data: { tenantId, module: "employee", action: "Create", recordId: empByCode["EMP-0001"].id, userId: empByCode["EMP-0003"].id, userName: "Ananya Iyer", details: JSON.stringify({ code: "EMP-0001" }), ip: "10.0.0.12" } })
+   550→    await db.auditLog.create({ data: { tenantId, module: "leave", action: "Approve", recordId: empByCode["EMP-0005"].id, userId: empByCode["EMP-0002"].id, userName: "Vivaan Mehta", details: JSON.stringify({ days: 3 }), ip: "10.0.0.18" } })
+   551→    await db.auditLog.create({ data: { tenantId, module: "asset", action: "Create", recordId: ast1.id, userId: empByCode["EMP-0003"].id, userName: "Ananya Iyer", details: JSON.stringify({ assetCode: "AST-LP-001" }), ip: "10.0.0.12" } })
+   552→    counts.auditLogs = 3
+   553→
+   554→    // ---------- FORM SCHEMAS (2) ----------
+   555→    // 1. Clone default employee form
+   556→    await db.formSchema.create({
+   557→      data: {
+   558→        tenantId, code: "employee-default", name: "Employee Form (Default Clone)",
+   559→        module: "employee", description: "Default employee form schema cloned from system defaults.",
+   560→        sections: JSON.stringify(defaultFormSchemas.employee.sections),
+   561→        status: "Published", version: 1,
+   562→      },
+   563→    })
+   564→    // 2. Custom "IT Asset Request" form
+   565→    const itAssetRequestSections = [
+   566→      {
+   567→        id: "sec-req-details",
+   568→        title: "Request Details",
+   569→        description: "Tell us what you need",
+   570→        fields: [
+   571→          { id: "f-asset-type", key: "assetType", label: "Asset Type", type: "select", width: "half", validation: { required: true }, options: [
+   572→            { label: "Laptop", value: "Laptop" }, { label: "Mobile", value: "Mobile" }, { label: "Monitor", value: "Monitor" }, { label: "Keyboard", value: "Keyboard" }, { label: "Other", value: "Other" },
+   573→          ] },
+   574→          { id: "f-req-type", key: "requestType", label: "Request Type", type: "select", width: "half", validation: { required: true }, options: [
+   575→            { label: "New", value: "New" }, { label: "Replacement", value: "Replacement" }, { label: "Repair", value: "Repair" },
+   576→          ] },
+   577→          { id: "f-priority", key: "priority", label: "Priority", type: "select", width: "half", options: [
+   578→            { label: "Low", value: "Low" }, { label: "Medium", value: "Medium" }, { label: "High", value: "High" }, { label: "Critical", value: "Critical" },
+   579→          ] },
+   580→          { id: "f-expected", key: "expectedDate", label: "Expected Date", type: "date", width: "half" },
+   581→          { id: "f-reason", key: "reason", label: "Reason / Justification", type: "textarea", width: "full", validation: { required: true, minLength: 10 } },
+   582→        ],
+   583→      },
+   584→      {
+   585→        id: "sec-asset-info",
+   586→        title: "Asset Specifications",
+   587→        description: "Preferred configuration",
+   588→        fields: [
+   589→          { id: "f-brand", key: "preferredBrand", label: "Preferred Brand", type: "text", width: "half", placeholder: "e.g. Dell, HP, Lenovo" },
+   590→          { id: "f-model", key: "preferredModel", label: "Preferred Model", type: "text", width: "half", placeholder: "e.g. Latitude 5430" },
+   591→          { id: "f-budget", key: "budget", label: "Indicative Budget", type: "currency", width: "half", unit: "₹" },
+   592→          { id: "f-config", key: "configuration", label: "Configuration Details", type: "textarea", width: "full", placeholder: "RAM, SSD, CPU, etc." },
+   593→        ],
+   594→      },
+   595→    ]
+   596→    await db.formSchema.create({
+   597→      data: {
+   598→        tenantId, code: "it-asset-request", name: "IT Asset Request",
+   599→        module: "custom", description: "Form for employees to request IT assets.",
+   600→        sections: JSON.stringify(itAssetRequestSections),
+   601→        status: "Published", version: 1,
+   602→      },
+   603→    })
+   604→    counts.formSchemas = 2
+   605→
+   606→    // ---------- WORKFLOWS (2 with WorkflowSteps) ----------
+   607→    const wfLeave = await db.workflow.create({
+   608→      data: {
+   609→        tenantId, code: "leave-approval-2level", name: "Leave Approval 2-Level",
+   610→        module: "leave", event: "apply",
+   611→        description: "Two-level sequential approval: Reporting Manager → HR Manager.",
+   612→        approvalType: "Sequential", isActive: true,
+   613→      },
+   614→    })
+   615→    await db.workflowStep.create({ data: { workflowId: wfLeave.id, level: 1, approverType: "ReportingManager", name: "Reporting Manager Approval", slaHours: 24 } })
+   616→    await db.workflowStep.create({ data: { workflowId: wfLeave.id, level: 2, approverType: "HRManager", name: "HR Manager Approval", slaHours: 48 } })
+   617→
+   618→    const wfAsset = await db.workflow.create({
+   619→      data: {
+   620→        tenantId, code: "asset-request-approval", name: "Asset Request Approval",
+   621→        module: "asset", event: "request",
+   622→        description: "Single-step Department Head approval for asset requests.",
+   623→        approvalType: "Sequential", isActive: true,
+   624→      },
+   625→    })
+   626→    await db.workflowStep.create({ data: { workflowId: wfAsset.id, level: 1, approverType: "DepartmentHead", name: "Department Head Approval", slaHours: 48 } })
+   627→    counts.workflows = 2
+   628→
+   629→    return ok({ ok: true, counts })
+   630→  } catch (err: any) {
+   631→    console.error("[seed] error:", err)
+   632→    return bad("Seed failed: " + (err?.message || String(err)), 500)
+   633→  }
+   634→}
+   635→
