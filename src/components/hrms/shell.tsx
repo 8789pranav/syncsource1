@@ -18,6 +18,7 @@ import {
   LayoutDashboard, Building2, Users, CalendarDays, CalendarRange, Clock,
   Package, FileEdit, Workflow, Megaphone, Settings, ScrollText, Sun, Moon,
   Bell, Search, Menu, ChevronLeft, Sparkles, ShieldCheck, HelpCircle, LogOut,
+  Wallet, Banknote,
 } from "lucide-react"
 import { useHrmsStore } from "@/store/hrms-store"
 import { ModuleId, ModuleDef } from "@/lib/types"
@@ -32,6 +33,7 @@ const MODULES: (ModuleDef & { icon: any })[] = [
   { id: "attendance", label: "Attendance", icon: CalendarRange, group: "Time", description: "Daily attendance" },
   { id: "holiday", label: "Holidays", icon: CalendarDays, group: "Time", description: "Holiday calendar" },
   { id: "asset", label: "Assets", icon: Package, group: "Config", description: "Asset master & assignment" },
+  { id: "payroll", label: "Payroll", icon: Banknote, group: "Payroll", description: "Salary, runs & payslips" },
   { id: "forms", label: "Form Builder", icon: FileEdit, group: "System", description: "Dynamic form schemas" },
   { id: "workflows", label: "Workflows", icon: Workflow, group: "System", description: "Approval workflows" },
   { id: "announcements", label: "Announcements", icon: Megaphone, group: "People", description: "Company announcements" },
@@ -43,6 +45,7 @@ const GROUPS: { id: string; label: string }[] = [
   { id: "Main", label: "Overview" },
   { id: "People", label: "People" },
   { id: "Time", label: "Time & Attendance" },
+  { id: "Payroll", label: "Payroll & Finance" },
   { id: "Config", label: "Configuration" },
   { id: "System", label: "System" },
 ]

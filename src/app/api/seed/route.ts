@@ -58,6 +58,11 @@ async function runSeed() {
     await ensureTenant()
 
     // ---------- WIPE existing data in dependency order (children first) ----------
+    // Phase 3 payroll (must precede salary structure / payroll run)
+    await db.payslip.deleteMany()
+    await db.payrollRun.deleteMany()
+    await db.salaryAssignment.deleteMany()
+    await db.salaryStructure.deleteMany()
     // Phase 2 employee sub-records (must precede employee.deleteMany — FK to Employee)
     await db.employeeRequest.deleteMany()
     await db.employeeLetter.deleteMany()
@@ -1446,6 +1451,178 @@ async function runSeed() {
     for (const [k, v] of Object.entries(subCounts)) {
       counts[`emp_${k}`] = v
     }
+
+    // ============================================================
+    // PHASE 3 — PAYROLL SEED DATA
+    // ============================================================
+    // Create salary structures
+    const stdStructure = await db.salaryStructure.create({
+      data: {
+        tenantId,
+        code: "SS-STD", name: "Standard Salary Structure",
+        description: "Standard CTC structure with 50% basic, 20% HRA, PF, and standard deductions",
+        basicPercent: 50, hraPercent: 20, specialAllowancePercent: 20,
+        conveyanceAllowance: 1600, medicalAllowance: 1250, bonusAmount: 0,
+        pfEmployerPercent: 12, esiEmployerPercent: 3.25,
+        pfEmployeePercent: 12, esiEmployeePercent: 0.75,
+        professionalTax: 200, tdsPercent: 5, status: "Active",
+      },
+    })
+    counts.salaryStructures = 1
+
+    const execStructure = await db.salaryStructure.create({
+      data: {
+        tenantId,
+        code: "SS-EXEC", name: "Executive Salary Structure",
+        description: "Higher CTC structure for senior employees with lower PF (restrict to 15k basic)",
+        basicPercent: 40, hraPercent: 25, specialAllowancePercent: 30,
+        conveyanceAllowance: 1600, medicalAllowance: 1250, bonusAmount: 50000,
+        pfEmployerPercent: 12, esiEmployerPercent: 0,
+        pfEmployeePercent: 12, esiEmployeePercent: 0,
+        professionalTax: 200, tdsPercent: 15, status: "Active",
+      },
+    })
+    counts.salaryStructures = 2
+
+    // Helper to compute salary (mirror of API)
+    const computeSalary = (ctc: number, s: any) => {
+      const basic = Math.round((ctc * s.basicPercent) / 100 / 12)
+      const hra = Math.round((ctc * s.hraPercent) / 100 / 12)
+      const conveyance = s.conveyanceAllowance
+      const medical = s.medicalAllowance
+      const bonus = s.bonusAmount || 0
+      const grossMonthly = basic + hra + conveyance + medical + bonus
+      const pfEmployer = Math.round((basic * s.pfEmployerPercent) / 100)
+      const esiEmployer = s.esiEmployerPercent > 0 && ctc <= 210000 ? Math.round((grossMonthly * s.esiEmployerPercent) / 100) : 0
+      const specialAnnual = Math.max(0, ctc - (basic + hra + conveyance + medical + bonus) * 12 - pfEmployer * 12 - esiEmployer * 12)
+      const specialAllowance = Math.round(specialAnnual / 12)
+      const pfEmployee = Math.round((basic * s.pfEmployeePercent) / 100)
+      const esiEmployee = s.esiEmployeePercent > 0 && ctc <= 210000 ? Math.round((grossMonthly * s.esiEmployeePercent) / 100) : 0
+      const professionalTax = s.professionalTax
+      const tdsAmount = Math.round((ctc * s.tdsPercent) / 100 / 12)
+      const grossSalary = basic + hra + specialAllowance + conveyance + medical + bonus
+      const totalDeductions = pfEmployee + esiEmployee + professionalTax + tdsAmount
+      const netSalary = grossSalary - totalDeductions
+      const totalEmployerContribution = pfEmployer + esiEmployer
+      return { basic, hra, specialAllowance, conveyanceAllowance: conveyance, medicalAllowance: medical, bonusAmount: bonus, pfEmployee, pfEmployer, esiEmployee, esiEmployer, professionalTax, tdsAmount, grossSalary, netSalary, totalEmployerContribution }
+    }
+
+    // Assign salary to first 8 active employees (mix of structures)
+    const activeEmps = Object.values(empByCode).filter((e: any) => e.employeeStatus === "Active").slice(0, 8)
+    let assignmentCount = 0
+    for (let i = 0; i < activeEmps.length; i++) {
+      const emp = activeEmps[i] as any
+      const isExec = i < 2 // first 2 are executives
+      const structure = isExec ? execStructure : stdStructure
+      const ctc = isExec ? 2400000 + i * 100000 : 800000 + i * 120000
+      const comp = computeSalary(ctc, structure)
+      const effectiveDate = emp.dateOfJoining || daysAgo(180)
+      await db.salaryAssignment.create({
+        data: {
+          tenantId, employeeId: emp.id, salaryStructureId: structure.id, ctc,
+          ...comp, effectiveDate, isActive: true,
+        },
+      })
+      assignmentCount++
+      // Update employee compensation fields
+      await db.employee.update({
+        where: { id: emp.id },
+        data: {
+          ctc, basicSalary: comp.basic, hra: comp.hra,
+          specialAllowance: comp.specialAllowance, conveyanceAllowance: comp.conveyanceAllowance,
+          medicalAllowance: comp.medicalAllowance, bonusAmount: comp.bonusAmount,
+          pfEmployee: comp.pfEmployee, pfEmployer: comp.pfEmployer,
+          esiAmount: comp.esiEmployee + comp.esiEmployer,
+          professionalTax: comp.professionalTax, tdsAmount: comp.tdsAmount,
+          grossSalary: comp.grossSalary, netSalary: comp.netSalary,
+        },
+      })
+    }
+    counts.salaryAssignments = assignmentCount
+
+    // Create a completed payroll run for previous month
+    const prevMonth = new Date()
+    prevMonth.setMonth(prevMonth.getMonth() - 1)
+    const prevYear = prevMonth.getFullYear()
+    const prevMonthNum = prevMonth.getMonth() + 1
+    const prevPeriod = `${prevYear}-${String(prevMonthNum).padStart(2, "0")}`
+    const prevPeriodStart = new Date(prevYear, prevMonthNum - 1, 1, 12, 0, 0, 0)
+    const prevPeriodEnd = new Date(prevYear, prevMonthNum, 0, 12, 0, 0, 0)
+    const prevPayDate = new Date(prevYear, prevMonthNum, 5, 12, 0, 0, 0)
+
+    const payrollRun = await db.payrollRun.create({
+      data: {
+        tenantId,
+        code: `PR-${prevPeriod}`,
+        name: `${prevMonth.toLocaleDateString("en-IN", { month: "long" })} ${prevYear} Payroll`,
+        payPeriod: prevPeriod,
+        payPeriodStart: prevPeriodStart,
+        payPeriodEnd: prevPeriodEnd,
+        payDate: prevPayDate,
+        status: "Paid",
+        processedAt: daysAgo(20),
+        approvedAt: daysAgo(18),
+        approvedBy: "HR Admin",
+        paidAt: daysAgo(15),
+      },
+    })
+
+    // Generate payslips for this run
+    const assignments = await db.salaryAssignment.findMany({
+      where: { tenantId, isActive: true },
+      include: { employee: true },
+    })
+    let totalGross = 0, totalNet = 0, totalDeductions = 0, totalEmployer = 0, payslipCount = 0
+    for (const a of assignments) {
+      if (a.employee.employeeStatus !== "Active") continue
+      const lopDays = 0
+      const workingDays = 30
+      const daysPaid = workingDays - lopDays
+      const lopFactor = daysPaid / workingDays
+      const basic = Math.round(a.basic * lopFactor)
+      const hra = Math.round(a.hra * lopFactor)
+      const specialAllowance = Math.round(a.specialAllowance * lopFactor)
+      const conveyanceAllowance = a.conveyanceAllowance
+      const medicalAllowance = a.medicalAllowance
+      const bonusAmount = a.bonusAmount
+      const grossEarnings = basic + hra + specialAllowance + conveyanceAllowance + medicalAllowance + bonusAmount
+      const pfEmployee = Math.round(a.pfEmployee * lopFactor)
+      const esiEmployee = Math.round(a.esiEmployee * lopFactor)
+      const professionalTax = a.professionalTax
+      const tdsAmount = Math.round(a.tdsAmount * lopFactor)
+      const totalDed = pfEmployee + esiEmployee + professionalTax + tdsAmount
+      const netSalary = grossEarnings - totalDed
+      const pfEmployer = Math.round(a.pfEmployer * lopFactor)
+      const esiEmployer = Math.round(a.esiEmployer * lopFactor)
+      const totalEmployerContribution = pfEmployer + esiEmployer
+
+      await db.payslip.create({
+        data: {
+          tenantId, employeeId: a.employeeId, payrollRunId: payrollRun.id,
+          payPeriod: prevPeriod, payPeriodStart: prevPeriodStart, payPeriodEnd: prevPeriodEnd, payDate: prevPayDate,
+          basic, hra, specialAllowance, conveyanceAllowance, medicalAllowance, bonusAmount, grossEarnings,
+          pfEmployee, esiEmployee, professionalTax, tdsAmount, totalDeductions: totalDed,
+          netSalary, pfEmployer, esiEmployer, totalEmployerContribution, ctc: a.ctc,
+          workingDays, daysPaid, lopDays,
+          status: "Paid", generatedAt: daysAgo(20), paidAt: daysAgo(15),
+        },
+      })
+      totalGross += grossEarnings
+      totalNet += netSalary
+      totalDeductions += totalDed
+      totalEmployer += totalEmployerContribution
+      payslipCount++
+    }
+
+    await db.payrollRun.update({
+      where: { id: payrollRun.id },
+      data: {
+        totalGross, totalNet, totalDeductions, totalEmployerContribution: totalEmployer,
+        employeeCount: payslipCount,
+      },
+    })
+    counts.payrollRuns = 1
+    counts.payslips = payslipCount
 
     return ok({ ok: true, counts })
   } catch (err: any) {

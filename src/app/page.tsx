@@ -20,6 +20,7 @@ const RosterModule = dynamic(() => import("@/components/hrms/modules/roster").th
 const AttendanceModule = dynamic(() => import("@/components/hrms/modules/attendance").then(m => ({ default: m.AttendanceModule })), { loading })
 const HolidayModule = dynamic(() => import("@/components/hrms/modules/holiday").then(m => ({ default: m.HolidayModule })), { loading })
 const AssetsModule = dynamic(() => import("@/components/hrms/modules/asset").then(m => ({ default: m.AssetsModule })), { loading })
+const PayrollModule = dynamic(() => import("@/components/hrms/modules/payroll").then(m => ({ default: m.PayrollModule })), { loading })
 const FormsModule = dynamic(() => import("@/components/hrms/modules/forms").then(m => ({ default: m.FormsModule })), { loading })
 const WorkflowsModule = dynamic(() => import("@/components/hrms/modules/workflows").then(m => ({ default: m.WorkflowsModule })), { loading })
 const AnnouncementsModule = dynamic(() => import("@/components/hrms/modules/announcements").then(m => ({ default: m.AnnouncementsModule })), { loading })
@@ -40,6 +41,7 @@ export default function Home() {
       {activeModule === "attendance" && <AttendanceModule />}
       {activeModule === "holiday" && <HolidayModule />}
       {activeModule === "asset" && <AssetsModule />}
+      {activeModule === "payroll" && <PayrollModule />}
       {activeModule === "forms" && <FormsModule />}
       {activeModule === "workflows" && <WorkflowsModule />}
       {activeModule === "announcements" && <AnnouncementsModule />}

@@ -48,6 +48,8 @@ model Tenant {
   workflows     Workflow[]
   announcements Announcement[]
   auditLogs     AuditLog[]
+  salaryStructures SalaryStructure[]
+  payrollRuns   PayrollRun[]
 }
 
 // ============================================================
@@ -383,6 +385,8 @@ model Employee {
   helpdeskTickets    EmployeeHelpdeskTicket[]
   letters            EmployeeLetter[]
   requests           EmployeeRequest[]
+  salaryAssignments  SalaryAssignment[]
+  payslips           Payslip[]
 
   @@unique([tenantId, employeeCode])
 }
@@ -1370,4 +1374,141 @@ model AuditLog {
   details     String?  // JSON
   ip          String?
   createdAt   DateTime @default(now())
+}
+
+// ============================================================
+// PAYROLL MANAGEMENT (Phase 3)
+// ============================================================
+
+model SalaryStructure {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code          String
+  name          String
+  description   String?
+  // Default component percentages (of CTC)
+  basicPercent  Float    @default(50)
+  hraPercent    Float    @default(20)
+  specialAllowancePercent Float @default(20)
+  conveyanceAllowance Float @default(1600)
+  medicalAllowance Float  @default(1250)
+  bonusAmount   Float    @default(0)
+  // Employer contributions
+  pfEmployerPercent Float @default(12)
+  esiEmployerPercent Float @default(3.25)
+  // Employee deductions
+  pfEmployeePercent Float @default(12)
+  esiEmployeePercent Float @default(0.75)
+  professionalTax Float  @default(200)
+  tdsPercent     Float   @default(0)
+  status        String   @default("Active") // Active | Inactive
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  assignments   SalaryAssignment[]
+
+  @@unique([tenantId, code])
+}
+
+model SalaryAssignment {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  salaryStructureId String
+  salaryStructure SalaryStructure @relation(fields: [salaryStructureId], references: [id])
+  ctc           Float
+  basic         Float
+  hra           Float
+  specialAllowance Float
+  conveyanceAllowance Float
+  medicalAllowance Float
+  bonusAmount   Float
+  pfEmployee    Float
+  pfEmployer    Float
+  esiEmployee   Float
+  esiEmployer   Float
+  professionalTax Float
+  tdsAmount     Float
+  grossSalary   Float
+  netSalary     Float
+  effectiveDate DateTime
+  endDate       DateTime?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PayrollRun {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code          String   // PR-2026-06
+  name          String   // "June 2026 Payroll"
+  payPeriod     String   // "2026-06"
+  payPeriodStart DateTime
+  payPeriodEnd  DateTime
+  payDate       DateTime
+  status        String   @default("Draft") // Draft | Processing | Completed | Approved | Paid | Cancelled
+  processedAt   DateTime?
+  approvedAt    DateTime?
+  approvedBy    String?
+  paidAt        DateTime?
+  totalGross    Float    @default(0)
+  totalNet      Float    @default(0)
+  totalDeductions Float  @default(0)
+  totalEmployerContribution Float @default(0)
+  employeeCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  payslips      Payslip[]
+
+  @@unique([tenantId, code])
+}
+
+model Payslip {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payrollRunId  String
+  payrollRun    PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  payPeriod     String
+  payPeriodStart DateTime
+  payPeriodEnd  DateTime
+  payDate       DateTime
+  // Earnings
+  basic         Float
+  hra           Float
+  specialAllowance Float
+  conveyanceAllowance Float
+  medicalAllowance Float
+  bonusAmount   Float
+  grossEarnings Float
+  // Deductions
+  pfEmployee    Float
+  esiEmployee   Float
+  professionalTax Float
+  tdsAmount     Float
+  totalDeductions Float
+  // Net
+  netSalary     Float
+  // Employer contributions (cost to company)
+  pfEmployer    Float
+  esiEmployer   Float
+  totalEmployerContribution Float
+  ctc           Float
+  // Working days
+  workingDays   Int      @default(30)
+  daysPaid      Int      @default(30)
+  lopDays       Int      @default(0) // Loss of pay
+  status        String   @default("Generated") // Generated | Approved | Paid | Cancelled
+  generatedAt   DateTime @default(now())
+  paidAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([payrollRunId, employeeId])
 }

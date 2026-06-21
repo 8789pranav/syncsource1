@@ -108,6 +108,7 @@ export type ModuleId =
   | "attendance"
   | "holiday"
   | "asset"
+  | "payroll"
   | "forms"
   | "workflows"
   | "announcements"
