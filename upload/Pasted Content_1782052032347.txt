@@ -1,0 +1,4559 @@
+Below is an **industry-grade HR Management System feature list** with **all major modules, configurations, and multi-tenant requirements**. This is suitable for building a Zimyo/Keka/Darwinbox-like HRMS.
+
+# 1. Multi-Tenant Platform Foundation
+
+Multi-tenant means one HRMS application can serve many companies/clients, but each company’s data, settings, users, workflows, and documents remain isolated.
+
+## 1.1 Super Admin Portal
+
+This is for your SaaS company/admin team.
+
+### Features
+
+Manage all client organizations.
+
+Create organization/company account.
+
+Activate/deactivate organization.
+
+Assign subscription plan.
+
+Define allowed modules per organization.
+
+Manage billing cycle.
+
+Manage employee limits.
+
+Manage storage limits.
+
+View usage analytics.
+
+Impersonate organization admin with audit tracking.
+
+Manage global masters.
+
+Manage system-wide settings.
+
+Manage email/SMS/WhatsApp gateways.
+
+Manage global templates.
+
+View organization-wise logs.
+
+View failed jobs, queue status, API logs.
+
+Manage maintenance mode.
+
+Manage feature flags.
+
+## 1.2 Organization/Client Management
+
+Each client organization should have:
+
+Organization name.
+
+Legal name.
+
+Company code.
+
+Logo.
+
+Favicon.
+
+Brand color.
+
+Domain/subdomain.
+
+Country.
+
+Currency.
+
+Time zone.
+
+Date format.
+
+Financial year.
+
+Payroll country rules.
+
+Subscription start date.
+
+Subscription end date.
+
+Plan type.
+
+Allowed employee count.
+
+Allowed storage.
+
+Allowed modules.
+
+Status: Trial, Active, Suspended, Expired, Cancelled.
+
+## 1.3 Tenant Data Isolation
+
+Industry-grade HRMS must support strong tenant separation.
+
+### Options
+
+Single database, shared schema with `TenantId`.
+
+Single database, separate schema per tenant.
+
+Separate database per tenant.
+
+Hybrid model: shared DB for small clients, dedicated DB for enterprise clients.
+
+### Required Rules
+
+Every table should have `TenantId`.
+
+Every API must filter by `TenantId`.
+
+Users from one company must never access another company’s data.
+
+Files should be stored tenant-wise.
+
+Audit logs should include tenant/company/user/IP/device.
+
+Backups should support tenant-level restore.
+
+## 1.4 Tenant-Level Configuration
+
+Each organization should configure:
+
+Modules enabled/disabled.
+
+Menu visibility.
+
+Role permissions.
+
+Company/entity structure.
+
+Employee code format.
+
+Payroll rules.
+
+Attendance rules.
+
+Leave rules.
+
+Document templates.
+
+Approval workflows.
+
+Notification templates.
+
+Branding.
+
+Custom fields.
+
+Custom forms.
+
+Custom reports.
+
+Data retention policy.
+
+Password policy.
+
+Login policy.
+
+2FA policy.
+
+# 2. Organization Structure Module
+
+This module defines the company’s internal structure.
+
+## 2.1 Company / Entity Management
+
+For multi-entity organizations.
+
+### Features
+
+Create multiple companies/entities under one tenant.
+
+Legal name.
+
+Trade name.
+
+Entity code.
+
+Registration number.
+
+PAN/GST/TAN/ESI/PF numbers.
+
+Address.
+
+Country/state/city.
+
+Currency.
+
+Payroll applicability.
+
+Attendance applicability.
+
+Leave applicability.
+
+Status.
+
+Effective date.
+
+## 2.2 Branch Management
+
+### Features
+
+Create branch.
+
+Branch code.
+
+Address.
+
+City/state/country.
+
+Geo-location.
+
+Branch head.
+
+Working days.
+
+Holiday calendar mapping.
+
+Attendance policy mapping.
+
+Shift mapping.
+
+Payroll location mapping.
+
+Status.
+
+## 2.3 Location Management
+
+### Features
+
+Create locations/offices.
+
+Map location to branch/entity.
+
+Geo-fencing radius.
+
+Address.
+
+Time zone.
+
+Holiday calendar.
+
+Attendance mode.
+
+## 2.4 Department Management
+
+### Features
+
+Department name.
+
+Department code.
+
+Parent department.
+
+Department head.
+
+Cost center mapping.
+
+Entity/branch mapping.
+
+Status.
+
+## 2.5 Designation Management
+
+### Features
+
+Designation name.
+
+Designation code.
+
+Grade mapping.
+
+Level mapping.
+
+Department mapping.
+
+Job description.
+
+Status.
+
+## 2.6 Grade / Band / Level Management
+
+### Features
+
+Grade name.
+
+Grade code.
+
+Hierarchy level.
+
+Salary range.
+
+Leave eligibility.
+
+Approval authority.
+
+Travel policy mapping.
+
+Benefit eligibility.
+
+## 2.7 Business Unit Management
+
+### Features
+
+Business unit name.
+
+BU head.
+
+Entity mapping.
+
+Department mapping.
+
+Cost center mapping.
+
+Reports by BU.
+
+## 2.8 Cost Center Management
+
+### Features
+
+Cost center code.
+
+Cost center name.
+
+Entity mapping.
+
+Department mapping.
+
+Budget owner.
+
+Payroll allocation.
+
+Expense allocation.
+
+## 2.9 Reporting Structure
+
+### Features
+
+Reporting manager.
+
+Functional manager.
+
+HR manager.
+
+Dotted-line manager.
+
+Matrix reporting.
+
+Temporary reporting manager.
+
+Effective date based manager changes.
+
+Bulk reporting manager update.
+
+Org chart generation.
+
+## 2.10 Organization Chart
+
+### Features
+
+Tree view.
+
+Card view.
+
+Department-wise org chart.
+
+Manager-wise hierarchy.
+
+Vacant positions.
+
+Export to PDF/image.
+
+Search employee.
+
+Filter by entity/department/location.
+
+# 3. Employee Master Module
+
+This is the core employee database.
+
+## 3.1 Employee Profile
+
+### Sections
+
+Basic details.
+
+Personal details.
+
+Contact details.
+
+Address details.
+
+Family details.
+
+Education details.
+
+Experience details.
+
+Bank details.
+
+Statutory details.
+
+Emergency contacts.
+
+Documents.
+
+Job details.
+
+Compensation details.
+
+Reporting details.
+
+Assets.
+
+Skills.
+
+Certifications.
+
+Timeline.
+
+Audit history.
+
+## 3.2 Basic Details
+
+Employee ID.
+
+Employee code.
+
+First name.
+
+Middle name.
+
+Last name.
+
+Display name.
+
+Gender.
+
+Date of birth.
+
+Marital status.
+
+Blood group.
+
+Nationality.
+
+Profile photo.
+
+Personal email.
+
+Official email.
+
+Mobile number.
+
+Alternate number.
+
+## 3.3 Employment Details
+
+Date of joining.
+
+Employment type.
+
+Worker type.
+
+Probation status.
+
+Probation end date.
+
+Confirmation date.
+
+Notice period.
+
+Employee status.
+
+Department.
+
+Designation.
+
+Grade.
+
+Location.
+
+Branch.
+
+Entity.
+
+Business unit.
+
+Cost center.
+
+Reporting manager.
+
+HR manager.
+
+Functional manager.
+
+## 3.4 Employee Lifecycle Status
+
+Candidate.
+
+Pre-joining.
+
+Active.
+
+On probation.
+
+Confirmed.
+
+On notice.
+
+Resigned.
+
+Terminated.
+
+Absconded.
+
+Retired.
+
+Inactive.
+
+Alumni.
+
+## 3.5 Employee Code Configuration
+
+### Configurations
+
+Auto-generate employee code.
+
+Manual employee code.
+
+Prefix.
+
+Suffix.
+
+Running number.
+
+Entity-wise code.
+
+Department-wise code.
+
+Location-wise code.
+
+Financial-year-wise code.
+
+Example:
+
+`ESPL-EMP-0001`
+
+`DEL-HR-2026-001`
+
+## 3.6 Custom Fields
+
+Industry-grade system should allow custom employee fields.
+
+### Field Types
+
+Text.
+
+Number.
+
+Date.
+
+Date-time.
+
+Dropdown.
+
+Multi-select.
+
+Radio.
+
+Checkbox.
+
+File upload.
+
+Textarea.
+
+Autocomplete.
+
+Master-data selection.
+
+Employee lookup.
+
+Boolean.
+
+Currency.
+
+Percentage.
+
+URL.
+
+### Configurations
+
+Field label.
+
+Placeholder.
+
+Help text.
+
+Required/optional.
+
+Default value.
+
+Validation.
+
+Regex validation.
+
+Visibility by role.
+
+Editable by role.
+
+Entity-wise applicability.
+
+Department-wise applicability.
+
+Employee type applicability.
+
+Show in employee profile.
+
+Show in onboarding.
+
+Show in reports.
+
+Show in mobile app.
+
+## 3.7 Employee Import / Export
+
+### Features
+
+Bulk employee import.
+
+Template download.
+
+Excel validation.
+
+Duplicate check.
+
+Employee code validation.
+
+Email/mobile validation.
+
+Manager mapping validation.
+
+Preview before import.
+
+Error report download.
+
+Bulk update.
+
+Export employee data.
+
+Role-based export fields.
+
+## 3.8 Employee Timeline
+
+Track all lifecycle events.
+
+Joining.
+
+Promotion.
+
+Transfer.
+
+Manager change.
+
+Salary revision.
+
+Probation extension.
+
+Confirmation.
+
+Document upload.
+
+Leave approval.
+
+Attendance regularization.
+
+Resignation.
+
+Exit clearance.
+
+Final settlement.
+
+# 4. Onboarding Module
+
+## 4.1 Candidate Onboarding
+
+### Features
+
+Create candidate.
+
+Bulk candidate upload.
+
+Candidate invitation email.
+
+Pre-joining form.
+
+Document collection.
+
+Offer letter generation.
+
+Joining kit.
+
+Task assignment.
+
+Background verification.
+
+Asset request.
+
+IT account request.
+
+HR approval.
+
+Candidate conversion to employee.
+
+## 4.2 Onboarding Forms
+
+### Form Sections
+
+Personal information.
+
+Contact information.
+
+Education.
+
+Experience.
+
+Bank details.
+
+Statutory details.
+
+Family details.
+
+Emergency contact.
+
+Documents.
+
+Declarations.
+
+Consent forms.
+
+## 4.3 Onboarding Checklist
+
+### Example Tasks
+
+Submit ID proof.
+
+Submit address proof.
+
+Submit education certificate.
+
+Submit previous employer documents.
+
+Sign NDA.
+
+Complete profile.
+
+IT laptop assignment.
+
+Email ID creation.
+
+HR induction.
+
+Manager introduction.
+
+Payroll setup.
+
+## 4.4 Onboarding Workflow
+
+### Configurations
+
+Entity-wise workflow.
+
+Department-wise workflow.
+
+Grade-wise workflow.
+
+Role-wise approval.
+
+Sequential approval.
+
+Parallel approval.
+
+Auto-reminder.
+
+Escalation.
+
+SLA.
+
+Rejection reason.
+
+Re-submit flow.
+
+## 4.5 Offer Letter Management
+
+### Features
+
+Offer template.
+
+Dynamic placeholders.
+
+Salary structure mapping.
+
+Approval before release.
+
+Digital signature.
+
+Offer acceptance.
+
+Offer expiry.
+
+Offer withdrawal.
+
+Offer revision.
+
+# 5. Attendance Management
+
+## 5.1 Attendance Capture Modes
+
+Web clock-in/out.
+
+Mobile clock-in/out.
+
+Biometric integration.
+
+Face recognition.
+
+QR code attendance.
+
+Geo-fenced attendance.
+
+Wi-Fi based attendance.
+
+Manual attendance.
+
+Manager-marked attendance.
+
+API-based attendance.
+
+Import from Excel.
+
+## 5.2 Attendance Rules
+
+### Configurations
+
+Working hours.
+
+Minimum hours for full day.
+
+Minimum hours for half day.
+
+Late coming grace.
+
+Early going grace.
+
+Overtime eligibility.
+
+Auto absent marking.
+
+Auto present marking.
+
+Weekly off rules.
+
+Holiday attendance rules.
+
+Night shift handling.
+
+Cross-day shift handling.
+
+Break deduction.
+
+Missing punch policy.
+
+Regularization allowed days.
+
+Monthly regularization limit.
+
+## 5.3 Web/Mobile Punch
+
+### Features
+
+Clock in.
+
+Clock out.
+
+Break in.
+
+Break out.
+
+Selfie capture.
+
+Location capture.
+
+IP restriction.
+
+Device restriction.
+
+Geo-fence validation.
+
+Attendance remarks.
+
+Punch history.
+
+## 5.4 Biometric Integration
+
+### Features
+
+Device registration.
+
+Employee biometric ID mapping.
+
+Sync logs.
+
+Failed punch logs.
+
+Multiple device support.
+
+Branch-wise device mapping.
+
+Real-time sync.
+
+Scheduled sync.
+
+Offline sync.
+
+## 5.5 Attendance Regularization
+
+### Features
+
+Missing punch request.
+
+Work from home request.
+
+On-duty request.
+
+Late coming correction.
+
+Early going correction.
+
+Manager approval.
+
+HR approval.
+
+Bulk approval.
+
+Rejection reason.
+
+## 5.6 Attendance Calendar
+
+### Features
+
+Daily status.
+
+Present.
+
+Absent.
+
+Half day.
+
+Late.
+
+Early going.
+
+Weekly off.
+
+Holiday.
+
+Leave.
+
+Outdoor duty.
+
+Work from home.
+
+Regularization pending.
+
+Color-coded calendar.
+
+Monthly view.
+
+Export attendance.
+
+## 5.7 Attendance Reports
+
+Daily attendance.
+
+Monthly attendance.
+
+Late coming report.
+
+Early going report.
+
+Absent report.
+
+Overtime report.
+
+Missing punch report.
+
+Shift-wise report.
+
+Location-wise report.
+
+Biometric sync report.
+
+# 6. Shift Management
+
+## 6.1 Shift Master
+
+### Fields
+
+Shift name.
+
+Shift code.
+
+Start time.
+
+End time.
+
+Break start.
+
+Break end.
+
+Total working hours.
+
+Grace time.
+
+Half-day hours.
+
+Full-day hours.
+
+Night shift flag.
+
+Flexible shift flag.
+
+Auto punch-out.
+
+Overtime rules.
+
+Applicable locations.
+
+Applicable departments.
+
+Status.
+
+## 6.2 Shift Assignment
+
+### Features
+
+Employee-wise shift.
+
+Department-wise shift.
+
+Location-wise shift.
+
+Grade-wise shift.
+
+Bulk shift assignment.
+
+Effective date.
+
+Recurring shift.
+
+Rotational shift.
+
+Temporary shift change.
+
+## 6.3 Roster Management
+
+### Features
+
+Create roster.
+
+Weekly roster.
+
+Monthly roster.
+
+Drag-and-drop planning.
+
+Shift rotation.
+
+Publish roster.
+
+Notify employees.
+
+Roster approval.
+
+Employee shift swap request.
+
+Manager shift change.
+
+Roster lock.
+
+## 6.4 Shift Rules
+
+Grace period.
+
+Break deduction.
+
+Late rules.
+
+Night shift allowance.
+
+Weekend shift rules.
+
+Holiday shift rules.
+
+Overtime eligibility.
+
+Auto attendance calculation.
+
+# 7. Leave Management
+
+## 7.1 Leave Type Master
+
+### Examples
+
+Casual leave.
+
+Sick leave.
+
+Earned leave.
+
+Paid leave.
+
+Unpaid leave.
+
+Maternity leave.
+
+Paternity leave.
+
+Compensatory off.
+
+Marriage leave.
+
+Bereavement leave.
+
+Study leave.
+
+Sabbatical leave.
+
+Optional holiday.
+
+Restricted holiday.
+
+## 7.2 Leave Type Configuration
+
+### Settings
+
+Paid/unpaid.
+
+Full day allowed.
+
+Half day allowed.
+
+Hourly leave allowed.
+
+Monthly accrual.
+
+Yearly accrual.
+
+Opening balance.
+
+Carry forward.
+
+Carry forward limit.
+
+Encashment.
+
+Negative leave allowed.
+
+Attachment required.
+
+Reason required.
+
+Gender applicability.
+
+Marital status applicability.
+
+Tenure applicability.
+
+Grade applicability.
+
+Department applicability.
+
+Entity applicability.
+
+Probation applicability.
+
+Notice-period applicability.
+
+Holiday sandwich rule.
+
+Weekly-off sandwich rule.
+
+Minimum leave days.
+
+Maximum leave days.
+
+Backdated leave allowed.
+
+Future leave allowed.
+
+Leave cancellation allowed.
+
+## 7.3 Leave Policy
+
+### Features
+
+Create policy.
+
+Map leave types.
+
+Assign to employees.
+
+Assign by department/location/entity.
+
+Effective date.
+
+Policy versioning.
+
+Policy lock.
+
+Clone policy.
+
+## 7.4 Leave Application
+
+### Features
+
+Apply leave.
+
+Select leave type.
+
+From date.
+
+To date.
+
+Half-day selection.
+
+Reason.
+
+Attachment.
+
+Balance preview.
+
+Approval chain preview.
+
+Submit.
+
+Withdraw.
+
+Cancel approved leave.
+
+## 7.5 Leave Approval
+
+Manager approval.
+
+HR approval.
+
+Multi-level approval.
+
+Auto approval.
+
+Parallel approval.
+
+Delegated approval.
+
+Escalation.
+
+Bulk approval.
+
+Rejection with reason.
+
+## 7.6 Leave Balance
+
+Opening balance.
+
+Accrued balance.
+
+Used balance.
+
+Pending balance.
+
+Lapsed balance.
+
+Encashed balance.
+
+Available balance.
+
+Employee-wise balance.
+
+Leave ledger.
+
+## 7.7 Comp-Off Management
+
+Work on holiday.
+
+Work on weekly off.
+
+Comp-off earning.
+
+Comp-off expiry.
+
+Comp-off approval.
+
+Comp-off usage.
+
+## 7.8 Leave Reports
+
+Leave balance report.
+
+Leave transaction report.
+
+Leave approval report.
+
+Leave type usage report.
+
+Department-wise leave report.
+
+Leave encashment report.
+
+Negative balance report.
+
+# 8. Holiday Calendar
+
+## 8.1 Holiday Master
+
+Holiday name.
+
+Date.
+
+Type: National, regional, optional, restricted.
+
+Description.
+
+Applicable country.
+
+Applicable state.
+
+Applicable location.
+
+Applicable entity.
+
+## 8.2 Holiday Calendar
+
+Create calendar.
+
+Assign to entity/location/branch.
+
+Import holidays.
+
+Optional holiday limit.
+
+Employee optional holiday selection.
+
+Holiday approval.
+
+## 8.3 Weekly Off
+
+Fixed weekly off.
+
+Alternate Saturday off.
+
+Rotational weekly off.
+
+Location-wise weekly off.
+
+Employee-wise weekly off.
+
+Shift-wise weekly off.
+
+# 9. Payroll Management
+
+Payroll is one of the most complex HRMS modules.
+
+## 9.1 Payroll Setup
+
+Country.
+
+Currency.
+
+Payroll frequency.
+
+Payroll month.
+
+Cut-off date.
+
+Salary cycle.
+
+Attendance cycle.
+
+Leave cycle.
+
+Financial year.
+
+Tax year.
+
+Rounding rules.
+
+Payslip template.
+
+Bank file format.
+
+Payroll approval workflow.
+
+## 9.2 Salary Components
+
+### Earnings
+
+Basic.
+
+HRA.
+
+Special allowance.
+
+Conveyance.
+
+Medical allowance.
+
+Bonus.
+
+Incentive.
+
+Overtime.
+
+Leave encashment.
+
+Arrears.
+
+Variable pay.
+
+Shift allowance.
+
+Night allowance.
+
+## 9.3 Deductions
+
+PF.
+
+ESI.
+
+Professional tax.
+
+TDS/income tax.
+
+Loan deduction.
+
+Advance deduction.
+
+LWP deduction.
+
+Late deduction.
+
+Other deduction.
+
+Insurance deduction.
+
+## 9.4 Employer Contributions
+
+Employer PF.
+
+Employer ESI.
+
+Gratuity.
+
+Insurance.
+
+Bonus provision.
+
+Leave provision.
+
+## 9.5 Salary Structure
+
+Create salary template.
+
+Assign components.
+
+Formula-based components.
+
+Fixed components.
+
+Percentage-based components.
+
+Conditional components.
+
+CTC structure.
+
+Gross salary.
+
+Net salary.
+
+Employer contribution.
+
+Employee contribution.
+
+Effective date.
+
+Salary revision.
+
+## 9.6 Payroll Input
+
+Monthly bonus.
+
+Incentive.
+
+Arrears.
+
+Reimbursements.
+
+Loan deduction.
+
+Advance deduction.
+
+One-time earning.
+
+One-time deduction.
+
+Leave without pay.
+
+Attendance days.
+
+Paid days.
+
+Overtime hours.
+
+## 9.7 Payroll Processing
+
+Lock attendance.
+
+Import inputs.
+
+Calculate salary.
+
+Validate statutory deductions.
+
+Preview payroll.
+
+Error checks.
+
+Approve payroll.
+
+Freeze payroll.
+
+Generate payslips.
+
+Generate bank file.
+
+Post payroll.
+
+## 9.8 Payroll Approval
+
+Maker-checker flow.
+
+Payroll reviewer.
+
+Finance approver.
+
+Final approver.
+
+Payroll lock.
+
+Payroll unlock with permission.
+
+Recalculation control.
+
+## 9.9 Payslip
+
+Configurable template.
+
+Dynamic placeholders.
+
+Company logo.
+
+Employee details.
+
+Earnings.
+
+Deductions.
+
+YTD summary.
+
+Tax summary.
+
+Leave balance.
+
+Download PDF.
+
+Email payslip.
+
+Employee self-service payslip.
+
+## 9.10 Statutory Compliance
+
+For India, include:
+
+PF.
+
+ESI.
+
+Professional Tax.
+
+TDS.
+
+LWF.
+
+Gratuity.
+
+Bonus Act.
+
+Form 16.
+
+Form 24Q.
+
+Challan generation.
+
+Statutory reports.
+
+## 9.11 Payroll Reports
+
+Salary register.
+
+Bank statement.
+
+Payslip report.
+
+PF report.
+
+ESI report.
+
+PT report.
+
+TDS report.
+
+Loan report.
+
+Reimbursement report.
+
+Arrear report.
+
+Bonus report.
+
+JV report.
+
+Payroll variance report.
+
+Payroll reconciliation report.
+
+# 10. Expense & Reimbursement Module
+
+## 10.1 Expense Categories
+
+Travel.
+
+Food.
+
+Hotel.
+
+Fuel.
+
+Mobile.
+
+Internet.
+
+Office supplies.
+
+Medical.
+
+Client meeting.
+
+Certification.
+
+Other.
+
+## 10.2 Expense Policy
+
+Category-wise limit.
+
+Grade-wise limit.
+
+Department-wise limit.
+
+Daily/monthly limit.
+
+Bill mandatory.
+
+Approval workflow.
+
+Auto approval below amount.
+
+Currency conversion.
+
+Tax configuration.
+
+## 10.3 Expense Claims
+
+Create claim.
+
+Upload bills.
+
+OCR bill reading.
+
+Add multiple line items.
+
+Submit claim.
+
+Approval.
+
+Rejection.
+
+Finance verification.
+
+Payment status.
+
+## 10.4 Advance Management
+
+Travel advance.
+
+Salary advance.
+
+Project advance.
+
+Advance approval.
+
+Advance settlement.
+
+Balance recovery.
+
+## 10.5 Reports
+
+Expense report.
+
+Pending claims.
+
+Approved claims.
+
+Rejected claims.
+
+Finance payable.
+
+Category-wise expense.
+
+Employee-wise expense.
+
+# 11. Employee Self-Service Portal
+
+## 11.1 Employee Dashboard
+
+Profile completion.
+
+Today attendance.
+
+Leave balance.
+
+Upcoming holidays.
+
+Pending tasks.
+
+Announcements.
+
+Payslip.
+
+Attendance calendar.
+
+Birthdays.
+
+Work anniversaries.
+
+Requests status.
+
+## 11.2 Employee Actions
+
+Apply leave.
+
+Regularize attendance.
+
+Download payslip.
+
+Upload documents.
+
+Update profile.
+
+Submit expense.
+
+Raise helpdesk ticket.
+
+View company policies.
+
+Submit resignation.
+
+Complete onboarding/offboarding tasks.
+
+## 11.3 Profile Update Requests
+
+Employee can request change for:
+
+Address.
+
+Mobile.
+
+Bank details.
+
+Family details.
+
+Education.
+
+Documents.
+
+Emergency contact.
+
+Approval required before update.
+
+# 12. Manager Self-Service
+
+## 12.1 Manager Dashboard
+
+Team attendance.
+
+Team leave calendar.
+
+Pending approvals.
+
+Team birthdays.
+
+Probation confirmations.
+
+Resignation requests.
+
+Team documents.
+
+Open helpdesk tickets.
+
+Performance tasks.
+
+## 12.2 Manager Actions
+
+Approve leave.
+
+Approve attendance.
+
+Approve expense.
+
+Approve profile change.
+
+Approve onboarding task.
+
+Approve resignation.
+
+Assign shift.
+
+View team reports.
+
+Give feedback.
+
+Initiate confirmation.
+
+Initiate PIP.
+
+# 13. Role & Permission Management
+
+## 13.1 Role Types
+
+Super Admin.
+
+Organization Admin.
+
+HR Admin.
+
+Payroll Admin.
+
+Finance Admin.
+
+Department Head.
+
+Reporting Manager.
+
+Employee.
+
+Recruiter.
+
+IT Admin.
+
+Auditor.
+
+Custom Role.
+
+## 13.2 Permission Types
+
+View.
+
+Create.
+
+Edit.
+
+Delete.
+
+Approve.
+
+Reject.
+
+Export.
+
+Import.
+
+Download.
+
+Upload.
+
+Configure.
+
+Assign.
+
+Bulk action.
+
+View salary.
+
+View documents.
+
+View reports.
+
+## 13.3 Permission Levels
+
+Module-level permission.
+
+Sub-module permission.
+
+Page-level permission.
+
+Button-level permission.
+
+Field-level permission.
+
+Data-level permission.
+
+Document-level permission.
+
+Report-level permission.
+
+API-level permission.
+
+## 13.4 Data Scope
+
+Own data.
+
+Team data.
+
+Department data.
+
+Location data.
+
+Branch data.
+
+Entity data.
+
+All organization data.
+
+Custom employee group.
+
+## 13.5 Sensitive Permission Examples
+
+View salary.
+
+Edit salary.
+
+Process payroll.
+
+Download employee documents.
+
+Delete employee.
+
+Change reporting manager.
+
+Approve resignation.
+
+View audit logs.
+
+Impersonate user.
+
+# 14. Workflow Engine
+
+Industry-grade HRMS needs a configurable workflow engine.
+
+## 14.1 Workflow Configuration
+
+Module.
+
+Event.
+
+Condition.
+
+Approver type.
+
+Approval level.
+
+Sequential/parallel.
+
+Auto approval.
+
+Escalation.
+
+Delegation.
+
+Reminder.
+
+SLA.
+
+Rejection flow.
+
+Re-submit flow.
+
+## 14.2 Workflow Events
+
+Leave approval.
+
+Attendance regularization.
+
+Expense approval.
+
+Employee creation.
+
+Employee update.
+
+Salary revision.
+
+Offer approval.
+
+Onboarding approval.
+
+Document approval.
+
+Resignation approval.
+
+Asset request.
+
+Helpdesk ticket.
+
+Travel request.
+
+## 14.3 Approver Types
+
+Reporting manager.
+
+Manager of manager.
+
+Department head.
+
+HR manager.
+
+Payroll admin.
+
+Finance admin.
+
+Specific employee.
+
+Role-based approver.
+
+Employee group.
+
+Dynamic approver.
+
+## 14.4 Workflow Conditions
+
+Entity.
+
+Department.
+
+Location.
+
+Grade.
+
+Designation.
+
+Employment type.
+
+Amount.
+
+Leave type.
+
+Days requested.
+
+Employee status.
+
+Probation status.
+
+Notice period.
+
+Custom field value.
+
+## 14.5 Workflow UI
+
+Workflow list.
+
+Create workflow.
+
+Drag-and-drop approval steps.
+
+Condition builder.
+
+Preview approval chain.
+
+Test workflow.
+
+Version history.
+
+Activate/deactivate.
+
+Clone workflow.
+
+# 15. Document Management System
+
+## 15.1 Employee Documents
+
+ID proof.
+
+Address proof.
+
+PAN.
+
+Aadhaar.
+
+Passport.
+
+Driving license.
+
+Education certificate.
+
+Experience letter.
+
+Salary slips.
+
+Bank proof.
+
+Offer letter.
+
+Appointment letter.
+
+Increment letter.
+
+Relieving letter.
+
+NDA.
+
+Policy acknowledgment.
+
+## 15.2 Document Categories
+
+Personal.
+
+Employment.
+
+Payroll.
+
+Statutory.
+
+Education.
+
+Experience.
+
+Legal.
+
+Company letters.
+
+Exit.
+
+## 15.3 Document Configuration
+
+Document name.
+
+Mandatory/optional.
+
+Allowed file types.
+
+Max file size.
+
+Expiry date required.
+
+Approval required.
+
+Employee upload allowed.
+
+HR upload allowed.
+
+Entity applicability.
+
+Department applicability.
+
+Reminder before expiry.
+
+## 15.4 Letter Generation
+
+Offer letter.
+
+Appointment letter.
+
+Confirmation letter.
+
+Increment letter.
+
+Promotion letter.
+
+Transfer letter.
+
+Warning letter.
+
+Experience letter.
+
+Relieving letter.
+
+Termination letter.
+
+Internship letter.
+
+## 15.5 Template Editor
+
+Rich text editor.
+
+Dynamic placeholders.
+
+Employee data merge.
+
+Salary merge.
+
+Date merge.
+
+Company logo.
+
+Header/footer.
+
+Digital signature.
+
+PDF generation.
+
+Version control.
+
+Approval before issue.
+
+## 15.6 E-Signature
+
+Employee signature.
+
+HR signature.
+
+Manager signature.
+
+Digital consent.
+
+Signature audit.
+
+Signed PDF storage.
+
+# 16. Form Builder / Custom Form Engine
+
+This is very important for multi-tenant HRMS.
+
+## 16.1 Field Types
+
+Text.
+
+Textarea.
+
+Number.
+
+Decimal.
+
+Date.
+
+Time.
+
+Date-time.
+
+Dropdown.
+
+Multi-select.
+
+Checkbox.
+
+Radio.
+
+File upload.
+
+Image upload.
+
+Employee picker.
+
+Department picker.
+
+Location picker.
+
+Entity picker.
+
+Currency.
+
+Email.
+
+Phone.
+
+URL.
+
+Table/grid field.
+
+Repeating section.
+
+Formula field.
+
+## 16.2 Field Configuration
+
+Label.
+
+Placeholder.
+
+Default value.
+
+Help text.
+
+Required.
+
+Read-only.
+
+Hidden.
+
+Validation.
+
+Min/max length.
+
+Min/max value.
+
+Regex.
+
+Allowed file type.
+
+Max file size.
+
+Visibility condition.
+
+Edit permission.
+
+View permission.
+
+## 16.3 Form Configuration
+
+Form name.
+
+Form code.
+
+Module mapping.
+
+Entity mapping.
+
+Department mapping.
+
+Employee type mapping.
+
+Versioning.
+
+Draft/published status.
+
+Effective date.
+
+Approval workflow.
+
+Public/private form.
+
+## 16.4 Form Use Cases
+
+Employee profile.
+
+Onboarding.
+
+Offboarding.
+
+Leave request.
+
+Attendance request.
+
+Expense claim.
+
+Helpdesk ticket.
+
+Asset request.
+
+Survey.
+
+Custom HR request.
+
+# 17. Recruitment / ATS Module
+
+## 17.1 Job Requisition
+
+Create requisition.
+
+Position title.
+
+Department.
+
+Location.
+
+Hiring manager.
+
+Number of openings.
+
+Budget.
+
+Employment type.
+
+Experience range.
+
+Approval workflow.
+
+## 17.2 Job Posting
+
+Career page.
+
+Internal job posting.
+
+External job posting.
+
+Job description.
+
+Application form.
+
+Source tracking.
+
+## 17.3 Candidate Management
+
+Candidate profile.
+
+Resume upload.
+
+Source.
+
+Skills.
+
+Experience.
+
+Expected salary.
+
+Current salary.
+
+Notice period.
+
+Status.
+
+Notes.
+
+Tags.
+
+## 17.4 Interview Management
+
+Interview rounds.
+
+Panel assignment.
+
+Calendar integration.
+
+Feedback form.
+
+Rating.
+
+Recommendation.
+
+Interview status.
+
+## 17.5 Offer Management
+
+Offer approval.
+
+Offer letter.
+
+Salary structure.
+
+Candidate acceptance.
+
+Joining date.
+
+Convert to employee.
+
+# 18. Performance Management
+
+## 18.1 Goal Management
+
+Create goals.
+
+KRAs.
+
+KPIs.
+
+Weightage.
+
+Target.
+
+Actual achievement.
+
+Manager review.
+
+Employee self-review.
+
+## 18.2 Appraisal Cycle
+
+Annual.
+
+Half-yearly.
+
+Quarterly.
+
+Probation appraisal.
+
+Custom cycle.
+
+Cycle launch.
+
+Employee eligibility.
+
+Review forms.
+
+Rating scale.
+
+Normalization.
+
+Final rating.
+
+Increment recommendation.
+
+## 18.3 Feedback
+
+Continuous feedback.
+
+360-degree feedback.
+
+Peer feedback.
+
+Manager feedback.
+
+HR feedback.
+
+Client feedback.
+
+## 18.4 PIP
+
+Performance improvement plan.
+
+PIP goals.
+
+Review dates.
+
+Manager notes.
+
+Employee comments.
+
+Final decision.
+
+# 19. Learning & Development
+
+## 19.1 Course Management
+
+Create course.
+
+Upload content.
+
+Video.
+
+PDF.
+
+Quiz.
+
+Assessment.
+
+Certification.
+
+Trainer assignment.
+
+## 19.2 Training Calendar
+
+Training schedule.
+
+Nomination.
+
+Approval.
+
+Attendance.
+
+Feedback.
+
+Completion tracking.
+
+## 19.3 Skill Matrix
+
+Skill master.
+
+Employee skill mapping.
+
+Skill rating.
+
+Manager validation.
+
+Gap analysis.
+
+Training recommendation.
+
+# 20. Helpdesk / Ticketing
+
+## 20.1 Ticket Categories
+
+HR.
+
+IT.
+
+Finance.
+
+Payroll.
+
+Admin.
+
+Facilities.
+
+POSH.
+
+Whistleblower.
+
+General query.
+
+## 20.2 Category Configuration
+
+Category name.
+
+Label.
+
+TAT.
+
+TAT unit.
+
+Owner.
+
+Department.
+
+Description.
+
+Icon.
+
+Color.
+
+Anonymous allowed.
+
+Feedback enabled.
+
+Notify owner.
+
+Entity applicability.
+
+## 20.3 Ticket Features
+
+Raise ticket.
+
+Assign ticket.
+
+Reassign.
+
+Priority.
+
+Status.
+
+Comments.
+
+Attachments.
+
+Internal notes.
+
+SLA timer.
+
+Escalation.
+
+Closure feedback.
+
+Reopen ticket.
+
+## 20.4 Ticket Status
+
+Open.
+
+Assigned.
+
+In progress.
+
+Waiting for employee.
+
+Waiting for HR.
+
+Resolved.
+
+Closed.
+
+Reopened.
+
+Rejected.
+
+# 21. Asset Management
+
+## 21.1 Asset Master
+
+Laptop.
+
+Mobile.
+
+SIM card.
+
+ID card.
+
+Access card.
+
+Vehicle.
+
+Monitor.
+
+Keyboard.
+
+Mouse.
+
+Software license.
+
+Uniform.
+
+Other.
+
+## 21.2 Asset Lifecycle
+
+Purchase.
+
+Stock.
+
+Assigned.
+
+Returned.
+
+Damaged.
+
+Lost.
+
+Repair.
+
+Retired.
+
+Disposed.
+
+## 21.3 Asset Assignment
+
+Assign to employee.
+
+Return date.
+
+Condition.
+
+Serial number.
+
+Asset tag.
+
+Acknowledgment.
+
+Return checklist.
+
+## 21.4 Asset Requests
+
+New asset request.
+
+Replacement request.
+
+Repair request.
+
+Manager approval.
+
+IT approval.
+
+# 22. Exit / Offboarding Module
+
+## 22.1 Resignation
+
+Employee resignation.
+
+Manager resignation initiation.
+
+HR initiated exit.
+
+Reason.
+
+Last working day.
+
+Notice period.
+
+Notice buyout.
+
+Attachment.
+
+Approval workflow.
+
+## 22.2 Exit Clearance
+
+HR clearance.
+
+IT clearance.
+
+Admin clearance.
+
+Finance clearance.
+
+Manager clearance.
+
+Asset return.
+
+Knowledge transfer.
+
+Document handover.
+
+No dues.
+
+## 22.3 Exit Interview
+
+Exit interview form.
+
+Reason analysis.
+
+Feedback.
+
+Rehire eligibility.
+
+## 22.4 Full and Final Settlement
+
+Leave encashment.
+
+Notice recovery.
+
+Bonus payout.
+
+Loan recovery.
+
+Asset recovery.
+
+Gratuity.
+
+Final salary.
+
+Tax deduction.
+
+Settlement approval.
+
+# 23. Time Sheet / Project Time Tracking
+
+## 23.1 Project Master
+
+Project name.
+
+Client.
+
+Project code.
+
+Start date.
+
+End date.
+
+Project manager.
+
+Budget hours.
+
+Billable/non-billable.
+
+## 23.2 Task Master
+
+Task name.
+
+Project mapping.
+
+Estimated hours.
+
+Billable flag.
+
+Status.
+
+## 23.3 Timesheet Entry
+
+Daily timesheet.
+
+Weekly timesheet.
+
+Project selection.
+
+Task selection.
+
+Hours.
+
+Description.
+
+Attachment.
+
+Submit.
+
+## 23.4 Approval
+
+Manager approval.
+
+Project manager approval.
+
+Auto approval.
+
+Reject with reason.
+
+## 23.5 Reports
+
+Employee timesheet.
+
+Project hours.
+
+Billable hours.
+
+Non-billable hours.
+
+Missing timesheet.
+
+Client billing report.
+
+# 24. Employee Engagement
+
+## 24.1 Announcements
+
+Create announcement.
+
+Target audience.
+
+Entity/department/location targeting.
+
+Attachment.
+
+Publish date.
+
+Expiry date.
+
+Read acknowledgment.
+
+## 24.2 Surveys
+
+Create survey.
+
+Anonymous survey.
+
+Pulse survey.
+
+Employee satisfaction.
+
+Exit survey.
+
+Custom questions.
+
+Analytics.
+
+## 24.3 Polls
+
+Single choice.
+
+Multiple choice.
+
+Result visibility.
+
+Target audience.
+
+## 24.4 Recognition
+
+Kudos.
+
+Awards.
+
+Badges.
+
+Nomination.
+
+Manager approval.
+
+Wall of fame.
+
+## 24.5 Birthday / Anniversary
+
+Birthday reminders.
+
+Work anniversary reminders.
+
+Auto emails.
+
+Dashboard widgets.
+
+# 25. Communication & Notification System
+
+## 25.1 Notification Channels
+
+Email.
+
+SMS.
+
+WhatsApp.
+
+Push notification.
+
+In-app notification.
+
+Slack/Teams.
+
+## 25.2 Notification Events
+
+Leave applied.
+
+Leave approved.
+
+Leave rejected.
+
+Attendance missing.
+
+Payroll processed.
+
+Payslip generated.
+
+Document expiry.
+
+Probation due.
+
+Birthday.
+
+Work anniversary.
+
+Ticket assigned.
+
+Approval pending.
+
+Policy acknowledgment.
+
+## 25.3 Template Configuration
+
+Subject.
+
+Body.
+
+Dynamic placeholders.
+
+Language.
+
+Channel.
+
+Entity-wise template.
+
+Module-wise template.
+
+Enable/disable template.
+
+Preview template.
+
+Send test notification.
+
+## 25.4 Reminder Engine
+
+Before due date.
+
+After due date.
+
+Repeated reminder.
+
+Escalation reminder.
+
+SLA breach reminder.
+
+# 26. Reports & Analytics
+
+## 26.1 Standard Reports
+
+Employee master report.
+
+New joiner report.
+
+Exit report.
+
+Headcount report.
+
+Attrition report.
+
+Attendance report.
+
+Leave report.
+
+Payroll report.
+
+Expense report.
+
+Document report.
+
+Probation report.
+
+Confirmation report.
+
+Birthday report.
+
+Anniversary report.
+
+Asset report.
+
+Ticket report.
+
+## 26.2 Dashboard Analytics
+
+Headcount.
+
+Gender ratio.
+
+Department-wise employees.
+
+Location-wise employees.
+
+Monthly joining.
+
+Monthly exit.
+
+Attrition percentage.
+
+Attendance trend.
+
+Leave trend.
+
+Payroll cost.
+
+Open tickets.
+
+Pending approvals.
+
+## 26.3 Report Builder
+
+Select module.
+
+Select fields.
+
+Apply filters.
+
+Group by.
+
+Sort by.
+
+Save report.
+
+Schedule report.
+
+Export Excel.
+
+Export PDF.
+
+Share with roles.
+
+## 26.4 Advanced Analytics
+
+Attrition prediction.
+
+Attendance risk.
+
+Leave pattern.
+
+Payroll variance.
+
+Hiring funnel.
+
+Employee engagement score.
+
+Performance distribution.
+
+# 27. Admin Configuration Module
+
+This is the control center of the HRMS.
+
+## 27.1 General Settings
+
+Company profile.
+
+Date format.
+
+Time format.
+
+Currency.
+
+Financial year.
+
+Working days.
+
+Default country.
+
+Default timezone.
+
+Language.
+
+Employee code settings.
+
+Password policy.
+
+Session timeout.
+
+Two-factor authentication.
+
+Mobile app access.
+
+Web clock-in.
+
+Geo-fencing.
+
+IP restriction.
+
+## 27.2 Module Settings
+
+Enable/disable modules.
+
+Menu ordering.
+
+Sub-menu visibility.
+
+Mobile visibility.
+
+Role-wise menu access.
+
+Feature flags.
+
+## 27.3 Master Data Configuration
+
+Department.
+
+Designation.
+
+Grade.
+
+Location.
+
+Branch.
+
+Entity.
+
+Cost center.
+
+Business unit.
+
+Employment type.
+
+Employee status.
+
+Leave type.
+
+Shift.
+
+Holiday.
+
+Expense category.
+
+Ticket category.
+
+Asset type.
+
+Qualification.
+
+Skill.
+
+Separation reason.
+
+## 27.4 Number Series Configuration
+
+Employee code.
+
+Candidate code.
+
+Ticket number.
+
+Expense claim number.
+
+Asset code.
+
+Offer letter number.
+
+Invoice number.
+
+Payroll batch number.
+
+## 27.5 Import/Export Settings
+
+Allowed import modules.
+
+Template configuration.
+
+Data validation rules.
+
+Duplicate rules.
+
+Bulk upload permissions.
+
+Export permissions.
+
+Export masking.
+
+# 28. Security Features
+
+## 28.1 Authentication
+
+Email/password login.
+
+SSO login.
+
+Google login.
+
+Microsoft login.
+
+SAML.
+
+OAuth.
+
+LDAP/Active Directory.
+
+Two-factor authentication.
+
+OTP login.
+
+Password reset.
+
+Account lockout.
+
+Captcha.
+
+## 28.2 Authorization
+
+Role-based access control.
+
+Permission-based access control.
+
+Field-level security.
+
+Record-level security.
+
+Tenant-level isolation.
+
+API authorization.
+
+## 28.3 Password Policy
+
+Minimum length.
+
+Complexity.
+
+Expiry days.
+
+Password history.
+
+Failed attempt limit.
+
+Account lock time.
+
+Force reset.
+
+## 28.4 Session Security
+
+Session timeout.
+
+Single-session login.
+
+Device tracking.
+
+IP restriction.
+
+Location restriction.
+
+Logout from all devices.
+
+## 28.5 Audit Logs
+
+Login logs.
+
+Failed login logs.
+
+Data create/update/delete logs.
+
+Approval logs.
+
+Payroll logs.
+
+Permission change logs.
+
+Impersonation logs.
+
+Export logs.
+
+Download logs.
+
+API logs.
+
+## 28.6 Data Privacy
+
+Data masking.
+
+Sensitive field encryption.
+
+Document encryption.
+
+Consent management.
+
+Data retention.
+
+Right to delete.
+
+Access request.
+
+Download personal data.
+
+# 29. Integration Module
+
+## 29.1 Email Integration
+
+SMTP.
+
+Microsoft 365.
+
+Google Workspace.
+
+SendGrid.
+
+Amazon SES.
+
+## 29.2 Calendar Integration
+
+Google Calendar.
+
+Microsoft Outlook Calendar.
+
+Interview scheduling.
+
+Holiday sync.
+
+Leave calendar sync.
+
+## 29.3 Payroll/Finance Integration
+
+Tally.
+
+SAP.
+
+Oracle.
+
+QuickBooks.
+
+Zoho Books.
+
+Bank file integration.
+
+Accounting JV export.
+
+## 29.4 Attendance Integration
+
+Biometric devices.
+
+Face recognition devices.
+
+Access control system.
+
+Mobile GPS.
+
+Wi-Fi attendance.
+
+## 29.5 Communication Integration
+
+Slack.
+
+Microsoft Teams.
+
+WhatsApp API.
+
+SMS gateway.
+
+Push notification.
+
+## 29.6 Identity Integration
+
+Azure AD.
+
+Google Workspace.
+
+Okta.
+
+LDAP.
+
+SAML SSO.
+
+## 29.7 API Management
+
+Public API.
+
+Webhook.
+
+API keys.
+
+OAuth tokens.
+
+Rate limiting.
+
+API logs.
+
+Webhook retry.
+
+# 30. Subscription & Billing Module
+
+For SaaS HRMS, subscription management is important.
+
+## 30.1 Plan Management
+
+Free trial.
+
+Basic.
+
+Professional.
+
+Enterprise.
+
+Custom plan.
+
+## 30.2 Plan Configuration
+
+Allowed employees.
+
+Allowed modules.
+
+Storage limit.
+
+Support level.
+
+API access.
+
+Custom branding.
+
+Dedicated database.
+
+Advanced reports.
+
+SSO availability.
+
+## 30.3 Billing
+
+Monthly billing.
+
+Annual billing.
+
+Invoice generation.
+
+Payment status.
+
+Renewal reminders.
+
+Grace period.
+
+Auto suspension.
+
+Upgrade/downgrade.
+
+Add-on billing.
+
+## 30.4 Usage Tracking
+
+Active employees.
+
+Storage used.
+
+API calls.
+
+Email count.
+
+SMS count.
+
+WhatsApp count.
+
+Module usage.
+
+Login usage.
+
+# 31. Mobile App Features
+
+## 31.1 Employee Mobile App
+
+Clock in/out.
+
+Geo attendance.
+
+Selfie attendance.
+
+Apply leave.
+
+View leave balance.
+
+Regularize attendance.
+
+View payslip.
+
+Upload documents.
+
+Raise ticket.
+
+Approve requests.
+
+View announcements.
+
+View holidays.
+
+Update profile.
+
+Push notifications.
+
+## 31.2 Manager Mobile App
+
+Team attendance.
+
+Approve leave.
+
+Approve attendance.
+
+Approve expense.
+
+View team profile.
+
+Approve tickets.
+
+Approve resignation.
+
+## 31.3 Mobile Security
+
+Device restriction.
+
+App lock.
+
+Biometric login.
+
+Location permission.
+
+Jailbreak/root detection.
+
+Session timeout.
+
+# 32. AI Features for Modern HRMS
+
+## 32.1 AI HR Assistant
+
+Ask HR policy questions.
+
+Leave balance query.
+
+Payslip explanation.
+
+Attendance issue explanation.
+
+Company policy search.
+
+Document help.
+
+## 32.2 AI Document Search
+
+Search employee documents.
+
+Search policies.
+
+Search templates.
+
+RAG-based HR knowledge base.
+
+## 32.3 AI Resume Screening
+
+Resume parsing.
+
+Candidate matching.
+
+Skill extraction.
+
+Experience extraction.
+
+Ranking.
+
+## 32.4 AI Analytics
+
+Attrition prediction.
+
+Employee sentiment analysis.
+
+Attendance anomaly detection.
+
+Payroll anomaly detection.
+
+Ticket category prediction.
+
+## 32.5 AI Automation
+
+Auto ticket routing.
+
+Auto email drafting.
+
+Auto policy answer.
+
+Auto onboarding checklist generation.
+
+Auto job description generation.
+
+# 33. UI / UX Structure
+
+## 33.1 Main Layout
+
+Left sidebar menu.
+
+Top header.
+
+Global search.
+
+Notification icon.
+
+Profile menu.
+
+Tenant switcher for super admin.
+
+Organization switcher for multi-company users.
+
+Breadcrumb.
+
+Page actions.
+
+Filter panel.
+
+Data table.
+
+Export button.
+
+Import button.
+
+Bulk action.
+
+## 33.2 Common List Page
+
+Search.
+
+Status filter.
+
+Entity filter.
+
+Department filter.
+
+Location filter.
+
+Date filter.
+
+Column chooser.
+
+Sorting.
+
+Pagination.
+
+Bulk select.
+
+Export.
+
+Import.
+
+Create new.
+
+Action menu.
+
+Status toggle.
+
+## 33.3 Common Form Page
+
+Basic information section.
+
+Configuration section.
+
+Applicability section.
+
+Approval workflow section.
+
+Notification section.
+
+Status section.
+
+Save as draft.
+
+Save and publish.
+
+Cancel.
+
+Audit history.
+
+## 33.4 Common Modal
+
+Create modal.
+
+Edit modal.
+
+Delete confirmation.
+
+Import modal.
+
+Preview modal.
+
+Approval modal.
+
+Reject reason modal.
+
+Bulk upload modal.
+
+## 33.5 Dashboard Widgets
+
+Pending approvals.
+
+Today attendance.
+
+Leave balance.
+
+Team status.
+
+Upcoming holidays.
+
+Birthdays.
+
+Work anniversaries.
+
+Payroll summary.
+
+Tickets.
+
+Announcements.
+
+# 34. Recommended Module Menu Structure
+
+A clean industry-grade menu can be:
+
+## Super Admin
+
+Dashboard.
+
+Organizations.
+
+Subscriptions.
+
+Plans.
+
+Invoices.
+
+Global Masters.
+
+Feature Flags.
+
+System Settings.
+
+Audit Logs.
+
+Jobs & Queues.
+
+Support Tickets.
+
+Reports.
+
+## Organization Admin
+
+Dashboard.
+
+Core HR.
+
+Organization Structure.
+
+Employee Management.
+
+Onboarding.
+
+Attendance.
+
+Leave.
+
+Shift & Roster.
+
+Payroll.
+
+Expenses.
+
+Documents.
+
+Recruitment.
+
+Performance.
+
+Helpdesk.
+
+Assets.
+
+Exit Management.
+
+Reports.
+
+Workflow.
+
+Settings.
+
+Security.
+
+## Employee
+
+Dashboard.
+
+My Profile.
+
+Attendance.
+
+Leave.
+
+Payslip.
+
+Documents.
+
+Expenses.
+
+Helpdesk.
+
+Company Policies.
+
+Announcements.
+
+Resignation.
+
+## Manager
+
+Dashboard.
+
+My Team.
+
+Approvals.
+
+Attendance.
+
+Leave.
+
+Expenses.
+
+Performance.
+
+Reports.
+
+# 35. Database-Level Core Entities
+
+For backend planning, these are important entities:
+
+Tenant.
+
+Organization.
+
+Company/Entity.
+
+Branch.
+
+Location.
+
+Department.
+
+Designation.
+
+Grade.
+
+BusinessUnit.
+
+CostCenter.
+
+Employee.
+
+EmployeePersonalDetail.
+
+EmployeeJobDetail.
+
+EmployeeBankDetail.
+
+EmployeeStatutoryDetail.
+
+EmployeeDocument.
+
+EmployeeFamily.
+
+EmployeeEducation.
+
+EmployeeExperience.
+
+Role.
+
+Permission.
+
+User.
+
+UserRole.
+
+Workflow.
+
+WorkflowStep.
+
+ApprovalRequest.
+
+LeaveType.
+
+LeavePolicy.
+
+LeaveBalance.
+
+LeaveRequest.
+
+AttendanceLog.
+
+AttendanceSummary.
+
+Shift.
+
+Roster.
+
+Holiday.
+
+PayrollComponent.
+
+SalaryStructure.
+
+EmployeeSalary.
+
+PayrollRun.
+
+Payslip.
+
+ExpenseClaim.
+
+DocumentTemplate.
+
+NotificationTemplate.
+
+Ticket.
+
+Asset.
+
+AuditLog.
+
+SubscriptionPlan.
+
+TenantSubscription.
+
+FileStorage.
+
+CustomField.
+
+CustomForm.
+
+CustomFormSubmission.
+
+# 36. Must-Have Industry-Grade Configurations
+
+## Global Configurations
+
+Tenant settings.
+
+Branding.
+
+Localization.
+
+Currency.
+
+Language.
+
+Timezone.
+
+Date/time format.
+
+Security policy.
+
+Password policy.
+
+Notification gateway.
+
+File storage.
+
+Email setup.
+
+SMS setup.
+
+WhatsApp setup.
+
+## HR Configurations
+
+Employee code.
+
+Employee profile fields.
+
+Custom fields.
+
+Organization structure.
+
+Employment types.
+
+Probation settings.
+
+Confirmation settings.
+
+Notice period.
+
+Transfer rules.
+
+Promotion rules.
+
+## Attendance Configurations
+
+Attendance mode.
+
+Geo-fencing.
+
+Web clock.
+
+Mobile clock.
+
+Biometric.
+
+Shift rules.
+
+Grace rules.
+
+Missing punch rules.
+
+Regularization rules.
+
+Overtime rules.
+
+## Leave Configurations
+
+Leave types.
+
+Leave policy.
+
+Accrual rules.
+
+Carry forward.
+
+Encashment.
+
+Sandwich policy.
+
+Approval workflow.
+
+Leave calendar.
+
+## Payroll Configurations
+
+Salary components.
+
+Salary structure.
+
+Payroll cycle.
+
+Tax rules.
+
+Statutory settings.
+
+Payslip template.
+
+Bank file format.
+
+Payroll approval.
+
+## Document Configurations
+
+Document categories.
+
+Mandatory documents.
+
+Template library.
+
+Letter templates.
+
+Expiry reminders.
+
+Digital signature.
+
+## Workflow Configurations
+
+Approval chain.
+
+Conditions.
+
+Escalations.
+
+Delegation.
+
+SLA.
+
+Reminders.
+
+## Role Configurations
+
+Roles.
+
+Permissions.
+
+Field-level access.
+
+Data scope.
+
+Menu access.
+
+Export access.
+
+# 37. Multi-Tenant Architecture Recommendation
+
+For your HRMS, I would suggest this architecture:
+
+## Frontend
+
+React.
+
+MUI.
+
+Role-based menu rendering.
+
+Tenant-based theme.
+
+Dynamic forms.
+
+Reusable table/list shell.
+
+Reusable workflow builder.
+
+Reusable import/export component.
+
+## Backend
+
+.NET 8 Web API.
+
+Modular monolith initially.
+
+Clean architecture.
+
+Entity Framework Core.
+
+SQL Server.
+
+Background jobs.
+
+Redis cache.
+
+Blob storage.
+
+JWT authentication.
+
+Tenant middleware.
+
+Audit middleware.
+
+Permission middleware.
+
+## Database
+
+SQL Server.
+
+Shared database with `TenantId` for demo/startup.
+
+Dedicated DB option for enterprise later.
+
+All main tables should include:
+
+`Id`
+
+`TenantId`
+
+`CreatedBy`
+
+`CreatedAt`
+
+`UpdatedBy`
+
+`UpdatedAt`
+
+`IsActive`
+
+`IsDeleted`
+
+## Storage
+
+Azure Blob Storage.
+
+Tenant-wise folder structure:
+
+`tenant-id/employees/documents`
+
+`tenant-id/payroll/payslips`
+
+`tenant-id/templates`
+
+`tenant-id/imports`
+
+## Background Jobs
+
+Email sending.
+
+Payslip generation.
+
+Payroll processing.
+
+Attendance sync.
+
+Leave accrual.
+
+Document expiry reminder.
+
+Probation reminder.
+
+Notification retry.
+
+Report generation.
+
+## Security
+
+JWT.
+
+Refresh token.
+
+RBAC.
+
+Tenant isolation.
+
+Audit logs.
+
+Encryption.
+
+2FA.
+
+IP/device restrictions.
+
+# 38. Priority Build Phases
+
+## Phase 1: Core HRMS
+
+Multi-tenant foundation.
+
+Organization management.
+
+Employee master.
+
+Roles and permissions.
+
+Custom fields.
+
+Document management.
+
+Basic workflow.
+
+Reports.
+
+## Phase 2: Attendance + Leave
+
+Shift master.
+
+Attendance capture.
+
+Attendance regularization.
+
+Leave type.
+
+Leave policy.
+
+Leave request.
+
+Holiday calendar.
+
+Approvals.
+
+## Phase 3: Payroll
+
+Salary components.
+
+Salary structure.
+
+Payroll input.
+
+Payroll processing.
+
+Payslip.
+
+Statutory reports.
+
+Bank file.
+
+## Phase 4: Employee/Manager Self-Service
+
+Employee dashboard.
+
+Manager dashboard.
+
+Approvals.
+
+Profile update.
+
+Mobile-friendly UI.
+
+## Phase 5: Advanced HR
+
+Recruitment.
+
+Onboarding.
+
+Performance.
+
+Helpdesk.
+
+Assets.
+
+Exit.
+
+Expenses.
+
+## Phase 6: Enterprise Features
+
+AI assistant.
+
+Report builder.
+
+Advanced analytics.
+
+SSO.
+
+API marketplace.
+
+Dedicated tenant database.
+
+Advanced audit/compliance.
+
+# 39. Most Important Screens to Build First
+
+For an industry-grade HRMS, start with these screens:
+
+Super Admin organization list.
+
+Create organization.
+
+Subscription plan setup.
+
+Organization admin dashboard.
+
+Company/entity master.
+
+Branch master.
+
+Location master.
+
+Department master.
+
+Designation master.
+
+Grade master.
+
+Employee list.
+
+Create employee.
+
+Employee profile.
+
+Role list.
+
+Permission matrix.
+
+General settings.
+
+Employee code configuration.
+
+Custom field builder.
+
+Workflow builder.
+
+Document category.
+
+Document template.
+
+Leave type.
+
+Leave policy.
+
+Shift master.
+
+Attendance rule.
+
+Holiday calendar.
+
+Payroll component.
+
+Salary structure.
+
+Notification template.
+
+Audit logs.
+
+# 40. Final Industry-Grade Checklist
+
+Your HRMS should support:
+
+Multi-company.
+
+Multi-branch.
+
+Multi-location.
+
+Multi-department.
+
+Multi-role.
+
+Multi-country.
+
+Multi-currency.
+
+Multi-language.
+
+Multi-timezone.
+
+Custom forms.
+
+Custom fields.
+
+Approval workflows.
+
+Employee self-service.
+
+Manager self-service.
+
+Mobile app.
+
+Payroll.
+
+Attendance.
+
+Leave.
+
+Documents.
+
+Reports.
+
+Security.
+
+Audit logs.
+
+Integrations.
+
+Subscription billing.
+
+Tenant-wise branding.
+
+Tenant-wise settings.
+
+Data isolation.
+
+Scalable architecture.
+
+Role-based data visibility.
+
+Field-level permissions.
+
+Configurable notifications.
+
+Import/export.
+
+API support.
+
+AI-ready knowledge base.
+
+For your case, since you are building a **Zimyo-like HRMS**, the most important foundation is:
+
+**Multi-tenant organization setup + employee master + organization structure + role permission + custom fields + workflow engine.**
+
+Once these are strong, other modules like leave, attendance, payroll, onboarding, documents, and reports can be built cleanly on top.

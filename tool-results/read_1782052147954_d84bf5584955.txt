@@ -1,0 +1,2002 @@
+     1→     1→Below is an **industry-grade HR Management System feature list** with **all major modules, configurations, and multi-tenant requirements**. This is suitable for building a Zimyo/Keka/Darwinbox-like HRMS.
+     2→     2→
+     3→     3→# 1. Multi-Tenant Platform Foundation
+     4→     4→
+     5→     5→Multi-tenant means one HRMS application can serve many companies/clients, but each company’s data, settings, users, workflows, and documents remain isolated.
+     6→     6→
+     7→     7→## 1.1 Super Admin Portal
+     8→     8→
+     9→     9→This is for your SaaS company/admin team.
+    10→    10→
+    11→    11→### Features
+    12→    12→
+    13→    13→Manage all client organizations.
+    14→    14→
+    15→    15→Create organization/company account.
+    16→    16→
+    17→    17→Activate/deactivate organization.
+    18→    18→
+    19→    19→Assign subscription plan.
+    20→    20→
+    21→    21→Define allowed modules per organization.
+    22→    22→
+    23→    23→Manage billing cycle.
+    24→    24→
+    25→    25→Manage employee limits.
+    26→    26→
+    27→    27→Manage storage limits.
+    28→    28→
+    29→    29→View usage analytics.
+    30→    30→
+    31→    31→Impersonate organization admin with audit tracking.
+    32→    32→
+    33→    33→Manage global masters.
+    34→    34→
+    35→    35→Manage system-wide settings.
+    36→    36→
+    37→    37→Manage email/SMS/WhatsApp gateways.
+    38→    38→
+    39→    39→Manage global templates.
+    40→    40→
+    41→    41→View organization-wise logs.
+    42→    42→
+    43→    43→View failed jobs, queue status, API logs.
+    44→    44→
+    45→    45→Manage maintenance mode.
+    46→    46→
+    47→    47→Manage feature flags.
+    48→    48→
+    49→    49→## 1.2 Organization/Client Management
+    50→    50→
+    51→    51→Each client organization should have:
+    52→    52→
+    53→    53→Organization name.
+    54→    54→
+    55→    55→Legal name.
+    56→    56→
+    57→    57→Company code.
+    58→    58→
+    59→    59→Logo.
+    60→    60→
+    61→    61→Favicon.
+    62→    62→
+    63→    63→Brand color.
+    64→    64→
+    65→    65→Domain/subdomain.
+    66→    66→
+    67→    67→Country.
+    68→    68→
+    69→    69→Currency.
+    70→    70→
+    71→    71→Time zone.
+    72→    72→
+    73→    73→Date format.
+    74→    74→
+    75→    75→Financial year.
+    76→    76→
+    77→    77→Payroll country rules.
+    78→    78→
+    79→    79→Subscription start date.
+    80→    80→
+    81→    81→Subscription end date.
+    82→    82→
+    83→    83→Plan type.
+    84→    84→
+    85→    85→Allowed employee count.
+    86→    86→
+    87→    87→Allowed storage.
+    88→    88→
+    89→    89→Allowed modules.
+    90→    90→
+    91→    91→Status: Trial, Active, Suspended, Expired, Cancelled.
+    92→    92→
+    93→    93→## 1.3 Tenant Data Isolation
+    94→    94→
+    95→    95→Industry-grade HRMS must support strong tenant separation.
+    96→    96→
+    97→    97→### Options
+    98→    98→
+    99→    99→Single database, shared schema with `TenantId`.
+   100→   100→
+   101→   101→Single database, separate schema per tenant.
+   102→   102→
+   103→   103→Separate database per tenant.
+   104→   104→
+   105→   105→Hybrid model: shared DB for small clients, dedicated DB for enterprise clients.
+   106→   106→
+   107→   107→### Required Rules
+   108→   108→
+   109→   109→Every table should have `TenantId`.
+   110→   110→
+   111→   111→Every API must filter by `TenantId`.
+   112→   112→
+   113→   113→Users from one company must never access another company’s data.
+   114→   114→
+   115→   115→Files should be stored tenant-wise.
+   116→   116→
+   117→   117→Audit logs should include tenant/company/user/IP/device.
+   118→   118→
+   119→   119→Backups should support tenant-level restore.
+   120→   120→
+   121→   121→## 1.4 Tenant-Level Configuration
+   122→   122→
+   123→   123→Each organization should configure:
+   124→   124→
+   125→   125→Modules enabled/disabled.
+   126→   126→
+   127→   127→Menu visibility.
+   128→   128→
+   129→   129→Role permissions.
+   130→   130→
+   131→   131→Company/entity structure.
+   132→   132→
+   133→   133→Employee code format.
+   134→   134→
+   135→   135→Payroll rules.
+   136→   136→
+   137→   137→Attendance rules.
+   138→   138→
+   139→   139→Leave rules.
+   140→   140→
+   141→   141→Document templates.
+   142→   142→
+   143→   143→Approval workflows.
+   144→   144→
+   145→   145→Notification templates.
+   146→   146→
+   147→   147→Branding.
+   148→   148→
+   149→   149→Custom fields.
+   150→   150→
+   151→   151→Custom forms.
+   152→   152→
+   153→   153→Custom reports.
+   154→   154→
+   155→   155→Data retention policy.
+   156→   156→
+   157→   157→Password policy.
+   158→   158→
+   159→   159→Login policy.
+   160→   160→
+   161→   161→2FA policy.
+   162→   162→
+   163→   163→# 2. Organization Structure Module
+   164→   164→
+   165→   165→This module defines the company’s internal structure.
+   166→   166→
+   167→   167→## 2.1 Company / Entity Management
+   168→   168→
+   169→   169→For multi-entity organizations.
+   170→   170→
+   171→   171→### Features
+   172→   172→
+   173→   173→Create multiple companies/entities under one tenant.
+   174→   174→
+   175→   175→Legal name.
+   176→   176→
+   177→   177→Trade name.
+   178→   178→
+   179→   179→Entity code.
+   180→   180→
+   181→   181→Registration number.
+   182→   182→
+   183→   183→PAN/GST/TAN/ESI/PF numbers.
+   184→   184→
+   185→   185→Address.
+   186→   186→
+   187→   187→Country/state/city.
+   188→   188→
+   189→   189→Currency.
+   190→   190→
+   191→   191→Payroll applicability.
+   192→   192→
+   193→   193→Attendance applicability.
+   194→   194→
+   195→   195→Leave applicability.
+   196→   196→
+   197→   197→Status.
+   198→   198→
+   199→   199→Effective date.
+   200→   200→
+   201→   201→## 2.2 Branch Management
+   202→   202→
+   203→   203→### Features
+   204→   204→
+   205→   205→Create branch.
+   206→   206→
+   207→   207→Branch code.
+   208→   208→
+   209→   209→Address.
+   210→   210→
+   211→   211→City/state/country.
+   212→   212→
+   213→   213→Geo-location.
+   214→   214→
+   215→   215→Branch head.
+   216→   216→
+   217→   217→Working days.
+   218→   218→
+   219→   219→Holiday calendar mapping.
+   220→   220→
+   221→   221→Attendance policy mapping.
+   222→   222→
+   223→   223→Shift mapping.
+   224→   224→
+   225→   225→Payroll location mapping.
+   226→   226→
+   227→   227→Status.
+   228→   228→
+   229→   229→## 2.3 Location Management
+   230→   230→
+   231→   231→### Features
+   232→   232→
+   233→   233→Create locations/offices.
+   234→   234→
+   235→   235→Map location to branch/entity.
+   236→   236→
+   237→   237→Geo-fencing radius.
+   238→   238→
+   239→   239→Address.
+   240→   240→
+   241→   241→Time zone.
+   242→   242→
+   243→   243→Holiday calendar.
+   244→   244→
+   245→   245→Attendance mode.
+   246→   246→
+   247→   247→## 2.4 Department Management
+   248→   248→
+   249→   249→### Features
+   250→   250→
+   251→   251→Department name.
+   252→   252→
+   253→   253→Department code.
+   254→   254→
+   255→   255→Parent department.
+   256→   256→
+   257→   257→Department head.
+   258→   258→
+   259→   259→Cost center mapping.
+   260→   260→
+   261→   261→Entity/branch mapping.
+   262→   262→
+   263→   263→Status.
+   264→   264→
+   265→   265→## 2.5 Designation Management
+   266→   266→
+   267→   267→### Features
+   268→   268→
+   269→   269→Designation name.
+   270→   270→
+   271→   271→Designation code.
+   272→   272→
+   273→   273→Grade mapping.
+   274→   274→
+   275→   275→Level mapping.
+   276→   276→
+   277→   277→Department mapping.
+   278→   278→
+   279→   279→Job description.
+   280→   280→
+   281→   281→Status.
+   282→   282→
+   283→   283→## 2.6 Grade / Band / Level Management
+   284→   284→
+   285→   285→### Features
+   286→   286→
+   287→   287→Grade name.
+   288→   288→
+   289→   289→Grade code.
+   290→   290→
+   291→   291→Hierarchy level.
+   292→   292→
+   293→   293→Salary range.
+   294→   294→
+   295→   295→Leave eligibility.
+   296→   296→
+   297→   297→Approval authority.
+   298→   298→
+   299→   299→Travel policy mapping.
+   300→   300→
+   301→   301→Benefit eligibility.
+   302→   302→
+   303→   303→## 2.7 Business Unit Management
+   304→   304→
+   305→   305→### Features
+   306→   306→
+   307→   307→Business unit name.
+   308→   308→
+   309→   309→BU head.
+   310→   310→
+   311→   311→Entity mapping.
+   312→   312→
+   313→   313→Department mapping.
+   314→   314→
+   315→   315→Cost center mapping.
+   316→   316→
+   317→   317→Reports by BU.
+   318→   318→
+   319→   319→## 2.8 Cost Center Management
+   320→   320→
+   321→   321→### Features
+   322→   322→
+   323→   323→Cost center code.
+   324→   324→
+   325→   325→Cost center name.
+   326→   326→
+   327→   327→Entity mapping.
+   328→   328→
+   329→   329→Department mapping.
+   330→   330→
+   331→   331→Budget owner.
+   332→   332→
+   333→   333→Payroll allocation.
+   334→   334→
+   335→   335→Expense allocation.
+   336→   336→
+   337→   337→## 2.9 Reporting Structure
+   338→   338→
+   339→   339→### Features
+   340→   340→
+   341→   341→Reporting manager.
+   342→   342→
+   343→   343→Functional manager.
+   344→   344→
+   345→   345→HR manager.
+   346→   346→
+   347→   347→Dotted-line manager.
+   348→   348→
+   349→   349→Matrix reporting.
+   350→   350→
+   351→   351→Temporary reporting manager.
+   352→   352→
+   353→   353→Effective date based manager changes.
+   354→   354→
+   355→   355→Bulk reporting manager update.
+   356→   356→
+   357→   357→Org chart generation.
+   358→   358→
+   359→   359→## 2.10 Organization Chart
+   360→   360→
+   361→   361→### Features
+   362→   362→
+   363→   363→Tree view.
+   364→   364→
+   365→   365→Card view.
+   366→   366→
+   367→   367→Department-wise org chart.
+   368→   368→
+   369→   369→Manager-wise hierarchy.
+   370→   370→
+   371→   371→Vacant positions.
+   372→   372→
+   373→   373→Export to PDF/image.
+   374→   374→
+   375→   375→Search employee.
+   376→   376→
+   377→   377→Filter by entity/department/location.
+   378→   378→
+   379→   379→# 3. Employee Master Module
+   380→   380→
+   381→   381→This is the core employee database.
+   382→   382→
+   383→   383→## 3.1 Employee Profile
+   384→   384→
+   385→   385→### Sections
+   386→   386→
+   387→   387→Basic details.
+   388→   388→
+   389→   389→Personal details.
+   390→   390→
+   391→   391→Contact details.
+   392→   392→
+   393→   393→Address details.
+   394→   394→
+   395→   395→Family details.
+   396→   396→
+   397→   397→Education details.
+   398→   398→
+   399→   399→Experience details.
+   400→   400→
+   401→   401→Bank details.
+   402→   402→
+   403→   403→Statutory details.
+   404→   404→
+   405→   405→Emergency contacts.
+   406→   406→
+   407→   407→Documents.
+   408→   408→
+   409→   409→Job details.
+   410→   410→
+   411→   411→Compensation details.
+   412→   412→
+   413→   413→Reporting details.
+   414→   414→
+   415→   415→Assets.
+   416→   416→
+   417→   417→Skills.
+   418→   418→
+   419→   419→Certifications.
+   420→   420→
+   421→   421→Timeline.
+   422→   422→
+   423→   423→Audit history.
+   424→   424→
+   425→   425→## 3.2 Basic Details
+   426→   426→
+   427→   427→Employee ID.
+   428→   428→
+   429→   429→Employee code.
+   430→   430→
+   431→   431→First name.
+   432→   432→
+   433→   433→Middle name.
+   434→   434→
+   435→   435→Last name.
+   436→   436→
+   437→   437→Display name.
+   438→   438→
+   439→   439→Gender.
+   440→   440→
+   441→   441→Date of birth.
+   442→   442→
+   443→   443→Marital status.
+   444→   444→
+   445→   445→Blood group.
+   446→   446→
+   447→   447→Nationality.
+   448→   448→
+   449→   449→Profile photo.
+   450→   450→
+   451→   451→Personal email.
+   452→   452→
+   453→   453→Official email.
+   454→   454→
+   455→   455→Mobile number.
+   456→   456→
+   457→   457→Alternate number.
+   458→   458→
+   459→   459→## 3.3 Employment Details
+   460→   460→
+   461→   461→Date of joining.
+   462→   462→
+   463→   463→Employment type.
+   464→   464→
+   465→   465→Worker type.
+   466→   466→
+   467→   467→Probation status.
+   468→   468→
+   469→   469→Probation end date.
+   470→   470→
+   471→   471→Confirmation date.
+   472→   472→
+   473→   473→Notice period.
+   474→   474→
+   475→   475→Employee status.
+   476→   476→
+   477→   477→Department.
+   478→   478→
+   479→   479→Designation.
+   480→   480→
+   481→   481→Grade.
+   482→   482→
+   483→   483→Location.
+   484→   484→
+   485→   485→Branch.
+   486→   486→
+   487→   487→Entity.
+   488→   488→
+   489→   489→Business unit.
+   490→   490→
+   491→   491→Cost center.
+   492→   492→
+   493→   493→Reporting manager.
+   494→   494→
+   495→   495→HR manager.
+   496→   496→
+   497→   497→Functional manager.
+   498→   498→
+   499→   499→## 3.4 Employee Lifecycle Status
+   500→   500→
+   501→   501→Candidate.
+   502→   502→
+   503→   503→Pre-joining.
+   504→   504→
+   505→   505→Active.
+   506→   506→
+   507→   507→On probation.
+   508→   508→
+   509→   509→Confirmed.
+   510→   510→
+   511→   511→On notice.
+   512→   512→
+   513→   513→Resigned.
+   514→   514→
+   515→   515→Terminated.
+   516→   516→
+   517→   517→Absconded.
+   518→   518→
+   519→   519→Retired.
+   520→   520→
+   521→   521→Inactive.
+   522→   522→
+   523→   523→Alumni.
+   524→   524→
+   525→   525→## 3.5 Employee Code Configuration
+   526→   526→
+   527→   527→### Configurations
+   528→   528→
+   529→   529→Auto-generate employee code.
+   530→   530→
+   531→   531→Manual employee code.
+   532→   532→
+   533→   533→Prefix.
+   534→   534→
+   535→   535→Suffix.
+   536→   536→
+   537→   537→Running number.
+   538→   538→
+   539→   539→Entity-wise code.
+   540→   540→
+   541→   541→Department-wise code.
+   542→   542→
+   543→   543→Location-wise code.
+   544→   544→
+   545→   545→Financial-year-wise code.
+   546→   546→
+   547→   547→Example:
+   548→   548→
+   549→   549→`ESPL-EMP-0001`
+   550→   550→
+   551→   551→`DEL-HR-2026-001`
+   552→   552→
+   553→   553→## 3.6 Custom Fields
+   554→   554→
+   555→   555→Industry-grade system should allow custom employee fields.
+   556→   556→
+   557→   557→### Field Types
+   558→   558→
+   559→   559→Text.
+   560→   560→
+   561→   561→Number.
+   562→   562→
+   563→   563→Date.
+   564→   564→
+   565→   565→Date-time.
+   566→   566→
+   567→   567→Dropdown.
+   568→   568→
+   569→   569→Multi-select.
+   570→   570→
+   571→   571→Radio.
+   572→   572→
+   573→   573→Checkbox.
+   574→   574→
+   575→   575→File upload.
+   576→   576→
+   577→   577→Textarea.
+   578→   578→
+   579→   579→Autocomplete.
+   580→   580→
+   581→   581→Master-data selection.
+   582→   582→
+   583→   583→Employee lookup.
+   584→   584→
+   585→   585→Boolean.
+   586→   586→
+   587→   587→Currency.
+   588→   588→
+   589→   589→Percentage.
+   590→   590→
+   591→   591→URL.
+   592→   592→
+   593→   593→### Configurations
+   594→   594→
+   595→   595→Field label.
+   596→   596→
+   597→   597→Placeholder.
+   598→   598→
+   599→   599→Help text.
+   600→   600→
+   601→   601→Required/optional.
+   602→   602→
+   603→   603→Default value.
+   604→   604→
+   605→   605→Validation.
+   606→   606→
+   607→   607→Regex validation.
+   608→   608→
+   609→   609→Visibility by role.
+   610→   610→
+   611→   611→Editable by role.
+   612→   612→
+   613→   613→Entity-wise applicability.
+   614→   614→
+   615→   615→Department-wise applicability.
+   616→   616→
+   617→   617→Employee type applicability.
+   618→   618→
+   619→   619→Show in employee profile.
+   620→   620→
+   621→   621→Show in onboarding.
+   622→   622→
+   623→   623→Show in reports.
+   624→   624→
+   625→   625→Show in mobile app.
+   626→   626→
+   627→   627→## 3.7 Employee Import / Export
+   628→   628→
+   629→   629→### Features
+   630→   630→
+   631→   631→Bulk employee import.
+   632→   632→
+   633→   633→Template download.
+   634→   634→
+   635→   635→Excel validation.
+   636→   636→
+   637→   637→Duplicate check.
+   638→   638→
+   639→   639→Employee code validation.
+   640→   640→
+   641→   641→Email/mobile validation.
+   642→   642→
+   643→   643→Manager mapping validation.
+   644→   644→
+   645→   645→Preview before import.
+   646→   646→
+   647→   647→Error report download.
+   648→   648→
+   649→   649→Bulk update.
+   650→   650→
+   651→   651→Export employee data.
+   652→   652→
+   653→   653→Role-based export fields.
+   654→   654→
+   655→   655→## 3.8 Employee Timeline
+   656→   656→
+   657→   657→Track all lifecycle events.
+   658→   658→
+   659→   659→Joining.
+   660→   660→
+   661→   661→Promotion.
+   662→   662→
+   663→   663→Transfer.
+   664→   664→
+   665→   665→Manager change.
+   666→   666→
+   667→   667→Salary revision.
+   668→   668→
+   669→   669→Probation extension.
+   670→   670→
+   671→   671→Confirmation.
+   672→   672→
+   673→   673→Document upload.
+   674→   674→
+   675→   675→Leave approval.
+   676→   676→
+   677→   677→Attendance regularization.
+   678→   678→
+   679→   679→Resignation.
+   680→   680→
+   681→   681→Exit clearance.
+   682→   682→
+   683→   683→Final settlement.
+   684→   684→
+   685→   685→# 4. Onboarding Module
+   686→   686→
+   687→   687→## 4.1 Candidate Onboarding
+   688→   688→
+   689→   689→### Features
+   690→   690→
+   691→   691→Create candidate.
+   692→   692→
+   693→   693→Bulk candidate upload.
+   694→   694→
+   695→   695→Candidate invitation email.
+   696→   696→
+   697→   697→Pre-joining form.
+   698→   698→
+   699→   699→Document collection.
+   700→   700→
+   701→   701→Offer letter generation.
+   702→   702→
+   703→   703→Joining kit.
+   704→   704→
+   705→   705→Task assignment.
+   706→   706→
+   707→   707→Background verification.
+   708→   708→
+   709→   709→Asset request.
+   710→   710→
+   711→   711→IT account request.
+   712→   712→
+   713→   713→HR approval.
+   714→   714→
+   715→   715→Candidate conversion to employee.
+   716→   716→
+   717→   717→## 4.2 Onboarding Forms
+   718→   718→
+   719→   719→### Form Sections
+   720→   720→
+   721→   721→Personal information.
+   722→   722→
+   723→   723→Contact information.
+   724→   724→
+   725→   725→Education.
+   726→   726→
+   727→   727→Experience.
+   728→   728→
+   729→   729→Bank details.
+   730→   730→
+   731→   731→Statutory details.
+   732→   732→
+   733→   733→Family details.
+   734→   734→
+   735→   735→Emergency contact.
+   736→   736→
+   737→   737→Documents.
+   738→   738→
+   739→   739→Declarations.
+   740→   740→
+   741→   741→Consent forms.
+   742→   742→
+   743→   743→## 4.3 Onboarding Checklist
+   744→   744→
+   745→   745→### Example Tasks
+   746→   746→
+   747→   747→Submit ID proof.
+   748→   748→
+   749→   749→Submit address proof.
+   750→   750→
+   751→   751→Submit education certificate.
+   752→   752→
+   753→   753→Submit previous employer documents.
+   754→   754→
+   755→   755→Sign NDA.
+   756→   756→
+   757→   757→Complete profile.
+   758→   758→
+   759→   759→IT laptop assignment.
+   760→   760→
+   761→   761→Email ID creation.
+   762→   762→
+   763→   763→HR induction.
+   764→   764→
+   765→   765→Manager introduction.
+   766→   766→
+   767→   767→Payroll setup.
+   768→   768→
+   769→   769→## 4.4 Onboarding Workflow
+   770→   770→
+   771→   771→### Configurations
+   772→   772→
+   773→   773→Entity-wise workflow.
+   774→   774→
+   775→   775→Department-wise workflow.
+   776→   776→
+   777→   777→Grade-wise workflow.
+   778→   778→
+   779→   779→Role-wise approval.
+   780→   780→
+   781→   781→Sequential approval.
+   782→   782→
+   783→   783→Parallel approval.
+   784→   784→
+   785→   785→Auto-reminder.
+   786→   786→
+   787→   787→Escalation.
+   788→   788→
+   789→   789→SLA.
+   790→   790→
+   791→   791→Rejection reason.
+   792→   792→
+   793→   793→Re-submit flow.
+   794→   794→
+   795→   795→## 4.5 Offer Letter Management
+   796→   796→
+   797→   797→### Features
+   798→   798→
+   799→   799→Offer template.
+   800→   800→
+   801→   801→Dynamic placeholders.
+   802→   802→
+   803→   803→Salary structure mapping.
+   804→   804→
+   805→   805→Approval before release.
+   806→   806→
+   807→   807→Digital signature.
+   808→   808→
+   809→   809→Offer acceptance.
+   810→   810→
+   811→   811→Offer expiry.
+   812→   812→
+   813→   813→Offer withdrawal.
+   814→   814→
+   815→   815→Offer revision.
+   816→   816→
+   817→   817→# 5. Attendance Management
+   818→   818→
+   819→   819→## 5.1 Attendance Capture Modes
+   820→   820→
+   821→   821→Web clock-in/out.
+   822→   822→
+   823→   823→Mobile clock-in/out.
+   824→   824→
+   825→   825→Biometric integration.
+   826→   826→
+   827→   827→Face recognition.
+   828→   828→
+   829→   829→QR code attendance.
+   830→   830→
+   831→   831→Geo-fenced attendance.
+   832→   832→
+   833→   833→Wi-Fi based attendance.
+   834→   834→
+   835→   835→Manual attendance.
+   836→   836→
+   837→   837→Manager-marked attendance.
+   838→   838→
+   839→   839→API-based attendance.
+   840→   840→
+   841→   841→Import from Excel.
+   842→   842→
+   843→   843→## 5.2 Attendance Rules
+   844→   844→
+   845→   845→### Configurations
+   846→   846→
+   847→   847→Working hours.
+   848→   848→
+   849→   849→Minimum hours for full day.
+   850→   850→
+   851→   851→Minimum hours for half day.
+   852→   852→
+   853→   853→Late coming grace.
+   854→   854→
+   855→   855→Early going grace.
+   856→   856→
+   857→   857→Overtime eligibility.
+   858→   858→
+   859→   859→Auto absent marking.
+   860→   860→
+   861→   861→Auto present marking.
+   862→   862→
+   863→   863→Weekly off rules.
+   864→   864→
+   865→   865→Holiday attendance rules.
+   866→   866→
+   867→   867→Night shift handling.
+   868→   868→
+   869→   869→Cross-day shift handling.
+   870→   870→
+   871→   871→Break deduction.
+   872→   872→
+   873→   873→Missing punch policy.
+   874→   874→
+   875→   875→Regularization allowed days.
+   876→   876→
+   877→   877→Monthly regularization limit.
+   878→   878→
+   879→   879→## 5.3 Web/Mobile Punch
+   880→   880→
+   881→   881→### Features
+   882→   882→
+   883→   883→Clock in.
+   884→   884→
+   885→   885→Clock out.
+   886→   886→
+   887→   887→Break in.
+   888→   888→
+   889→   889→Break out.
+   890→   890→
+   891→   891→Selfie capture.
+   892→   892→
+   893→   893→Location capture.
+   894→   894→
+   895→   895→IP restriction.
+   896→   896→
+   897→   897→Device restriction.
+   898→   898→
+   899→   899→Geo-fence validation.
+   900→   900→
+   901→   901→Attendance remarks.
+   902→   902→
+   903→   903→Punch history.
+   904→   904→
+   905→   905→## 5.4 Biometric Integration
+   906→   906→
+   907→   907→### Features
+   908→   908→
+   909→   909→Device registration.
+   910→   910→
+   911→   911→Employee biometric ID mapping.
+   912→   912→
+   913→   913→Sync logs.
+   914→   914→
+   915→   915→Failed punch logs.
+   916→   916→
+   917→   917→Multiple device support.
+   918→   918→
+   919→   919→Branch-wise device mapping.
+   920→   920→
+   921→   921→Real-time sync.
+   922→   922→
+   923→   923→Scheduled sync.
+   924→   924→
+   925→   925→Offline sync.
+   926→   926→
+   927→   927→## 5.5 Attendance Regularization
+   928→   928→
+   929→   929→### Features
+   930→   930→
+   931→   931→Missing punch request.
+   932→   932→
+   933→   933→Work from home request.
+   934→   934→
+   935→   935→On-duty request.
+   936→   936→
+   937→   937→Late coming correction.
+   938→   938→
+   939→   939→Early going correction.
+   940→   940→
+   941→   941→Manager approval.
+   942→   942→
+   943→   943→HR approval.
+   944→   944→
+   945→   945→Bulk approval.
+   946→   946→
+   947→   947→Rejection reason.
+   948→   948→
+   949→   949→## 5.6 Attendance Calendar
+   950→   950→
+   951→   951→### Features
+   952→   952→
+   953→   953→Daily status.
+   954→   954→
+   955→   955→Present.
+   956→   956→
+   957→   957→Absent.
+   958→   958→
+   959→   959→Half day.
+   960→   960→
+   961→   961→Late.
+   962→   962→
+   963→   963→Early going.
+   964→   964→
+   965→   965→Weekly off.
+   966→   966→
+   967→   967→Holiday.
+   968→   968→
+   969→   969→Leave.
+   970→   970→
+   971→   971→Outdoor duty.
+   972→   972→
+   973→   973→Work from home.
+   974→   974→
+   975→   975→Regularization pending.
+   976→   976→
+   977→   977→Color-coded calendar.
+   978→   978→
+   979→   979→Monthly view.
+   980→   980→
+   981→   981→Export attendance.
+   982→   982→
+   983→   983→## 5.7 Attendance Reports
+   984→   984→
+   985→   985→Daily attendance.
+   986→   986→
+   987→   987→Monthly attendance.
+   988→   988→
+   989→   989→Late coming report.
+   990→   990→
+   991→   991→Early going report.
+   992→   992→
+   993→   993→Absent report.
+   994→   994→
+   995→   995→Overtime report.
+   996→   996→
+   997→   997→Missing punch report.
+   998→   998→
+   999→   999→Shift-wise report.
+  1000→  1000→
+  1001→  1001→Location-wise report.
+  1002→  1002→
+  1003→  1003→Biometric sync report.
+  1004→  1004→
+  1005→  1005→# 6. Shift Management
+  1006→  1006→
+  1007→  1007→## 6.1 Shift Master
+  1008→  1008→
+  1009→  1009→### Fields
+  1010→  1010→
+  1011→  1011→Shift name.
+  1012→  1012→
+  1013→  1013→Shift code.
+  1014→  1014→
+  1015→  1015→Start time.
+  1016→  1016→
+  1017→  1017→End time.
+  1018→  1018→
+  1019→  1019→Break start.
+  1020→  1020→
+  1021→  1021→Break end.
+  1022→  1022→
+  1023→  1023→Total working hours.
+  1024→  1024→
+  1025→  1025→Grace time.
+  1026→  1026→
+  1027→  1027→Half-day hours.
+  1028→  1028→
+  1029→  1029→Full-day hours.
+  1030→  1030→
+  1031→  1031→Night shift flag.
+  1032→  1032→
+  1033→  1033→Flexible shift flag.
+  1034→  1034→
+  1035→  1035→Auto punch-out.
+  1036→  1036→
+  1037→  1037→Overtime rules.
+  1038→  1038→
+  1039→  1039→Applicable locations.
+  1040→  1040→
+  1041→  1041→Applicable departments.
+  1042→  1042→
+  1043→  1043→Status.
+  1044→  1044→
+  1045→  1045→## 6.2 Shift Assignment
+  1046→  1046→
+  1047→  1047→### Features
+  1048→  1048→
+  1049→  1049→Employee-wise shift.
+  1050→  1050→
+  1051→  1051→Department-wise shift.
+  1052→  1052→
+  1053→  1053→Location-wise shift.
+  1054→  1054→
+  1055→  1055→Grade-wise shift.
+  1056→  1056→
+  1057→  1057→Bulk shift assignment.
+  1058→  1058→
+  1059→  1059→Effective date.
+  1060→  1060→
+  1061→  1061→Recurring shift.
+  1062→  1062→
+  1063→  1063→Rotational shift.
+  1064→  1064→
+  1065→  1065→Temporary shift change.
+  1066→  1066→
+  1067→  1067→## 6.3 Roster Management
+  1068→  1068→
+  1069→  1069→### Features
+  1070→  1070→
+  1071→  1071→Create roster.
+  1072→  1072→
+  1073→  1073→Weekly roster.
+  1074→  1074→
+  1075→  1075→Monthly roster.
+  1076→  1076→
+  1077→  1077→Drag-and-drop planning.
+  1078→  1078→
+  1079→  1079→Shift rotation.
+  1080→  1080→
+  1081→  1081→Publish roster.
+  1082→  1082→
+  1083→  1083→Notify employees.
+  1084→  1084→
+  1085→  1085→Roster approval.
+  1086→  1086→
+  1087→  1087→Employee shift swap request.
+  1088→  1088→
+  1089→  1089→Manager shift change.
+  1090→  1090→
+  1091→  1091→Roster lock.
+  1092→  1092→
+  1093→  1093→## 6.4 Shift Rules
+  1094→  1094→
+  1095→  1095→Grace period.
+  1096→  1096→
+  1097→  1097→Break deduction.
+  1098→  1098→
+  1099→  1099→Late rules.
+  1100→  1100→
+  1101→  1101→Night shift allowance.
+  1102→  1102→
+  1103→  1103→Weekend shift rules.
+  1104→  1104→
+  1105→  1105→Holiday shift rules.
+  1106→  1106→
+  1107→  1107→Overtime eligibility.
+  1108→  1108→
+  1109→  1109→Auto attendance calculation.
+  1110→  1110→
+  1111→  1111→# 7. Leave Management
+  1112→  1112→
+  1113→  1113→## 7.1 Leave Type Master
+  1114→  1114→
+  1115→  1115→### Examples
+  1116→  1116→
+  1117→  1117→Casual leave.
+  1118→  1118→
+  1119→  1119→Sick leave.
+  1120→  1120→
+  1121→  1121→Earned leave.
+  1122→  1122→
+  1123→  1123→Paid leave.
+  1124→  1124→
+  1125→  1125→Unpaid leave.
+  1126→  1126→
+  1127→  1127→Maternity leave.
+  1128→  1128→
+  1129→  1129→Paternity leave.
+  1130→  1130→
+  1131→  1131→Compensatory off.
+  1132→  1132→
+  1133→  1133→Marriage leave.
+  1134→  1134→
+  1135→  1135→Bereavement leave.
+  1136→  1136→
+  1137→  1137→Study leave.
+  1138→  1138→
+  1139→  1139→Sabbatical leave.
+  1140→  1140→
+  1141→  1141→Optional holiday.
+  1142→  1142→
+  1143→  1143→Restricted holiday.
+  1144→  1144→
+  1145→  1145→## 7.2 Leave Type Configuration
+  1146→  1146→
+  1147→  1147→### Settings
+  1148→  1148→
+  1149→  1149→Paid/unpaid.
+  1150→  1150→
+  1151→  1151→Full day allowed.
+  1152→  1152→
+  1153→  1153→Half day allowed.
+  1154→  1154→
+  1155→  1155→Hourly leave allowed.
+  1156→  1156→
+  1157→  1157→Monthly accrual.
+  1158→  1158→
+  1159→  1159→Yearly accrual.
+  1160→  1160→
+  1161→  1161→Opening balance.
+  1162→  1162→
+  1163→  1163→Carry forward.
+  1164→  1164→
+  1165→  1165→Carry forward limit.
+  1166→  1166→
+  1167→  1167→Encashment.
+  1168→  1168→
+  1169→  1169→Negative leave allowed.
+  1170→  1170→
+  1171→  1171→Attachment required.
+  1172→  1172→
+  1173→  1173→Reason required.
+  1174→  1174→
+  1175→  1175→Gender applicability.
+  1176→  1176→
+  1177→  1177→Marital status applicability.
+  1178→  1178→
+  1179→  1179→Tenure applicability.
+  1180→  1180→
+  1181→  1181→Grade applicability.
+  1182→  1182→
+  1183→  1183→Department applicability.
+  1184→  1184→
+  1185→  1185→Entity applicability.
+  1186→  1186→
+  1187→  1187→Probation applicability.
+  1188→  1188→
+  1189→  1189→Notice-period applicability.
+  1190→  1190→
+  1191→  1191→Holiday sandwich rule.
+  1192→  1192→
+  1193→  1193→Weekly-off sandwich rule.
+  1194→  1194→
+  1195→  1195→Minimum leave days.
+  1196→  1196→
+  1197→  1197→Maximum leave days.
+  1198→  1198→
+  1199→  1199→Backdated leave allowed.
+  1200→  1200→
+  1201→  1201→Future leave allowed.
+  1202→  1202→
+  1203→  1203→Leave cancellation allowed.
+  1204→  1204→
+  1205→  1205→## 7.3 Leave Policy
+  1206→  1206→
+  1207→  1207→### Features
+  1208→  1208→
+  1209→  1209→Create policy.
+  1210→  1210→
+  1211→  1211→Map leave types.
+  1212→  1212→
+  1213→  1213→Assign to employees.
+  1214→  1214→
+  1215→  1215→Assign by department/location/entity.
+  1216→  1216→
+  1217→  1217→Effective date.
+  1218→  1218→
+  1219→  1219→Policy versioning.
+  1220→  1220→
+  1221→  1221→Policy lock.
+  1222→  1222→
+  1223→  1223→Clone policy.
+  1224→  1224→
+  1225→  1225→## 7.4 Leave Application
+  1226→  1226→
+  1227→  1227→### Features
+  1228→  1228→
+  1229→  1229→Apply leave.
+  1230→  1230→
+  1231→  1231→Select leave type.
+  1232→  1232→
+  1233→  1233→From date.
+  1234→  1234→
+  1235→  1235→To date.
+  1236→  1236→
+  1237→  1237→Half-day selection.
+  1238→  1238→
+  1239→  1239→Reason.
+  1240→  1240→
+  1241→  1241→Attachment.
+  1242→  1242→
+  1243→  1243→Balance preview.
+  1244→  1244→
+  1245→  1245→Approval chain preview.
+  1246→  1246→
+  1247→  1247→Submit.
+  1248→  1248→
+  1249→  1249→Withdraw.
+  1250→  1250→
+  1251→  1251→Cancel approved leave.
+  1252→  1252→
+  1253→  1253→## 7.5 Leave Approval
+  1254→  1254→
+  1255→  1255→Manager approval.
+  1256→  1256→
+  1257→  1257→HR approval.
+  1258→  1258→
+  1259→  1259→Multi-level approval.
+  1260→  1260→
+  1261→  1261→Auto approval.
+  1262→  1262→
+  1263→  1263→Parallel approval.
+  1264→  1264→
+  1265→  1265→Delegated approval.
+  1266→  1266→
+  1267→  1267→Escalation.
+  1268→  1268→
+  1269→  1269→Bulk approval.
+  1270→  1270→
+  1271→  1271→Rejection with reason.
+  1272→  1272→
+  1273→  1273→## 7.6 Leave Balance
+  1274→  1274→
+  1275→  1275→Opening balance.
+  1276→  1276→
+  1277→  1277→Accrued balance.
+  1278→  1278→
+  1279→  1279→Used balance.
+  1280→  1280→
+  1281→  1281→Pending balance.
+  1282→  1282→
+  1283→  1283→Lapsed balance.
+  1284→  1284→
+  1285→  1285→Encashed balance.
+  1286→  1286→
+  1287→  1287→Available balance.
+  1288→  1288→
+  1289→  1289→Employee-wise balance.
+  1290→  1290→
+  1291→  1291→Leave ledger.
+  1292→  1292→
+  1293→  1293→## 7.7 Comp-Off Management
+  1294→  1294→
+  1295→  1295→Work on holiday.
+  1296→  1296→
+  1297→  1297→Work on weekly off.
+  1298→  1298→
+  1299→  1299→Comp-off earning.
+  1300→  1300→
+  1301→  1301→Comp-off expiry.
+  1302→  1302→
+  1303→  1303→Comp-off approval.
+  1304→  1304→
+  1305→  1305→Comp-off usage.
+  1306→  1306→
+  1307→  1307→## 7.8 Leave Reports
+  1308→  1308→
+  1309→  1309→Leave balance report.
+  1310→  1310→
+  1311→  1311→Leave transaction report.
+  1312→  1312→
+  1313→  1313→Leave approval report.
+  1314→  1314→
+  1315→  1315→Leave type usage report.
+  1316→  1316→
+  1317→  1317→Department-wise leave report.
+  1318→  1318→
+  1319→  1319→Leave encashment report.
+  1320→  1320→
+  1321→  1321→Negative balance report.
+  1322→  1322→
+  1323→  1323→# 8. Holiday Calendar
+  1324→  1324→
+  1325→  1325→## 8.1 Holiday Master
+  1326→  1326→
+  1327→  1327→Holiday name.
+  1328→  1328→
+  1329→  1329→Date.
+  1330→  1330→
+  1331→  1331→Type: National, regional, optional, restricted.
+  1332→  1332→
+  1333→  1333→Description.
+  1334→  1334→
+  1335→  1335→Applicable country.
+  1336→  1336→
+  1337→  1337→Applicable state.
+  1338→  1338→
+  1339→  1339→Applicable location.
+  1340→  1340→
+  1341→  1341→Applicable entity.
+  1342→  1342→
+  1343→  1343→## 8.2 Holiday Calendar
+  1344→  1344→
+  1345→  1345→Create calendar.
+  1346→  1346→
+  1347→  1347→Assign to entity/location/branch.
+  1348→  1348→
+  1349→  1349→Import holidays.
+  1350→  1350→
+  1351→  1351→Optional holiday limit.
+  1352→  1352→
+  1353→  1353→Employee optional holiday selection.
+  1354→  1354→
+  1355→  1355→Holiday approval.
+  1356→  1356→
+  1357→  1357→## 8.3 Weekly Off
+  1358→  1358→
+  1359→  1359→Fixed weekly off.
+  1360→  1360→
+  1361→  1361→Alternate Saturday off.
+  1362→  1362→
+  1363→  1363→Rotational weekly off.
+  1364→  1364→
+  1365→  1365→Location-wise weekly off.
+  1366→  1366→
+  1367→  1367→Employee-wise weekly off.
+  1368→  1368→
+  1369→  1369→Shift-wise weekly off.
+  1370→  1370→
+  1371→  1371→# 9. Payroll Management
+  1372→  1372→
+  1373→  1373→Payroll is one of the most complex HRMS modules.
+  1374→  1374→
+  1375→  1375→## 9.1 Payroll Setup
+  1376→  1376→
+  1377→  1377→Country.
+  1378→  1378→
+  1379→  1379→Currency.
+  1380→  1380→
+  1381→  1381→Payroll frequency.
+  1382→  1382→
+  1383→  1383→Payroll month.
+  1384→  1384→
+  1385→  1385→Cut-off date.
+  1386→  1386→
+  1387→  1387→Salary cycle.
+  1388→  1388→
+  1389→  1389→Attendance cycle.
+  1390→  1390→
+  1391→  1391→Leave cycle.
+  1392→  1392→
+  1393→  1393→Financial year.
+  1394→  1394→
+  1395→  1395→Tax year.
+  1396→  1396→
+  1397→  1397→Rounding rules.
+  1398→  1398→
+  1399→  1399→Payslip template.
+  1400→  1400→
+  1401→  1401→Bank file format.
+  1402→  1402→
+  1403→  1403→Payroll approval workflow.
+  1404→  1404→
+  1405→  1405→## 9.2 Salary Components
+  1406→  1406→
+  1407→  1407→### Earnings
+  1408→  1408→
+  1409→  1409→Basic.
+  1410→  1410→
+  1411→  1411→HRA.
+  1412→  1412→
+  1413→  1413→Special allowance.
+  1414→  1414→
+  1415→  1415→Conveyance.
+  1416→  1416→
+  1417→  1417→Medical allowance.
+  1418→  1418→
+  1419→  1419→Bonus.
+  1420→  1420→
+  1421→  1421→Incentive.
+  1422→  1422→
+  1423→  1423→Overtime.
+  1424→  1424→
+  1425→  1425→Leave encashment.
+  1426→  1426→
+  1427→  1427→Arrears.
+  1428→  1428→
+  1429→  1429→Variable pay.
+  1430→  1430→
+  1431→  1431→Shift allowance.
+  1432→  1432→
+  1433→  1433→Night allowance.
+  1434→  1434→
+  1435→  1435→## 9.3 Deductions
+  1436→  1436→
+  1437→  1437→PF.
+  1438→  1438→
+  1439→  1439→ESI.
+  1440→  1440→
+  1441→  1441→Professional tax.
+  1442→  1442→
+  1443→  1443→TDS/income tax.
+  1444→  1444→
+  1445→  1445→Loan deduction.
+  1446→  1446→
+  1447→  1447→Advance deduction.
+  1448→  1448→
+  1449→  1449→LWP deduction.
+  1450→  1450→
+  1451→  1451→Late deduction.
+  1452→  1452→
+  1453→  1453→Other deduction.
+  1454→  1454→
+  1455→  1455→Insurance deduction.
+  1456→  1456→
+  1457→  1457→## 9.4 Employer Contributions
+  1458→  1458→
+  1459→  1459→Employer PF.
+  1460→  1460→
+  1461→  1461→Employer ESI.
+  1462→  1462→
+  1463→  1463→Gratuity.
+  1464→  1464→
+  1465→  1465→Insurance.
+  1466→  1466→
+  1467→  1467→Bonus provision.
+  1468→  1468→
+  1469→  1469→Leave provision.
+  1470→  1470→
+  1471→  1471→## 9.5 Salary Structure
+  1472→  1472→
+  1473→  1473→Create salary template.
+  1474→  1474→
+  1475→  1475→Assign components.
+  1476→  1476→
+  1477→  1477→Formula-based components.
+  1478→  1478→
+  1479→  1479→Fixed components.
+  1480→  1480→
+  1481→  1481→Percentage-based components.
+  1482→  1482→
+  1483→  1483→Conditional components.
+  1484→  1484→
+  1485→  1485→CTC structure.
+  1486→  1486→
+  1487→  1487→Gross salary.
+  1488→  1488→
+  1489→  1489→Net salary.
+  1490→  1490→
+  1491→  1491→Employer contribution.
+  1492→  1492→
+  1493→  1493→Employee contribution.
+  1494→  1494→
+  1495→  1495→Effective date.
+  1496→  1496→
+  1497→  1497→Salary revision.
+  1498→  1498→
+  1499→  1499→## 9.6 Payroll Input
+  1500→  1500→
+  1501→  1501→Monthly bonus.
+  1502→  1502→
+  1503→  1503→Incentive.
+  1504→  1504→
+  1505→  1505→Arrears.
+  1506→  1506→
+  1507→  1507→Reimbursements.
+  1508→  1508→
+  1509→  1509→Loan deduction.
+  1510→  1510→
+  1511→  1511→Advance deduction.
+  1512→  1512→
+  1513→  1513→One-time earning.
+  1514→  1514→
+  1515→  1515→One-time deduction.
+  1516→  1516→
+  1517→  1517→Leave without pay.
+  1518→  1518→
+  1519→  1519→Attendance days.
+  1520→  1520→
+  1521→  1521→Paid days.
+  1522→  1522→
+  1523→  1523→Overtime hours.
+  1524→  1524→
+  1525→  1525→## 9.7 Payroll Processing
+  1526→  1526→
+  1527→  1527→Lock attendance.
+  1528→  1528→
+  1529→  1529→Import inputs.
+  1530→  1530→
+  1531→  1531→Calculate salary.
+  1532→  1532→
+  1533→  1533→Validate statutory deductions.
+  1534→  1534→
+  1535→  1535→Preview payroll.
+  1536→  1536→
+  1537→  1537→Error checks.
+  1538→  1538→
+  1539→  1539→Approve payroll.
+  1540→  1540→
+  1541→  1541→Freeze payroll.
+  1542→  1542→
+  1543→  1543→Generate payslips.
+  1544→  1544→
+  1545→  1545→Generate bank file.
+  1546→  1546→
+  1547→  1547→Post payroll.
+  1548→  1548→
+  1549→  1549→## 9.8 Payroll Approval
+  1550→  1550→
+  1551→  1551→Maker-checker flow.
+  1552→  1552→
+  1553→  1553→Payroll reviewer.
+  1554→  1554→
+  1555→  1555→Finance approver.
+  1556→  1556→
+  1557→  1557→Final approver.
+  1558→  1558→
+  1559→  1559→Payroll lock.
+  1560→  1560→
+  1561→  1561→Payroll unlock with permission.
+  1562→  1562→
+  1563→  1563→Recalculation control.
+  1564→  1564→
+  1565→  1565→## 9.9 Payslip
+  1566→  1566→
+  1567→  1567→Configurable template.
+  1568→  1568→
+  1569→  1569→Dynamic placeholders.
+  1570→  1570→
+  1571→  1571→Company logo.
+  1572→  1572→
+  1573→  1573→Employee details.
+  1574→  1574→
+  1575→  1575→Earnings.
+  1576→  1576→
+  1577→  1577→Deductions.
+  1578→  1578→
+  1579→  1579→YTD summary.
+  1580→  1580→
+  1581→  1581→Tax summary.
+  1582→  1582→
+  1583→  1583→Leave balance.
+  1584→  1584→
+  1585→  1585→Download PDF.
+  1586→  1586→
+  1587→  1587→Email payslip.
+  1588→  1588→
+  1589→  1589→Employee self-service payslip.
+  1590→  1590→
+  1591→  1591→## 9.10 Statutory Compliance
+  1592→  1592→
+  1593→  1593→For India, include:
+  1594→  1594→
+  1595→  1595→PF.
+  1596→  1596→
+  1597→  1597→ESI.
+  1598→  1598→
+  1599→  1599→Professional Tax.
+  1600→  1600→
+  1601→  1601→TDS.
+  1602→  1602→
+  1603→  1603→LWF.
+  1604→  1604→
+  1605→  1605→Gratuity.
+  1606→  1606→
+  1607→  1607→Bonus Act.
+  1608→  1608→
+  1609→  1609→Form 16.
+  1610→  1610→
+  1611→  1611→Form 24Q.
+  1612→  1612→
+  1613→  1613→Challan generation.
+  1614→  1614→
+  1615→  1615→Statutory reports.
+  1616→  1616→
+  1617→  1617→## 9.11 Payroll Reports
+  1618→  1618→
+  1619→  1619→Salary register.
+  1620→  1620→
+  1621→  1621→Bank statement.
+  1622→  1622→
+  1623→  1623→Payslip report.
+  1624→  1624→
+  1625→  1625→PF report.
+  1626→  1626→
+  1627→  1627→ESI report.
+  1628→  1628→
+  1629→  1629→PT report.
+  1630→  1630→
+  1631→  1631→TDS report.
+  1632→  1632→
+  1633→  1633→Loan report.
+  1634→  1634→
+  1635→  1635→Reimbursement report.
+  1636→  1636→
+  1637→  1637→Arrear report.
+  1638→  1638→
+  1639→  1639→Bonus report.
+  1640→  1640→
+  1641→  1641→JV report.
+  1642→  1642→
+  1643→  1643→Payroll variance report.
+  1644→  1644→
+  1645→  1645→Payroll reconciliation report.
+  1646→  1646→
+  1647→  1647→# 10. Expense & Reimbursement Module
+  1648→  1648→
+  1649→  1649→## 10.1 Expense Categories
+  1650→  1650→
+  1651→  1651→Travel.
+  1652→  1652→
+  1653→  1653→Food.
+  1654→  1654→
+  1655→  1655→Hotel.
+  1656→  1656→
+  1657→  1657→Fuel.
+  1658→  1658→
+  1659→  1659→Mobile.
+  1660→  1660→
+  1661→  1661→Internet.
+  1662→  1662→
+  1663→  1663→Office supplies.
+  1664→  1664→
+  1665→  1665→Medical.
+  1666→  1666→
+  1667→  1667→Client meeting.
+  1668→  1668→
+  1669→  1669→Certification.
+  1670→  1670→
+  1671→  1671→Other.
+  1672→  1672→
+  1673→  1673→## 10.2 Expense Policy
+  1674→  1674→
+  1675→  1675→Category-wise limit.
+  1676→  1676→
+  1677→  1677→Grade-wise limit.
+  1678→  1678→
+  1679→  1679→Department-wise limit.
+  1680→  1680→
+  1681→  1681→Daily/monthly limit.
+  1682→  1682→
+  1683→  1683→Bill mandatory.
+  1684→  1684→
+  1685→  1685→Approval workflow.
+  1686→  1686→
+  1687→  1687→Auto approval below amount.
+  1688→  1688→
+  1689→  1689→Currency conversion.
+  1690→  1690→
+  1691→  1691→Tax configuration.
+  1692→  1692→
+  1693→  1693→## 10.3 Expense Claims
+  1694→  1694→
+  1695→  1695→Create claim.
+  1696→  1696→
+  1697→  1697→Upload bills.
+  1698→  1698→
+  1699→  1699→OCR bill reading.
+  1700→  1700→
+  1701→  1701→Add multiple line items.
+  1702→  1702→
+  1703→  1703→Submit claim.
+  1704→  1704→
+  1705→  1705→Approval.
+  1706→  1706→
+  1707→  1707→Rejection.
+  1708→  1708→
+  1709→  1709→Finance verification.
+  1710→  1710→
+  1711→  1711→Payment status.
+  1712→  1712→
+  1713→  1713→## 10.4 Advance Management
+  1714→  1714→
+  1715→  1715→Travel advance.
+  1716→  1716→
+  1717→  1717→Salary advance.
+  1718→  1718→
+  1719→  1719→Project advance.
+  1720→  1720→
+  1721→  1721→Advance approval.
+  1722→  1722→
+  1723→  1723→Advance settlement.
+  1724→  1724→
+  1725→  1725→Balance recovery.
+  1726→  1726→
+  1727→  1727→## 10.5 Reports
+  1728→  1728→
+  1729→  1729→Expense report.
+  1730→  1730→
+  1731→  1731→Pending claims.
+  1732→  1732→
+  1733→  1733→Approved claims.
+  1734→  1734→
+  1735→  1735→Rejected claims.
+  1736→  1736→
+  1737→  1737→Finance payable.
+  1738→  1738→
+  1739→  1739→Category-wise expense.
+  1740→  1740→
+  1741→  1741→Employee-wise expense.
+  1742→  1742→
+  1743→  1743→# 11. Employee Self-Service Portal
+  1744→  1744→
+  1745→  1745→## 11.1 Employee Dashboard
+  1746→  1746→
+  1747→  1747→Profile completion.
+  1748→  1748→
+  1749→  1749→Today attendance.
+  1750→  1750→
+  1751→  1751→Leave balance.
+  1752→  1752→
+  1753→  1753→Upcoming holidays.
+  1754→  1754→
+  1755→  1755→Pending tasks.
+  1756→  1756→
+  1757→  1757→Announcements.
+  1758→  1758→
+  1759→  1759→Payslip.
+  1760→  1760→
+  1761→  1761→Attendance calendar.
+  1762→  1762→
+  1763→  1763→Birthdays.
+  1764→  1764→
+  1765→  1765→Work anniversaries.
+  1766→  1766→
+  1767→  1767→Requests status.
+  1768→  1768→
+  1769→  1769→## 11.2 Employee Actions
+  1770→  1770→
+  1771→  1771→Apply leave.
+  1772→  1772→
+  1773→  1773→Regularize attendance.
+  1774→  1774→
+  1775→  1775→Download payslip.
+  1776→  1776→
+  1777→  1777→Upload documents.
+  1778→  1778→
+  1779→  1779→Update profile.
+  1780→  1780→
+  1781→  1781→Submit expense.
+  1782→  1782→
+  1783→  1783→Raise helpdesk ticket.
+  1784→  1784→
+  1785→  1785→View company policies.
+  1786→  1786→
+  1787→  1787→Submit resignation.
+  1788→  1788→
+  1789→  1789→Complete onboarding/offboarding tasks.
+  1790→  1790→
+  1791→  1791→## 11.3 Profile Update Requests
+  1792→  1792→
+  1793→  1793→Employee can request change for:
+  1794→  1794→
+  1795→  1795→Address.
+  1796→  1796→
+  1797→  1797→Mobile.
+  1798→  1798→
+  1799→  1799→Bank details.
+  1800→  1800→
+  1801→  1801→Family details.
+  1802→  1802→
+  1803→  1803→Education.
+  1804→  1804→
+  1805→  1805→Documents.
+  1806→  1806→
+  1807→  1807→Emergency contact.
+  1808→  1808→
+  1809→  1809→Approval required before update.
+  1810→  1810→
+  1811→  1811→# 12. Manager Self-Service
+  1812→  1812→
+  1813→  1813→## 12.1 Manager Dashboard
+  1814→  1814→
+  1815→  1815→Team attendance.
+  1816→  1816→
+  1817→  1817→Team leave calendar.
+  1818→  1818→
+  1819→  1819→Pending approvals.
+  1820→  1820→
+  1821→  1821→Team birthdays.
+  1822→  1822→
+  1823→  1823→Probation confirmations.
+  1824→  1824→
+  1825→  1825→Resignation requests.
+  1826→  1826→
+  1827→  1827→Team documents.
+  1828→  1828→
+  1829→  1829→Open helpdesk tickets.
+  1830→  1830→
+  1831→  1831→Performance tasks.
+  1832→  1832→
+  1833→  1833→## 12.2 Manager Actions
+  1834→  1834→
+  1835→  1835→Approve leave.
+  1836→  1836→
+  1837→  1837→Approve attendance.
+  1838→  1838→
+  1839→  1839→Approve expense.
+  1840→  1840→
+  1841→  1841→Approve profile change.
+  1842→  1842→
+  1843→  1843→Approve onboarding task.
+  1844→  1844→
+  1845→  1845→Approve resignation.
+  1846→  1846→
+  1847→  1847→Assign shift.
+  1848→  1848→
+  1849→  1849→View team reports.
+  1850→  1850→
+  1851→  1851→Give feedback.
+  1852→  1852→
+  1853→  1853→Initiate confirmation.
+  1854→  1854→
+  1855→  1855→Initiate PIP.
+  1856→  1856→
+  1857→  1857→# 13. Role & Permission Management
+  1858→  1858→
+  1859→  1859→## 13.1 Role Types
+  1860→  1860→
+  1861→  1861→Super Admin.
+  1862→  1862→
+  1863→  1863→Organization Admin.
+  1864→  1864→
+  1865→  1865→HR Admin.
+  1866→  1866→
+  1867→  1867→Payroll Admin.
+  1868→  1868→
+  1869→  1869→Finance Admin.
+  1870→  1870→
+  1871→  1871→Department Head.
+  1872→  1872→
+  1873→  1873→Reporting Manager.
+  1874→  1874→
+  1875→  1875→Employee.
+  1876→  1876→
+  1877→  1877→Recruiter.
+  1878→  1878→
+  1879→  1879→IT Admin.
+  1880→  1880→
+  1881→  1881→Auditor.
+  1882→  1882→
+  1883→  1883→Custom Role.
+  1884→  1884→
+  1885→  1885→## 13.2 Permission Types
+  1886→  1886→
+  1887→  1887→View.
+  1888→  1888→
+  1889→  1889→Create.
+  1890→  1890→
+  1891→  1891→Edit.
+  1892→  1892→
+  1893→  1893→Delete.
+  1894→  1894→
+  1895→  1895→Approve.
+  1896→  1896→
+  1897→  1897→Reject.
+  1898→  1898→
+  1899→  1899→Export.
+  1900→  1900→
+  1901→  1901→Import.
+  1902→  1902→
+  1903→  1903→Download.
+  1904→  1904→
+  1905→  1905→Upload.
+  1906→  1906→
+  1907→  1907→Configure.
+  1908→  1908→
+  1909→  1909→Assign.
+  1910→  1910→
+  1911→  1911→Bulk action.
+  1912→  1912→
+  1913→  1913→View salary.
+  1914→  1914→
+  1915→  1915→View documents.
+  1916→  1916→
+  1917→  1917→View reports.
+  1918→  1918→
+  1919→  1919→## 13.3 Permission Levels
+  1920→  1920→
+  1921→  1921→Module-level permission.
+  1922→  1922→
+  1923→  1923→Sub-module permission.
+  1924→  1924→
+  1925→  1925→Page-level permission.
+  1926→  1926→
+  1927→  1927→Button-level permission.
+  1928→  1928→
+  1929→  1929→Field-level permission.
+  1930→  1930→
+  1931→  1931→Data-level permission.
+  1932→  1932→
+  1933→  1933→Document-level permission.
+  1934→  1934→
+  1935→  1935→Report-level permission.
+  1936→  1936→
+  1937→  1937→API-level permission.
+  1938→  1938→
+  1939→  1939→## 13.4 Data Scope
+  1940→  1940→
+  1941→  1941→Own data.
+  1942→  1942→
+  1943→  1943→Team data.
+  1944→  1944→
+  1945→  1945→Department data.
+  1946→  1946→
+  1947→  1947→Location data.
+  1948→  1948→
+  1949→  1949→Branch data.
+  1950→  1950→
+  1951→  1951→Entity data.
+  1952→  1952→
+  1953→  1953→All organization data.
+  1954→  1954→
+  1955→  1955→Custom employee group.
+  1956→  1956→
+  1957→  1957→## 13.5 Sensitive Permission Examples
+  1958→  1958→
+  1959→  1959→View salary.
+  1960→  1960→
+  1961→  1961→Edit salary.
+  1962→  1962→
+  1963→  1963→Process payroll.
+  1964→  1964→
+  1965→  1965→Download employee documents.
+  1966→  1966→
+  1967→  1967→Delete employee.
+  1968→  1968→
+  1969→  1969→Change reporting manager.
+  1970→  1970→
+  1971→  1971→Approve resignation.
+  1972→  1972→
+  1973→  1973→View audit logs.
+  1974→  1974→
+  1975→  1975→Impersonate user.
+  1976→  1976→
+  1977→  1977→# 14. Workflow Engine
+  1978→  1978→
+  1979→  1979→Industry-grade HRMS needs a configurable workflow engine.
+  1980→  1980→
+  1981→  1981→## 14.1 Workflow Configuration
+  1982→  1982→
+  1983→  1983→Module.
+  1984→  1984→
+  1985→  1985→Event.
+  1986→  1986→
+  1987→  1987→Condition.
+  1988→  1988→
+  1989→  1989→Approver type.
+  1990→  1990→
+  1991→  1991→Approval level.
+  1992→  1992→
+  1993→  1993→Sequential/parallel.
+  1994→  1994→
+  1995→  1995→Auto approval.
+  1996→  1996→
+  1997→  1997→Escalation.
+  1998→  1998→
+  1999→  1999→Delegation.
+  2000→  2000→
+
+[showing lines 1-2000 of 2002; use offset=2001 with limit to continue reading]

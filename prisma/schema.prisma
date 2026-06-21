@@ -1,0 +1,719 @@
+// HRMS — Industry-grade HR Management System schema
+// Multi-tenant foundation. Phase 1: single default tenant (TENANT_ID in lib/db.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// TENANT / ORGANIZATION FOUNDATION
+// ============================================================
+
+model Tenant {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String
+  legalName     String?
+  logoUrl       String?
+  brandColor    String   @default("#10b981")
+  country       String   @default("India")
+  currency      String   @default("INR")
+  timezone      String   @default("Asia/Kolkata")
+  dateFormat    String   @default("DD/MM/YYYY")
+  financialYear String   @default("Apr-Mar")
+  status        String   @default("Active") // Active | Trial | Suspended | Expired
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  entities      Entity[]
+  branches      Branch[]
+  departments   Department[]
+  designations  Designation[]
+  grades        Grade[]
+  locations     Location[]
+  employees     Employee[]
+  leaveTypes    LeaveType[]
+  leavePolicies LeavePolicy[]
+  shifts        Shift[]
+  rosters       Roster[]
+  holidays      Holiday[]
+  assets        Asset[]
+  assetCategories AssetCategory[]
+  formSchemas   FormSchema[]
+  workflows     Workflow[]
+  announcements Announcement[]
+  auditLogs     AuditLog[]
+}
+
+// ============================================================
+// ORGANIZATION STRUCTURE
+// ============================================================
+
+model Entity {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code        String
+  legalName   String
+  tradeName   String?
+  pan         String?
+  gstin       String?
+  tan         String?
+  pfNumber    String?
+  esiNumber   String?
+  address     String?
+  city        String?
+  state       String?
+  country     String   @default("India")
+  currency    String   @default("INR")
+  payrollApplicable  Boolean @default(true)
+  attendanceApplicable Boolean @default(true)
+  leaveApplicable    Boolean @default(true)
+  status      String   @default("Active")
+  effectiveDate DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employees   Employee[]
+  branches    Branch[]
+  departments Department[]
+
+  @@unique([tenantId, code])
+}
+
+model Branch {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityId    String?
+  entity      Entity?  @relation(fields: [entityId], references: [id])
+  code        String
+  name        String
+  address     String?
+  city        String?
+  state       String?
+  country     String?
+  lat         Float?
+  lng         Float?
+  branchHeadId String?
+  workingDays String   @default("Mon,Tue,Wed,Thu,Fri")
+  status      String   @default("Active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employees   Employee[]
+
+  @@unique([tenantId, code])
+}
+
+model Department {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityId      String?
+  entity        Entity?  @relation(fields: [entityId], references: [id])
+  parentId      String?
+  code          String
+  name          String
+  departmentHeadId String?
+  costCenterId  String?
+  status        String   @default("Active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  employees     Employee[]
+  children      Department[] @relation("DeptHierarchy")
+  parent        Department?  @relation("DeptHierarchy", fields: [parentId], references: [id])
+
+  @@unique([tenantId, code])
+}
+
+model Designation {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code          String
+  name          String
+  gradeId       String?
+  grade         Grade?   @relation(fields: [gradeId], references: [id])
+  level         Int?
+  departmentId  String?
+  jobDescription String?
+  status        String   @default("Active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  employees     Employee[]
+
+  @@unique([tenantId, code])
+}
+
+model Grade {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code            String
+  name            String
+  hierarchyLevel  Int
+  minSalary       Float?
+  maxSalary       Float?
+  leaveEligibility Float?
+  approvalAuthority Boolean @default(false)
+  status          String   @default("Active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  employees       Employee[]
+  designations    Designation[]
+
+  @@unique([tenantId, code])
+}
+
+model Location {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code          String
+  name          String
+  address       String?
+  city          String?
+  state         String?
+  country       String?
+  geoFenceRadius Float?
+  timezone      String?
+  attendanceMode String  @default("Web")
+  status        String   @default("Active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  employees     Employee[]
+
+  @@unique([tenantId, code])
+}
+
+// ============================================================
+// EMPLOYEE MASTER
+// ============================================================
+
+model Employee {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeCode    String
+  firstName       String
+  middleName      String?
+  lastName        String?
+  displayName     String?
+  gender          String?  // Male | Female | Other
+  dateOfBirth     DateTime?
+  maritalStatus   String?
+  bloodGroup      String?
+  nationality     String   @default("Indian")
+  profilePhotoUrl String?
+  personalEmail   String?
+  officialEmail   String?
+  mobileNumber    String?
+  alternateNumber String?
+
+  // Employment
+  dateOfJoining   DateTime?
+  employmentType  String   @default("Full-time") // Full-time | Part-time | Contract | Intern
+  workerType      String   @default("Permanent")
+  probationStatus String?  // On Probation | Confirmed
+  probationEndDate DateTime?
+  confirmationDate DateTime?
+  noticePeriod    Int?     // days
+  employeeStatus   String  @default("Active") // Active | On Notice | Resigned | Terminated | Absconded | Retired | Inactive | Alumni
+
+  entityId        String?
+  entity          Entity?  @relation(fields: [entityId], references: [id])
+  branchId        String?
+  branch          Branch?  @relation(fields: [branchId], references: [id])
+  departmentId    String?
+  department      Department? @relation(fields: [departmentId], references: [id])
+  designationId   String?
+  designation     Designation? @relation(fields: [designationId], references: [id])
+  gradeId         String?
+  grade           Grade?   @relation(fields: [gradeId], references: [id])
+  locationId      String?
+  location        Location? @relation(fields: [locationId], references: [id])
+  reportingManagerId String?
+
+  // Bank
+  bankName        String?
+  accountNumber   String?
+  ifscCode        String?
+  branchName      String?
+
+  // Statutory
+  panNumber       String?
+  aadhaarNumber   String?
+  uanNumber       String?
+  pfNumber        String?
+  esiNumber       String?
+
+  // Address
+  currentAddress  String?
+  permanentAddress String?
+
+  // Dynamic / custom data
+  customData      String?  // JSON string of custom fields
+
+  // Compensation
+  ctc             Float?
+  basicSalary     Float?
+  hra             Float?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  leaveApplications  LeaveApplication[]
+  leaveBalances      LeaveBalance[]
+  shiftAssignments   ShiftAssignment[]
+  rosterEntries      RosterEntry[]
+  attendance         Attendance[]
+  assetAssignments   AssetAssignment[]
+  assetRequests      AssetRequest[]
+  profileUpdateRequests ProfileUpdateRequest[]
+
+  @@unique([tenantId, employeeCode])
+}
+
+model ProfileUpdateRequest {
+  id          String   @id @default(cuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  fieldChanges String  // JSON string
+  status      String   @default("Pending") // Pending | Approved | Rejected
+  reason      String?
+  requestedAt DateTime @default(now())
+  reviewedAt  DateTime?
+  reviewedBy  String?
+}
+
+// ============================================================
+// LEAVE MANAGEMENT
+// ============================================================
+
+model LeaveType {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code            String
+  name            String
+  color           String   @default("#10b981")
+  isPaid          Boolean  @default(true)
+  fullDayAllowed  Boolean  @default(true)
+  halfDayAllowed  Boolean  @default(false)
+  hourlyAllowed   Boolean  @default(false)
+  monthlyAccrual  Float    @default(0)
+  yearlyAccrual   Float    @default(0)
+  openingBalance  Float    @default(0)
+  carryForward    Boolean  @default(false)
+  carryForwardLimit Float?
+  encashment      Boolean  @default(false)
+  negativeAllowed Boolean  @default(false)
+  attachmentRequired Boolean @default(false)
+  reasonRequired  Boolean  @default(true)
+  genderApplicability String? // All | Male | Female
+  minDays         Int      @default(1)
+  maxDays         Int?
+  backdatedAllowed Boolean @default(true)
+  futureAllowed   Boolean  @default(true)
+  status          String   @default("Active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  policies        LeavePolicyItem[]
+  applications    LeaveApplication[]
+  balances        LeaveBalance[]
+
+  @@unique([tenantId, code])
+}
+
+model LeavePolicy {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  code        String
+  description String?
+  effectiveDate DateTime?
+  status      String   @default("Active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       LeavePolicyItem[]
+}
+
+model LeavePolicyItem {
+  id          String   @id @default(cuid())
+  leavePolicyId String
+  leavePolicy LeavePolicy @relation(fields: [leavePolicyId], references: [id], onDelete: Cascade)
+  leaveTypeId String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  allocation  Float    @default(0)
+}
+
+model LeaveApplication {
+  id          String   @id @default(cuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  fromDate    DateTime
+  toDate      DateTime
+  days        Float
+  halfDay     Boolean  @default(false)
+  reason      String?
+  attachmentUrl String?
+  status      String   @default("Pending") // Pending | Approved | Rejected | Cancelled | Withdrawn
+  appliedAt   DateTime @default(now())
+  decisionAt  DateTime?
+  decisionBy  String?
+  decisionComment String?
+  workflowInstanceId String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LeaveBalance {
+  id          String   @id @default(cuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  year        Int
+  opening     Float    @default(0)
+  accrued     Float    @default(0)
+  used        Float    @default(0)
+  pending     Float    @default(0)
+  lapsed      Float    @default(0)
+
+  @@unique([employeeId, leaveTypeId, year])
+}
+
+// ============================================================
+// SHIFT & ROSTER
+// ============================================================
+
+model Shift {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code          String
+  name          String
+  startTime     String   // "09:00"
+  endTime       String   // "18:00"
+  breakStart    String?
+  breakEnd      String?
+  workingHours  Float    @default(8)
+  graceMinutes Int      @default(15)
+  halfDayHours  Float    @default(4)
+  fullDayHours  Float    @default(8)
+  isNightShift  Boolean  @default(false)
+  isFlexible    Boolean  @default(false)
+  autoPunchOut  Boolean  @default(false)
+  overtimeEligible Boolean @default(false)
+  color         String   @default("#10b981")
+  status        String   @default("Active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  assignments   ShiftAssignment[]
+  rosterEntries RosterEntry[]
+
+  @@unique([tenantId, code])
+}
+
+model ShiftAssignment {
+  id          String   @id @default(cuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shiftId     String
+  shift       Shift    @relation(fields: [shiftId], references: [id])
+  effectiveDate DateTime
+  endDate     DateTime?
+  isRecurring Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Roster {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  code        String
+  startDate   DateTime
+  endDate     DateTime
+  cycle       String   @default("Weekly") // Weekly | Monthly
+  status      String   @default("Draft") // Draft | Published | Locked
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  entries     RosterEntry[]
+
+  @@unique([tenantId, code])
+}
+
+model RosterEntry {
+  id          String   @id @default(cuid())
+  rosterId    String
+  roster      Roster   @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shiftId     String?
+  shift       Shift?   @relation(fields: [shiftId], references: [id])
+  date        DateTime
+  isWeeklyOff Boolean  @default(false)
+  isHoliday   Boolean  @default(false)
+  notes       String?
+}
+
+// ============================================================
+// HOLIDAY & ATTENDANCE
+// ============================================================
+
+model Holiday {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  date        DateTime
+  type        String   @default("National") // National | Regional | Optional | Restricted
+  description String?
+  country     String   @default("India")
+  state       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Attendance {
+  id          String   @id @default(cuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date        DateTime
+  clockIn     DateTime?
+  clockOut    DateTime?
+  status      String   @default("Present") // Present | Absent | Half Day | Late | Weekly Off | Holiday | Leave | WFH | OD
+  workHours   Float    @default(0)
+  overtimeHours Float  @default(0)
+  isLate      Boolean  @default(false)
+  isEarlyGoing Boolean @default(false)
+  remarks     String?
+  source      String   @default("Web") // Web | Mobile | Biometric | Manual
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([employeeId, date])
+}
+
+// ============================================================
+// ASSET MANAGEMENT
+// ============================================================
+
+model AssetCategory {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code        String
+  name        String
+  icon        String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assets      Asset[]
+  assetRequests AssetRequest[]
+
+  @@unique([tenantId, code])
+}
+
+model Asset {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assetCode   String
+  name        String
+  categoryId  String?
+  category    AssetCategory? @relation(fields: [categoryId], references: [id])
+  serialNumber String?
+  assetTag    String?
+  purchaseDate DateTime?
+  purchaseValue Float?
+  condition   String   @default("Good") // Good | Fair | Damaged | Lost
+  status      String   @default("In Stock") // In Stock | Assigned | Returned | Damaged | Lost | Repair | Retired | Disposed
+  assignedToId String?
+  assignedDate DateTime?
+  returnDate  DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments AssetAssignment[]
+
+  @@unique([tenantId, assetCode])
+}
+
+model AssetAssignment {
+  id          String   @id @default(cuid())
+  assetId     String
+  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  assignedDate DateTime
+  returnDate  DateTime?
+  condition   String   @default("Good")
+  acknowledged Boolean @default(false)
+  notes       String?
+}
+
+model AssetRequest {
+  id          String   @id @default(cuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    AssetCategory? @relation(fields: [categoryId], references: [id])
+  requestType String   @default("New") // New | Replacement | Repair
+  reason      String?
+  status      String   @default("Pending") // Pending | Approved | Rejected | Fulfilled
+  priority    String   @default("Medium")
+  workflowInstanceId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================================
+// DYNAMIC FORM ENGINE
+// ============================================================
+
+model FormSchema {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code        String
+  name        String
+  module      String   // employee | entity | leaveType | shift | roster | asset | leaveApplication | assetRequest | custom
+  description String?
+  sections    String   // JSON: array of {title, fields: [...]}
+  status      String   @default("Published") // Draft | Published
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, code])
+}
+
+// ============================================================
+// WORKFLOW ENGINE
+// ============================================================
+
+model Workflow {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code        String
+  name        String
+  module      String   // leave | asset | attendance | employee | expense | onboarding
+  event       String   // create | update | apply | request
+  description String?
+  approvalType String  @default("Sequential") // Sequential | Parallel | Auto
+  conditions  String?  // JSON
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  steps       WorkflowStep[]
+  instances   WorkflowInstance[]
+
+  @@unique([tenantId, code])
+}
+
+model WorkflowStep {
+  id          String   @id @default(cuid())
+  workflowId  String
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  level       Int
+  approverType String  // ReportingManager | DepartmentHead | HRManager | SpecificEmployee | Role
+  approverId  String?  // employee id when SpecificEmployee
+  approverRole String?
+  slaHours    Int?
+  name        String?
+
+  instances   WorkflowAction[]
+}
+
+model WorkflowInstance {
+  id          String   @id @default(cuid())
+  tenantId    String
+  workflowId  String
+  workflow    Workflow @relation(fields: [workflowId], references: [id])
+  module      String
+  recordId    String   // the entity being approved
+  initiatorId String?
+  status      String   @default("Pending") // Pending | Approved | Rejected | Cancelled
+  currentLevel Int     @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+
+  actions     WorkflowAction[]
+}
+
+model WorkflowAction {
+  id              String   @id @default(cuid())
+  instanceId      String
+  instance        WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stepId          String
+  step            WorkflowStep @relation(fields: [stepId], references: [id])
+  action          String   // Approve | Reject | Escalate
+  actorId         String?
+  comment         String?
+  actedAt         DateTime @default(now())
+}
+
+// ============================================================
+// ANNOUNCEMENTS & AUDIT
+// ============================================================
+
+model Announcement {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title       String
+  body        String?
+  audience    String   @default("All") // All | Entity | Department | Location
+  audienceRef String?
+  publishDate DateTime @default(now())
+  expiryDate  DateTime?
+  priority    String   @default("Normal")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  module      String
+  action      String   // Create | Update | Delete | Approve | Reject
+  recordId    String?
+  userId      String?
+  userName    String?
+  details     String?  // JSON
+  ip          String?
+  createdAt   DateTime @default(now())
+}
