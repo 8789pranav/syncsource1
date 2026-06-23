@@ -102,6 +102,7 @@ export type ModuleId =
   | "dashboard"
   | "organization"
   | "employees"
+  | "onboarding"
   | "leave"
   | "shift"
   | "roster"

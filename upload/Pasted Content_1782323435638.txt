@@ -1,0 +1,1975 @@
+Yes, now we should design onboarding properly like an **industry HRMS product**, not like only a checklist page.
+
+Based on Zoho People, Keka, greytHR, and Darwinbox patterns, the real onboarding module should cover: **candidate onboarding flow, employee onboarding flow, custom workflows, task/checklist automation, documents, custom forms, e-sign, offer/letter handling, stakeholder tasks, payroll/attendance/asset setup, joining-date activation, and progress tracking**. Zoho People supports customizable candidate onboarding flows, candidate details submission, documents, NDA/background authorization, e-sign, checklists, and candidate-to-employee conversion. Keka highlights digital offer letters, pre-boarding tasks, day-one checklists, document collection, e-signatures, and integrations with payroll, attendance, and asset management. greytHR supports joining workflows with reviewer task lists, attached documents, custom forms, and activation on joining date. ([Zoho Corporation][1])
+
+# Final Onboarding Module Structure
+
+Use this main menu:
+
+```text
+Onboarding
+ ├── Dashboard
+ ├── Kanban Board
+ ├── New Hire List
+ ├── Initiate Onboarding
+ ├── Tasks
+ ├── Documents
+ ├── Forms
+ ├── Offer & Letters
+ ├── Setup
+ │    ├── IT Setup
+ │    ├── Asset Setup
+ │    ├── Payroll Setup
+ │    └── Attendance / Leave Setup
+ ├── Approvals
+ ├── Reports
+ └── Settings
+```
+
+This is cleaner than adding too many menus. The **Kanban Board** is the main working area, **New Hire List** is the table view, **Initiate Onboarding** starts the process, and **Settings** controls all workflows.
+
+# 1. Main Logic
+
+Your onboarding module should be based on this model:
+
+```text
+Onboarding Workflow
+        ↓
+Workflow Stages / Kanban Columns
+        ↓
+Task Templates
+        ↓
+Forms + Documents + Offer + Approval
+        ↓
+Onboarding Instance for one candidate
+        ↓
+Candidate Portal + HR Kanban
+        ↓
+IT / Admin / Payroll / Manager Tasks
+        ↓
+Convert Candidate to Employee
+        ↓
+Post-Joining Tasks
+        ↓
+Complete Onboarding
+```
+
+Example:
+
+```text
+Workflow: India Full-Time Employee Onboarding
+
+Candidate: Rahul Sharma
+
+Stages:
+Invite Sent → Candidate Action Pending → HR Verification → Pre-Joining Setup → Joining Day → Post-Joining → Completed
+
+Tasks:
+Candidate uploads documents
+HR verifies documents
+IT creates email
+Admin assigns laptop
+Payroll verifies bank details
+Manager schedules induction
+HR marks joined
+System converts candidate to employee
+```
+
+# 2. Onboarding Dashboard
+
+## Where
+
+```text
+Onboarding → Dashboard
+```
+
+## Dashboard Cards
+
+```text
+Total onboarding cases
+Onboarding initiated
+Invite sent
+Candidate form pending
+Documents pending
+Offer pending
+Offer accepted
+Joining today
+Joining this week
+IT setup pending
+Asset pending
+Payroll setup pending
+Manager tasks pending
+Overdue tasks
+Completed onboarding
+On hold
+Dropped / offer rejected
+No-show candidates
+```
+
+## Filters
+
+```text
+Company / Entity
+Branch
+Location
+Department
+Designation
+Grade
+Employee Type
+Work Mode
+Recruiter
+HR Owner
+Reporting Manager
+Joining Date Range
+Onboarding Status
+```
+
+## Charts
+
+```text
+Stage-wise onboarding count
+Entity-wise onboarding count
+Department-wise onboarding count
+Average onboarding completion time
+Offer acceptance ratio
+Document pending count
+Task aging
+Joining calendar
+Overdue task trend
+```
+
+# 3. Dynamic Kanban Board
+
+## Where
+
+```text
+Onboarding → Kanban Board
+```
+
+This should be the main HR screen.
+
+Keka describes onboarding stages like **pre-offer, offer release, post-offer acceptance, pre-joining, joining day, and post-joining**, so your Kanban should follow a clean stage-based model. ([Keka HR & Payroll Software][2])
+
+## Recommended Kanban Columns
+
+Do not make 20 columns. Keep these practical:
+
+```text
+Draft
+Invite Sent
+Candidate Action Pending
+HR Verification
+Offer / Letter Pending
+Pre-Joining Setup
+Joining Day
+Post-Joining
+Completed
+On Hold
+Dropped
+```
+
+## What Each Column Means
+
+### Draft
+
+Onboarding is created but not started.
+
+Used when HR is still filling details.
+
+### Invite Sent
+
+Candidate portal invite has been sent.
+
+Candidate has not completed forms/documents yet.
+
+### Candidate Action Pending
+
+Candidate needs to complete something.
+
+Examples:
+
+```text
+Fill joining form
+Upload documents
+Accept offer
+Sign NDA
+Submit bank details
+Submit statutory details
+```
+
+### HR Verification
+
+HR verifies candidate-submitted data.
+
+Examples:
+
+```text
+Verify PAN/Aadhaar
+Verify bank details
+Verify education documents
+Verify previous employment documents
+Approve/reject forms
+Ask correction
+```
+
+### Offer / Letter Pending
+
+Offer/appointment/NDA is pending generation, approval, sending, acceptance, or e-sign.
+
+Darwinbox highlights digital offer letters with custom approval flows, version tracking, and digital sign-off. ([Darwinbox][3])
+
+### Pre-Joining Setup
+
+Internal teams prepare before joining.
+
+Examples:
+
+```text
+IT creates email/login
+Admin prepares assets
+Payroll prepares salary/statutory profile
+Manager prepares induction
+HR prepares welcome kit
+```
+
+### Joining Day
+
+Tasks for day one.
+
+Examples:
+
+```text
+Mark joined
+Activate login
+Issue ID card
+Give laptop
+Complete joining confirmation
+Conduct HR orientation
+```
+
+### Post-Joining
+
+After joining tasks.
+
+Examples:
+
+```text
+First week check-in
+Manager feedback
+Training assignment
+Probation setup
+30/60/90 day tasks
+```
+
+### Completed
+
+All mandatory onboarding tasks are complete.
+
+### On Hold
+
+Candidate joining is paused.
+
+### Dropped
+
+Candidate rejected offer, no-show, or HR cancelled onboarding.
+
+# 4. Kanban Card Design
+
+Each card should show enough information without opening the profile.
+
+```text
+Candidate Name
+Profile Photo
+Candidate ID / Employee Code
+Entity
+Department
+Designation
+Location
+Joining Date
+HR Owner
+Reporting Manager
+Current Stage
+Completion %
+Pending Tasks
+Overdue Tasks
+Document Status
+Offer Status
+IT Setup Status
+Payroll Setup Status
+Risk Flag
+Last Activity
+```
+
+## Card Badges
+
+```text
+Joining Today
+Joining This Week
+Overdue
+Document Pending
+Offer Pending
+IT Pending
+Asset Pending
+Payroll Pending
+Manager Action Pending
+Candidate Action Pending
+Remote Joining
+High Priority
+```
+
+## Card Actions
+
+```text
+View Onboarding
+Move Stage
+Send Invite
+Resend Invite
+Send Reminder
+Assign Task
+Generate Offer Letter
+Generate Appointment Letter
+Request Documents
+Verify Documents
+Mark Joined
+Convert to Employee
+Put On Hold
+Drop Candidate
+View Timeline
+```
+
+# 5. Kanban Drag-and-Drop Rules
+
+Drag-and-drop should not be free. It should validate business rules.
+
+Examples:
+
+```text
+Cannot move to HR Verification if candidate form is not submitted.
+Cannot move to Offer Accepted if offer is not accepted.
+Cannot move to Joining Day if mandatory documents are pending.
+Cannot move to Completed if mandatory tasks are pending.
+Cannot convert to employee if required employee fields are missing.
+Cannot activate payroll if salary structure or bank details are missing.
+Cannot activate attendance if shift/attendance policy is missing.
+Cannot activate leave if leave rule is not assigned.
+```
+
+## Stage Movement Options
+
+```text
+Manual Move
+Auto Move
+Manual + Auto
+Locked Stage
+Approval Required to Move
+```
+
+Example:
+
+```text
+Candidate Action Pending → HR Verification
+
+Auto move when:
+- Candidate form submitted
+- Mandatory documents uploaded
+- Offer accepted, if configured
+```
+
+# 6. New Hire List
+
+## Where
+
+```text
+Onboarding → New Hire List
+```
+
+This is the table view of all onboarding cases.
+
+## Columns
+
+```text
+Checkbox
+Candidate ID
+Employee Code, if generated
+Candidate / Employee Name
+Personal Email
+Mobile Number
+Company / Entity
+Department
+Designation
+Location
+Joining Date
+Employment Type
+Work Mode
+HR Owner
+Reporting Manager
+Workflow Name
+Current Stage
+Task Completion %
+Document Completion %
+Offer Status
+Onboarding Status
+Action
+```
+
+## Filters
+
+```text
+Search by name/email/mobile/code
+Entity
+Branch
+Location
+Department
+Designation
+Employee Type
+Work Mode
+Workflow
+Stage
+Status
+Joining Date
+HR Owner
+Manager
+Document Status
+Offer Status
+Task Status
+```
+
+## Row Actions
+
+```text
+View
+Edit
+Send Invite
+Resend Invite
+Generate Offer
+Generate Appointment Letter
+Assign Workflow
+Assign Tasks
+Verify Documents
+Convert to Employee
+Mark Joined
+Put On Hold
+Drop
+Delete, only if draft and unused
+```
+
+## Bulk Actions
+
+```text
+Send Invite
+Assign Workflow
+Assign HR Owner
+Assign Manager
+Assign Tasks
+Send Reminder
+Export
+Put On Hold
+Drop Selected
+```
+
+# 7. Initiate Onboarding
+
+## Where
+
+```text
+Onboarding → Initiate Onboarding
+```
+
+## Onboarding Can Start From
+
+```text
+Manual HR creation
+Selected candidate from ATS / Recruitment
+Offer accepted
+Bulk import through Excel
+API from hiring platform
+Rehire from alumni
+Internal transfer
+Contract-to-full-time conversion
+Intern-to-employee conversion
+```
+
+Zoho People supports candidate onboarding for selected candidates and allows candidates to submit personal/professional details, sign essential documents, and move toward employee conversion. ([Zoho Corporation][1])
+
+# 8. Initiate Onboarding Wizard
+
+Use a clean stepper.
+
+```text
+Step 1: Candidate Details
+Step 2: Job Details
+Step 3: Workflow Selection
+Step 4: Documents & Forms
+Step 5: Offer / Letter
+Step 6: Invite & Review
+```
+
+## Step 1: Candidate Details
+
+```text
+First Name
+Middle Name
+Last Name
+Display Name
+Personal Email
+Mobile Number
+Alternate Mobile
+Gender
+Date of Birth
+Candidate ID
+Recruitment Source
+Recruiter
+Expected Joining Date
+Joining Date
+Candidate Status
+```
+
+## Step 2: Job Details
+
+```text
+Company / Entity
+Branch
+Location
+Department
+Designation
+Grade
+Band
+Business Unit
+Cost Center
+Employment Type
+Employee Type
+Work Mode
+Reporting Manager
+Functional Manager
+HR Manager
+Probation Period
+Notice Period
+Salary Structure, optional
+Payroll Group, optional
+```
+
+## Step 3: Workflow Selection
+
+System should auto-suggest workflow based on:
+
+```text
+Entity
+Location
+Department
+Designation
+Grade
+Employee Type
+Work Mode
+Country
+```
+
+Fields:
+
+```text
+Onboarding Workflow
+Checklist Template
+Document Checklist
+Form Template
+Offer Template
+Appointment Letter Template
+Approval Workflow
+HR Owner
+Task Owner Mapping
+```
+
+## Step 4: Documents & Forms
+
+HR previews what candidate must complete.
+
+```text
+Joining Form
+Personal Details Form
+Bank Form
+Statutory Form
+Family Details Form
+Nominee Form
+Medical Declaration
+Background Verification Consent
+Policy Acknowledgments
+Document Checklist
+```
+
+## Step 5: Offer / Letter
+
+```text
+Generate Offer Letter
+Upload Existing Offer
+Select Offer Template
+Send for Internal Approval
+Send for E-Sign
+Offer Expiry Date
+Candidate Acceptance Required
+Candidate Rejection Reason Required
+```
+
+Zoho People integrates with e-sign to send employment contracts, onboarding documents, policy acknowledgments, NDAs, and similar files for signatures. ([Zoho Corporation][4])
+
+## Step 6: Invite & Review
+
+```text
+Send Candidate Portal Invite
+Generate Temporary Login
+Invite Expiry Date
+Require OTP Verification
+Allow Candidate Save as Draft
+Allow Candidate Edit After Submit
+Preview Tasks
+Preview Documents
+Preview Forms
+Preview Due Dates
+Start Onboarding
+Save as Draft
+```
+
+# 9. Onboarding Instance Page
+
+When HR clicks a candidate card, open the full onboarding profile.
+
+## Where
+
+```text
+Onboarding → New Hire List → View Onboarding
+```
+
+## Tabs
+
+```text
+Overview
+Profile
+Workflow
+Tasks
+Documents
+Forms
+Offer & Letters
+Setup
+Approvals
+Timeline
+Audit History
+Notes
+```
+
+This is better than putting too many main menu items.
+
+# 10. Overview Tab
+
+Shows complete summary.
+
+```text
+Candidate name
+Candidate ID
+Employee code, if generated
+Current stage
+Completion percentage
+Joining date
+Days left to join
+HR owner
+Recruiter
+Reporting manager
+Offer status
+Document completion
+Form completion
+Task completion
+Pending tasks
+Overdue tasks
+Risk status
+Last activity
+```
+
+## Quick Actions
+
+```text
+Send Reminder
+Move Stage
+Assign Task
+Generate Letter
+Verify Documents
+Mark Joined
+Convert to Employee
+Drop Candidate
+```
+
+# 11. Workflow Tab
+
+Shows the active workflow assigned to this onboarding case.
+
+```text
+Workflow name
+Workflow version
+Current stage
+Stage list
+Stage status
+Stage start date
+Stage completed date
+Stage SLA
+Mandatory tasks
+Pending blockers
+Auto-move conditions
+```
+
+## Stage Status
+
+```text
+Not Started
+In Progress
+Blocked
+Completed
+Skipped
+Overdue
+```
+
+# 12. Tasks Tab
+
+Zoho People and greytHR both use checklist/task automation for onboarding. greytHR specifically supports reviewer task lists, attached documents, and custom forms in joining workflows. ([GreyHR Admin Help][5])
+
+## Task Table Columns
+
+```text
+Task ID
+Task Name
+Stage
+Category
+Owner
+Owner Role
+Due Date
+Priority
+Mandatory
+Blocking
+Status
+Overdue Days
+Dependency
+Action
+```
+
+## Task Categories
+
+```text
+Candidate Task
+HR Task
+Recruiter Task
+Manager Task
+IT Task
+Admin Task
+Payroll Task
+Finance Task
+Training Task
+Compliance Task
+System Task
+```
+
+## Owner Types
+
+```text
+Candidate / New Hire
+HR Owner
+Recruiter
+Reporting Manager
+Department Head
+IT Admin
+Admin Team
+Payroll Admin
+Finance Admin
+Training Owner
+Specific Employee
+Role-Based Owner
+Dynamic Owner
+```
+
+## Task Status
+
+```text
+Not Started
+Pending
+In Progress
+Submitted
+Needs Correction
+Approved
+Rejected
+Completed
+Overdue
+Blocked
+Skipped
+Cancelled
+```
+
+## Task Actions
+
+```text
+Start
+Submit
+Approve
+Reject
+Send Back
+Mark Complete
+Skip, if allowed
+Reassign
+Delegate
+Add Comment
+Add Attachment
+View History
+```
+
+## Task Dependency Examples
+
+```text
+Candidate submits bank details
+        ↓
+Payroll verifies bank details
+        ↓
+Payroll profile gets activated
+```
+
+```text
+Candidate accepts offer
+        ↓
+IT creates official email
+        ↓
+HRMS login is activated
+```
+
+# 13. Documents Tab
+
+## Document Categories
+
+```text
+Identity Proof
+Address Proof
+Education Proof
+Experience Proof
+Bank Proof
+Statutory Documents
+Offer / Contract Documents
+Compliance Documents
+Medical Documents
+Background Verification Documents
+Company Policies
+```
+
+## Common Documents
+
+```text
+Photo
+Resume
+PAN Card
+Aadhaar Card
+Passport
+Driving License
+Address Proof
+Education Certificate
+Experience Letter
+Relieving Letter
+Previous Salary Slips
+Bank Proof / Cancelled Cheque
+Signed Offer Letter
+NDA
+Background Verification Consent
+Medical Certificate
+Police Verification
+Visa / Work Permit
+Tax Forms
+```
+
+Darwinbox describes onboarding documents such as offer letters, tax forms, NDAs, and payroll details being digitally sent, signed, and stored in one place. ([blog.darwinbox.com][6])
+
+## Document Configuration Fields
+
+```text
+Document Name
+Document Category
+Mandatory / Optional
+Allowed File Types
+Maximum File Size
+Document Number Required
+Expiry Date Required
+E-Sign Required
+Verification Required
+Visible to Candidate
+Visible to Employee
+Applicable Entity
+Applicable Country
+Applicable Employee Type
+Status
+```
+
+## Document Status
+
+```text
+Pending Upload
+Uploaded
+Submitted
+Needs Correction
+Verified
+Rejected
+Expired
+Expiring Soon
+Not Required
+```
+
+## Document Actions
+
+```text
+Request Upload
+Upload on Behalf
+Preview
+Download
+Verify
+Reject
+Ask Correction
+Send for E-Sign
+View Version
+View Audit
+```
+
+# 14. Forms Tab
+
+Candidate/new hire fills dynamic forms from portal or HR fills on behalf.
+
+## Standard Forms
+
+```text
+Joining Form
+Personal Details Form
+Address Form
+Family Details Form
+Emergency Contact Form
+Education Form
+Experience Form
+Bank Details Form
+Statutory Details Form
+Nominee Form
+Medical Declaration
+Policy Declaration
+Asset Declaration
+Background Verification Consent
+Custom HR Form
+```
+
+## Form Status
+
+```text
+Not Started
+Draft
+Submitted
+Needs Correction
+Approved
+Rejected
+```
+
+# 15. Dynamic Form Builder for Onboarding
+
+## Field Types
+
+```text
+Text
+Number
+Email
+Phone
+Date
+Date Time
+Dropdown
+Multi Select
+Radio
+Checkbox
+Textarea
+File Upload
+Image Upload
+Address Block
+Bank Details Block
+Family Repeater
+Education Repeater
+Experience Repeater
+Nominee Repeater
+Declaration Checkbox
+Digital Signature
+```
+
+## Field-Level Settings
+
+```text
+Label
+Placeholder
+Help Text
+Required
+Read Only
+Hidden
+Default Value
+Validation
+Regex
+Minimum / Maximum Length
+Conditional Visibility
+Role-Based Visibility
+Editable by Candidate
+Editable by HR
+Requires Approval
+Entity Applicability
+Employee Type Applicability
+Save to Employee Profile Field
+```
+
+Important: every onboarding form field should map to employee profile fields where needed.
+
+Example:
+
+```text
+Candidate Bank Account Number
+        ↓
+Employee Bank Details
+```
+
+```text
+Candidate PAN Number
+        ↓
+Employee Statutory Details
+```
+
+# 16. Offer & Letters Tab
+
+## Letter Types
+
+```text
+Offer Letter
+Appointment Letter
+Employment Agreement
+NDA
+Internship Letter
+Contract Letter
+Joining Letter
+Policy Acknowledgment
+Welcome Letter
+```
+
+## Features
+
+```text
+Generate from template
+Upload existing document
+Send for internal approval
+Send to candidate
+Candidate accept
+Candidate reject
+Candidate e-sign
+Offer expiry
+Offer revision
+Offer withdrawal
+Version history
+```
+
+## Template Variables
+
+```text
+{{CandidateName}}
+{{Designation}}
+{{Department}}
+{{Location}}
+{{JoiningDate}}
+{{ReportingManager}}
+{{CTC}}
+{{BasicSalary}}
+{{ProbationPeriod}}
+{{NoticePeriod}}
+{{CompanyName}}
+{{EntityName}}
+{{OfferExpiryDate}}
+{{HRName}}
+```
+
+# 17. Setup Tab
+
+Instead of separate main menus for IT, asset, payroll, attendance, and leave, keep them inside one **Setup** tab in onboarding profile.
+
+## Setup Sections
+
+```text
+IT Setup
+Asset Setup
+Payroll Setup
+Attendance Setup
+Leave Setup
+Role & Access Setup
+Training Setup
+```
+
+# 18. IT Setup
+
+## IT Tasks
+
+```text
+Create official email ID
+Create HRMS login
+Create Microsoft / Google account
+Create Slack / Teams account
+Assign software access
+Assign VPN access
+Assign project tools
+Create biometric ID
+Create access card
+Create laptop login
+Create attendance device mapping
+```
+
+## IT Setup Status
+
+```text
+Not Required
+Pending
+In Progress
+Ready
+Completed
+Rejected
+Delayed
+```
+
+# 19. Asset Setup
+
+Keka mentions onboarding integrations with asset management, so asset assignment should be part of onboarding, not an afterthought. ([Keka HR & Payroll Software][7])
+
+## Asset Tasks
+
+```text
+Assign laptop
+Assign mobile
+Assign SIM card
+Assign ID card
+Assign access card
+Assign monitor
+Assign keyboard/mouse
+Assign uniform
+Assign welcome kit
+Assign vehicle, if applicable
+```
+
+## Asset Fields
+
+```text
+Asset Type
+Asset Code
+Serial Number
+Condition
+Assigned Date
+Expected Handover Date
+Return Required
+Acknowledgment Required
+Owner Team
+Status
+```
+
+# 20. Payroll Setup
+
+## Payroll Tasks
+
+```text
+Collect bank details
+Verify bank details
+Collect PAN / tax ID
+Collect UAN / PF details
+Collect ESIC details
+Collect tax declaration
+Assign salary structure
+Assign payroll group
+Assign statutory settings
+Assign tax regime
+Activate payroll profile
+```
+
+## Validations
+
+```text
+Cannot activate payroll without bank details.
+Cannot activate payroll without salary structure.
+Cannot activate payroll without required statutory details.
+Cannot convert employee if payroll setup is mandatory and incomplete.
+```
+
+# 21. Attendance & Leave Setup
+
+## Auto Assign
+
+```text
+Attendance Policy
+Leave Rule
+Shift
+Weekly Off
+Holiday Calendar
+Work Mode
+Geo-Fence Location
+Biometric ID
+Attendance Device ID
+```
+
+## Assignment Logic
+
+```text
+Based on entity, location, department, grade, employee type, and work mode.
+If specific policy exists, use it.
+If no specific policy exists, use entity default.
+If no entity default exists, use tenant default.
+```
+
+# 22. Approvals Tab
+
+## Approval Types
+
+```text
+Offer Approval
+Salary Approval
+Document Verification Approval
+Joining Form Approval
+Background Verification Approval
+IT Access Approval
+Asset Approval
+Payroll Activation Approval
+Employee Conversion Approval
+```
+
+## Approver Types
+
+```text
+Recruiter
+HR Owner
+Reporting Manager
+Department Head
+Location HR
+IT Admin
+Admin Team
+Payroll Admin
+Finance Admin
+Specific Employee
+Role-Based Approver
+```
+
+## Approval Actions
+
+```text
+Approve
+Reject
+Send Back
+Ask for Correction
+Reassign
+Delegate
+Add Comment
+```
+
+# 23. Timeline Tab
+
+Every action should be tracked.
+
+```text
+Onboarding drafted
+Onboarding initiated
+Workflow assigned
+Invite sent
+Candidate logged in
+Candidate form saved
+Candidate form submitted
+Document uploaded
+Document rejected
+Document verified
+Offer generated
+Offer sent
+Offer accepted
+Task assigned
+Task completed
+Approval requested
+Approval completed
+Employee marked joined
+Employee converted
+Login activated
+Onboarding completed
+Candidate dropped
+```
+
+# 24. Candidate Portal
+
+## Where
+
+```text
+Candidate Portal
+```
+
+Candidate portal should be separate from full employee login.
+
+## Candidate Portal Sections
+
+```text
+Welcome Page
+Profile Form
+Document Upload
+Offer Letter
+E-Signature
+Policy Acknowledgment
+Task Checklist
+Joining Details
+Progress Tracker
+FAQ
+Contact HR
+```
+
+## Candidate Portal Features
+
+```text
+Secure invite link
+OTP verification
+Email verification
+Invite expiry
+Save as draft
+Submit form
+Upload documents
+Preview uploaded documents
+Accept offer
+Decline offer
+E-sign documents
+View onboarding progress
+Ask HR question
+```
+
+greytHR mentions automated onboarding emails and progress tracking, while Zoho People supports customizable onboarding forms and candidate flow. ([greythr][8])
+
+# 25. Workflow Builder
+
+## Where
+
+```text
+Onboarding → Settings → Workflows
+```
+
+This is the actual configuration engine.
+
+## Workflow List Columns
+
+```text
+Workflow Name
+Workflow Code
+Applicable To
+Entity
+Department
+Location
+Employee Type
+Work Mode
+No. of Stages
+No. of Tasks
+Default Workflow
+Priority
+Status
+Version
+Action
+```
+
+## Workflow Actions
+
+```text
+Create
+Edit Draft
+Clone
+Publish
+Deactivate
+Archive
+Delete, only if unused
+Create New Version
+Assign Workflow
+View Version History
+```
+
+## Create Workflow Wizard
+
+```text
+Step 1: Basic Details
+Step 2: Applicability
+Step 3: Stages / Kanban
+Step 4: Tasks
+Step 5: Forms
+Step 6: Documents
+Step 7: Offer / Letters
+Step 8: Approvals
+Step 9: Notifications
+Step 10: Review & Publish
+```
+
+# 26. Workflow Basic Details
+
+```text
+Workflow Name
+Workflow Code
+Description
+Country
+State
+Effective From
+Effective To
+Default Workflow
+Priority
+Status: Draft / Active / Inactive / Archived
+Version
+```
+
+# 27. Workflow Applicability
+
+Every workflow should be scoped.
+
+```text
+Tenant Default
+Company / Entity
+Branch
+Location
+Department
+Designation
+Grade
+Band
+Business Unit
+Cost Center
+Employment Type
+Employee Type
+Work Mode
+Hiring Source
+Specific Candidate
+```
+
+Example:
+
+```text
+Workflow: India Full-Time Onboarding
+
+Applies To:
+Entity = ABC India Pvt Ltd
+Employee Type = Full-Time
+Work Mode = Office / Hybrid
+```
+
+Another:
+
+```text
+Workflow: Remote Employee Onboarding
+
+Applies To:
+Work Mode = Remote
+Location = All
+```
+
+# 28. Workflow Selection Priority
+
+When onboarding starts:
+
+```text
+1. Manually selected workflow
+2. Candidate-specific workflow
+3. Department + location + employee type workflow
+4. Department workflow
+5. Location workflow
+6. Entity workflow
+7. Tenant default workflow
+```
+
+Highest priority wins.
+
+# 29. Stage / Kanban Configuration
+
+## Where
+
+```text
+Onboarding → Settings → Stage / Kanban
+```
+
+## Stage Fields
+
+```text
+Stage Name
+Stage Code
+Description
+Color
+Sort Order
+Is Initial Stage
+Is Final Stage
+Allow Manual Move
+Allow Auto Move
+Required Tasks Before Entry
+Required Tasks Before Exit
+Required Documents
+Required Forms
+Required Approvals
+SLA / Due Days
+Escalation Rule
+Notification Template
+Applicable Entity
+Status
+```
+
+## Stage Example
+
+```text
+Stage: HR Verification
+
+Entry Condition:
+Candidate submitted joining form and mandatory documents.
+
+Exit Condition:
+HR verified all mandatory documents and forms.
+
+Auto Move:
+Yes, move to Pre-Joining Setup after verification is completed.
+```
+
+# 30. Task Template Configuration
+
+## Where
+
+```text
+Onboarding → Settings → Task Templates
+```
+
+## Fields
+
+```text
+Task Name
+Task Code
+Description
+Stage
+Task Category
+Owner Type
+Owner
+Due Date Rule
+Priority
+Mandatory
+Blocking Task
+Requires Approval
+Requires Attachment
+Requires Comment
+Requires Form Submission
+Auto Create
+Auto Complete Condition
+Reminder Rule
+Escalation Rule
+Applicable Entity
+Status
+```
+
+## Due Date Rules
+
+```text
+On initiation date + X days
+Before joining date - X days
+On joining date
+After joining date + X days
+After offer acceptance + X days
+After previous task completion + X days
+Specific date
+Manual date
+```
+
+Examples:
+
+```text
+Upload documents = Joining date - 5 days
+IT email creation = Joining date - 2 days
+Welcome meeting = Joining date
+Manager feedback = Joining date + 7 days
+30-day check-in = Joining date + 30 days
+```
+
+# 31. Settings Main Tabs
+
+## Where
+
+```text
+Onboarding → Settings
+```
+
+Use these settings:
+
+```text
+General Settings
+Workflow Settings
+Stage / Kanban Settings
+Task Templates
+Form Templates
+Document Checklist
+Offer / Letter Templates
+Approval Settings
+Candidate Portal Settings
+Employee Conversion Settings
+Setup Settings
+Email & Notifications
+Import / Export
+Audit & Security
+```
+
+# 32. General Settings
+
+```text
+Enable Onboarding Module
+Enable Candidate Onboarding
+Enable Employee Onboarding
+Enable Preboarding
+Enable Post-Joining Tasks
+Enable Rehire Onboarding
+Enable Internal Transfer Onboarding
+Enable Bulk Onboarding
+Default Onboarding Workflow
+Default HR Owner
+Default Candidate Portal Expiry
+Allow Save as Draft
+Allow Candidate Edit After Submit
+Allow HR Edit Submitted Details
+```
+
+# 33. Workflow Settings
+
+```text
+Allow Multiple Workflows
+Allow Entity-Wise Workflow
+Allow Location-Wise Workflow
+Allow Department-Wise Workflow
+Allow Employee-Type Workflow
+Allow Work-Mode Workflow
+Allow Workflow Priority
+Allow Workflow Versioning
+Allow Workflow Clone
+Allow Workflow Archive
+Allow Workflow Deactivation
+Auto Assign Workflow
+Manual Workflow Override
+Conflict Handling
+```
+
+# 34. Candidate Portal Settings
+
+```text
+Enable Candidate Portal
+Require OTP Login
+Require Email Verification
+Require Mobile Verification
+Invite Expiry Days
+Allow Resend Invite
+Allow Candidate Upload Documents
+Allow Candidate E-Sign
+Allow Candidate Decline Offer
+Allow Candidate Contact HR
+Show Progress Tracker
+Show Joining Date
+Show Manager Details
+Show Company Policies
+Show FAQ
+Allow Save as Draft
+Allow Correction After HR Sends Back
+```
+
+# 35. Employee Conversion Settings
+
+```text
+Convert Candidate to Employee On:
+- Offer Accepted
+- Joining Date
+- HR Marked Joined
+- All Mandatory Tasks Complete
+
+Generate Employee Code
+Employee Code Format
+Create Official Email
+Create HRMS Login
+Activate Login On Joining Date
+Assign Role
+Assign Reporting Manager
+Assign Leave Rule
+Assign Attendance Rule
+Assign Shift
+Assign Weekly Off
+Assign Holiday Calendar
+Assign Payroll Group
+Assign Salary Structure
+Assign Asset
+```
+
+# 36. Setup Settings
+
+```text
+Auto Create IT Tasks
+Auto Create Asset Tasks
+Auto Create Payroll Tasks
+Auto Assign Leave Rule
+Auto Assign Attendance Rule
+Auto Assign Shift
+Auto Assign Holiday Calendar
+Auto Assign Role
+Auto Create Employee Login
+Block Joining If Setup Pending
+Allow HR Override Setup Pending
+```
+
+# 37. Email & Notification Settings
+
+## Events
+
+```text
+Onboarding Initiated
+Candidate Invite Sent
+Candidate Invite Expiring
+Candidate Form Submitted
+Document Uploaded
+Document Approved
+Document Rejected
+Offer Letter Sent
+Offer Accepted
+Offer Declined
+Task Assigned
+Task Due Reminder
+Task Overdue
+Task Completed
+Approval Required
+Approval Completed
+Joining Reminder
+Employee Marked Joined
+Employee Converted
+Login Activated
+Onboarding Completed
+Onboarding Dropped
+```
+
+## Recipients
+
+```text
+Candidate
+HR Owner
+Recruiter
+Reporting Manager
+Department Head
+IT Admin
+Admin Team
+Payroll Admin
+Finance Admin
+Training Owner
+Specific Role
+Specific Email
+```
+
+## Template Variables
+
+```text
+{{CandidateName}}
+{{EmployeeName}}
+{{CandidateEmail}}
+{{JoiningDate}}
+{{Designation}}
+{{Department}}
+{{Location}}
+{{EntityName}}
+{{ReportingManager}}
+{{HRName}}
+{{TaskName}}
+{{DueDate}}
+{{PendingTasks}}
+{{PortalLink}}
+{{OfferLetterLink}}
+{{DocumentName}}
+{{ApprovalLink}}
+{{CompanyName}}
+{{CompanyLogo}}
+```
+
+# 38. Multi-Entity / Default Setting Logic
+
+Every workflow and setting should support scope.
+
+```text
+Tenant Default
+Company / Entity
+Branch
+Location
+Department
+Grade
+Employee Type
+Work Mode
+Specific Candidate
+```
+
+## Example
+
+```text
+Tenant Default:
+Workflow = Standard Onboarding
+Documents = Basic ID + Bank Proof
+Candidate Portal Expiry = 7 days
+
+Entity: ABC India:
+Workflow = India Full-Time Onboarding
+Documents = PAN, Aadhaar, Bank Proof, PF, ESIC
+Leave Year / payroll setup = India rules
+
+Entity: ABC UAE:
+Workflow = UAE Onboarding
+Documents = Passport, Visa, Emirates ID
+Payroll setup = UAE rules
+
+Remote Employees:
+Workflow = Remote Onboarding
+Tasks = Courier laptop, VPN setup, remote induction
+```
+
+# 39. Reports
+
+```text
+Onboarding Status Report
+Stage-Wise Pipeline Report
+Task Completion Report
+Overdue Task Report
+Document Pending Report
+Document Rejection Report
+Offer Acceptance Report
+Joining Report
+No-Show Report
+Dropout Report
+Entity-Wise Onboarding Report
+Department-Wise Onboarding Report
+HR Owner Performance Report
+Average Onboarding Completion Time
+Asset Pending Report
+IT Setup Pending Report
+Payroll Setup Pending Report
+Training Completion Report
+```
+
+# 40. Backend Tables
+
+```text
+OnboardingWorkflows
+OnboardingWorkflowVersions
+OnboardingWorkflowApplicability
+OnboardingStages
+OnboardingTaskTemplates
+OnboardingInstances
+OnboardingInstanceStages
+OnboardingInstanceTasks
+OnboardingCandidates
+OnboardingForms
+OnboardingFormFields
+OnboardingFormSubmissions
+OnboardingDocumentChecklists
+OnboardingCandidateDocuments
+OnboardingOfferLetters
+OnboardingApprovals
+OnboardingAssetRequests
+OnboardingITRequests
+OnboardingPayrollSetups
+OnboardingPolicyAssignments
+OnboardingNotifications
+OnboardingTimeline
+OnboardingAuditLogs
+```
+
+# 41. Backend Flow
+
+## From Recruitment
+
+```text
+1. Candidate marked as selected.
+2. HR clicks Initiate Onboarding.
+3. Candidate data is pulled from ATS.
+4. System suggests workflow based on entity/location/department/employee type.
+5. HR reviews workflow, documents, forms, tasks, offer template.
+6. Onboarding instance is created.
+7. Candidate invite is sent.
+8. Candidate completes portal tasks.
+9. HR verifies forms/documents.
+10. Offer/appointment/e-sign process is completed.
+11. IT/Admin/Payroll/Manager tasks are created.
+12. Joining day arrives.
+13. HR marks candidate joined.
+14. System converts candidate to employee.
+15. Employee code, login, leave, attendance, shift, payroll, role are assigned.
+16. Post-joining tasks continue.
+17. Onboarding is completed.
+```
+
+## Manual HR Initiation
+
+```text
+1. HR opens Initiate Onboarding.
+2. HR enters candidate and job details.
+3. System suggests workflow.
+4. HR starts onboarding.
+5. Candidate receives portal invite.
+6. Rest of the flow follows the workflow.
+```
+
+## Bulk Onboarding
+
+```text
+1. HR downloads Excel template.
+2. HR uploads candidate list.
+3. System validates data.
+4. HR maps workflow by entity/department/employee type.
+5. System creates onboarding cases in bulk.
+6. Invites are sent in bulk.
+7. HR tracks all candidates in Kanban.
+```
+
+# 42. Critical Validations
+
+```text
+Cannot send invite without candidate email.
+Cannot move stage if mandatory tasks are incomplete.
+Cannot verify document without uploaded file.
+Cannot convert to employee without mandatory employee fields.
+Cannot activate login before joining date, unless allowed.
+Cannot activate payroll without salary structure and bank details.
+Cannot assign leave without leave rule.
+Cannot assign attendance without attendance policy and shift.
+Cannot complete onboarding if mandatory forms/documents/tasks are pending.
+Cannot delete published workflow if onboarding cases exist.
+Cannot edit published workflow directly; create new version.
+```
+
+# Final Recommended Product Structure
+
+Use this final clean design:
+
+```text
+Onboarding
+ ├── Dashboard
+ ├── Kanban Board
+ ├── New Hire List
+ ├── Initiate Onboarding
+ ├── Tasks
+ ├── Documents
+ ├── Forms
+ ├── Offer & Letters
+ ├── Setup
+ ├── Approvals
+ ├── Reports
+ └── Settings
+```
+
+And the core product logic should be:
+
+```text
+Workflow Configuration
+        ↓
+Dynamic Kanban Stages
+        ↓
+Task + Document + Form + Letter Templates
+        ↓
+Candidate Portal
+        ↓
+HR Verification
+        ↓
+IT / Asset / Payroll / Attendance / Leave Setup
+        ↓
+Mark Joined
+        ↓
+Convert to Employee
+        ↓
+Post-Joining
+        ↓
+Completed
+```
+
+This is the version you should build because it is clean for UI, configurable for multi-entity HRMS, and powerful enough for enterprise-level onboarding.
+
+[1]: https://help.zoho.com/portal/en/kb/people/administrator-guide/onboarding-service/articles/candidate-onboarding-flow?utm_source=chatgpt.com "Candidate Onboarding Flow"
+[2]: https://www.keka.com/what-is-employee-onboarding-process?utm_source=chatgpt.com "Employee Onboarding Process: Simple Step-by-Step Guide l ..."
+[3]: https://darwinbox.com/products/employee-onboarding?utm_source=chatgpt.com "Employee Onboarding Software"
+[4]: https://help.zoho.com/portal/en/kb/zoho-sign/integrations/zoho-apps/zoho-people/articles/sending-documents-for-signatures-from-zoho-people?utm_source=chatgpt.com "Sending documents for signatures from Zoho People"
+[5]: https://admin-help.greythr.com/admin/answers/AvVD2A0GQWm8grRfasz2mg?utm_source=chatgpt.com "Simplify Employee's Hiring Process with greytHR Workflows"
+[6]: https://blog.darwinbox.com/onboarding-documents?utm_source=chatgpt.com "10 Best Onboarding Documents to Set New Hires Up for ..."
+[7]: https://www.keka.com/employee-onboarding-software?utm_source=chatgpt.com "Employee Onboarding Software to Automate HR Workflows"
+[8]: https://www.greythr.com/hr-garden/onboarding-software/?utm_source=chatgpt.com "Onboarding Software"

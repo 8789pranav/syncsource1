@@ -1,0 +1,2408 @@
+Below is a **proper industry-level Leave Management module blueprint** for your HRMS, with **multi-tenant configuration, leave type creation, leave rule builder, workflow, dynamic forms, UI structure, fields, settings, employee application flow, approval flow, payroll/attendance integration, and admin controls**.
+
+Enterprise HRMS leave systems are not just “apply leave and approve leave.” SAP SuccessFactors separates **Time Off / absence recording** from attendance and supports leave request workflows; Zoho People supports customizable leave policies, accrual, approval, location/role/department-based policies; Darwinbox highlights employee-group-based leave policies, flexible workflows, dashboards, mobile apply/approve, and payroll connection. ([SAP Learning][1])
+
+---
+
+# 1. Leave Management Main Structure
+
+Your Leave module should have these main sections:
+
+```text
+Leave Management
+├── Dashboard
+├── My Leave
+├── Team Leave
+├── Leave Requests
+├── Leave Calendar
+├── Leave Balance
+├── Leave Ledger
+├── Leave Types
+├── Leave Rules / Leave Policies
+├── Leave Workflow
+├── Leave Forms
+├── Holiday Calendar
+├── Weekly Off / Work Calendar
+├── Leave Encashment
+├── Leave Carry Forward
+├── Comp-Off
+├── Leave Adjustment
+├── Bulk Actions
+├── Imports
+├── Reports
+└── Settings
+```
+
+The important design is this:
+
+```text
+Leave Type = Type of leave
+Example: Sick Leave, Casual Leave, Earned Leave
+
+Leave Rule / Leave Policy = How that leave works
+Example: 12 Sick Leaves yearly, monthly accrual, max 3 continuous days, document required after 2 days
+
+Leave Workflow = Who approves it
+Example: Reporting Manager → HR
+
+Leave Form = What fields employee fills
+Example: Date, reason, attachment, emergency contact
+
+Leave Assignment = Which employees/entity get this policy
+Example: Entity A employees only, or Grade M1-M3 only
+```
+
+---
+
+# 2. Clean UI Structure
+
+## 2.1 Leave Dashboard UI
+
+### Page: Leave Dashboard
+
+Top cards:
+
+```text
+Total Employees on Leave Today
+Pending Leave Requests
+Approved Leaves This Month
+Rejected Leaves This Month
+Upcoming Leaves
+Leave Balance Alerts
+Employees with Negative Balance
+LOP Days This Month
+```
+
+Charts:
+
+```text
+Leave trend by month
+Leave type usage
+Department-wise absence
+Location-wise leave
+High absenteeism employees
+Pending approvals ageing
+```
+
+Quick actions:
+
+```text
+Apply Leave
+Bulk Approve
+Adjust Balance
+Create Leave Type
+Create Leave Rule
+Import Opening Balance
+Export Report
+```
+
+Filters:
+
+```text
+Tenant
+Company / Entity
+Branch
+Location
+Department
+Designation
+Grade
+Employee Type
+Leave Type
+Status
+Date Range
+Manager
+```
+
+---
+
+## 2.2 Employee Leave UI
+
+### Page: My Leave
+
+Sections:
+
+```text
+Leave Balance Cards
+Leave Calendar
+Apply Leave Button
+My Leave Requests
+Leave Ledger
+Upcoming Holidays
+Team Availability
+```
+
+Balance card example:
+
+```text
+Casual Leave
+Available: 5
+Used: 3
+Pending: 1
+Total: 9
+
+Sick Leave
+Available: 8
+Used: 2
+Total: 10
+
+Earned Leave
+Available: 12
+Carry Forward: 5
+Accrued: 7
+```
+
+Employee actions:
+
+```text
+Apply Leave
+Cancel Leave
+Withdraw Pending Leave
+View Approval Status
+Upload Document
+Download Leave History
+Convert Absence to Leave
+Request Comp-Off
+Apply Leave Encashment
+```
+
+---
+
+## 2.3 Manager Leave UI
+
+### Page: Team Leave
+
+Manager should see:
+
+```text
+Team leave calendar
+Pending approvals
+Employee leave balance
+Overlapping leave warning
+Team availability
+Critical resource warning
+Leave request history
+Mass approve/reject option
+```
+
+SAP’s time-off approval process includes line-manager review and also mass approval for multiple requests, which is important for manager efficiency. ([SAP Help Portal][2])
+
+---
+
+## 2.4 Admin Leave UI
+
+### Page: Leave Admin
+
+Admin tabs:
+
+```text
+Leave Requests
+Leave Balance
+Leave Ledger
+Leave Adjustment
+Leave Types
+Leave Rules
+Policy Assignment
+Workflow Configuration
+Holiday Calendar
+Leave Reports
+Settings
+```
+
+Admin actions:
+
+```text
+Create leave type
+Create leave rule
+Map leave type to rule
+Assign rule to entity/department/employee
+Import leave balance
+Bulk adjust leave balance
+Bulk approve/reject
+Lock leave period
+Recalculate leave balance
+Process year-end carry forward
+Process encashment
+Sync with payroll
+```
+
+---
+
+# 3. Create Leave Type
+
+## 3.1 What is Leave Type?
+
+Leave Type is the master category of leave.
+
+Example:
+
+```text
+Casual Leave
+Sick Leave
+Earned Leave
+Maternity Leave
+Paternity Leave
+Bereavement Leave
+Comp-Off
+Leave Without Pay
+Optional Holiday
+Marriage Leave
+Study Leave
+Sabbatical
+```
+
+In SAP SuccessFactors, “Time Types” define different absence types, and SAP also separates time account type configuration from employee-specific accounts. ([SAP Help Portal][3])
+
+---
+
+## 3.2 Create Leave Type UI
+
+### Page title
+
+```text
+Create Leave Type
+```
+
+### Basic Details section
+
+Fields:
+
+```text
+Leave Type Name *
+Leave Type Code *
+Description
+Color Code
+Icon
+Status: Active / Inactive
+Leave Category
+Leave Unit
+Paid / Unpaid
+System Type
+Gender Applicability
+Marital Status Applicability
+Employment Type Applicability
+Applicable For
+```
+
+Example:
+
+```text
+Leave Type Name: Sick Leave
+Leave Type Code: SL
+Color: Red
+Category: Medical Leave
+Unit: Full Day / Half Day
+Paid: Yes
+Status: Active
+```
+
+---
+
+## 3.3 Leave Type Fields in Detail
+
+### Basic fields
+
+| Field           | Purpose                           |
+| --------------- | --------------------------------- |
+| Leave Type Name | Display name like Sick Leave      |
+| Leave Type Code | Short unique code like SL, CL, EL |
+| Description     | Admin notes                       |
+| Color           | Calendar color                    |
+| Icon            | UI identification                 |
+| Status          | Active/inactive                   |
+| Display Order   | Sorting in employee apply screen  |
+
+### Classification fields
+
+| Field                  | Options                                                    |
+| ---------------------- | ---------------------------------------------------------- |
+| Leave Category         | Annual, Sick, Casual, Statutory, Unpaid, Comp-Off, Special |
+| Paid Type              | Paid, Unpaid, Partially Paid                               |
+| Leave Unit             | Full day, half day, hourly, mixed                          |
+| Balance Required       | Yes/No                                                     |
+| Allow Negative Balance | Yes/No                                                     |
+| Payroll Impact         | Paid, LOP, partial deduction, no payroll effect            |
+| Attendance Impact      | Mark as Leave, Absent, Weekly Off, Holiday Override        |
+
+### Eligibility fields
+
+| Field             | Options                                            |
+| ----------------- | -------------------------------------------------- |
+| Gender            | All, Male, Female, Other                           |
+| Marital Status    | All, Married, Unmarried                            |
+| Employment Type   | Permanent, Contract, Intern, Probation, Consultant |
+| Employee Category | Staff, Worker, Executive, Management               |
+| Tenure            | From joining, after probation, after X months      |
+| Country/Region    | India, UAE, USA, etc.                              |
+| Entity            | Entity-wise applicability                          |
+| Department        | Department-wise applicability                      |
+| Grade/Band        | Grade-wise applicability                           |
+
+---
+
+## 3.4 Leave Type Advanced Settings
+
+```text
+Allow half-day
+Allow quarter-day
+Allow hourly leave
+Allow past date application
+Allow future date application
+Allow cancellation
+Allow withdrawal
+Allow attachment
+Attachment mandatory
+Show in calendar
+Show in payslip
+Show balance to employee
+Show policy to employee
+Allow manager to apply on behalf
+Allow HR to apply on behalf
+Allow admin adjustment
+Allow carry forward
+Allow encashment
+Allow clubbing
+Allow sandwich calculation
+```
+
+---
+
+# 4. Leave Rules / Leave Policy
+
+## 4.1 What is Leave Rule?
+
+Leave Rule is the real business logic. One leave rule can contain multiple leave types.
+
+Example:
+
+```text
+Policy Name: India Permanent Employee Leave Policy 2026
+
+Leave Types inside this rule:
+- Casual Leave: 12 yearly, monthly accrual
+- Sick Leave: 10 yearly, full credit at year start
+- Earned Leave: 18 yearly, monthly accrual, carry forward allowed
+- LOP: unlimited, unpaid
+```
+
+Zoho People supports customizable leave policies based on entitlement models such as fixed, experience, grant-based, or attendance-based entitlement for locations, roles, or departments. ([Zoho][4])
+
+---
+
+## 4.2 Leave Rule List UI
+
+Columns:
+
+```text
+Rule Name
+Rule Code
+Country
+Entity
+Location
+Employee Type
+Leave Types Count
+Effective From
+Effective To
+Employees Assigned
+Status
+Updated By
+Updated At
+Action
+```
+
+Actions:
+
+```text
+View
+Edit
+Clone
+Assign Employees
+Deactivate
+View Employees
+View Version History
+Recalculate Balances
+```
+
+---
+
+## 4.3 Create Leave Rule UI
+
+### Recommended UI layout
+
+```text
+Create Leave Rule
+
+Step 1: Basic Details
+Step 2: Applicability
+Step 3: Add Leave Types
+Step 4: Accrual & Entitlement
+Step 5: Restrictions
+Step 6: Approval Workflow
+Step 7: Carry Forward / Encashment
+Step 8: Notification
+Step 9: Review & Publish
+```
+
+This should be a wizard, not one huge form.
+
+---
+
+# 5. Leave Rule: Basic Details
+
+Fields:
+
+```text
+Rule Name *
+Rule Code *
+Description
+Country
+Region
+Financial Year / Leave Year
+Calendar Type
+Effective From *
+Effective To
+Status
+Version
+Default Rule: Yes/No
+Priority
+```
+
+### Calendar Type
+
+```text
+Calendar Year: Jan-Dec
+Financial Year: Apr-Mar
+Custom Leave Year
+Employee Joining Date Based
+```
+
+Example:
+
+```text
+Rule Name: India Corporate Leave Policy
+Leave Year: Apr-Mar
+Effective From: 01-Apr-2026
+Default Rule: Yes
+Priority: 10
+```
+
+---
+
+# 6. Leave Rule: Applicability
+
+This is very important for multi-tenant HRMS.
+
+## 6.1 Applicability levels
+
+```text
+Tenant level
+Company / Legal entity level
+Branch level
+Location level
+Department level
+Designation level
+Grade level
+Band level
+Business unit level
+Cost center level
+Employment type level
+Employee category level
+Individual employee level
+```
+
+## 6.2 Applicability UI
+
+Use tabs:
+
+```text
+Apply To
+├── All Employees
+├── Selected Entities
+├── Selected Locations
+├── Selected Departments
+├── Selected Grades
+├── Selected Employee Types
+├── Custom Employee Group
+└── Specific Employees
+```
+
+Fields:
+
+```text
+Tenant *
+Company / Entity
+Branch
+Location
+Department
+Designation
+Grade
+Band
+Employee Type
+Employee Category
+Gender
+Marital Status
+Joining Date Range
+Employee Group
+Specific Employees
+Exclude Employees
+```
+
+## 6.3 Rule priority
+
+When multiple rules match, use priority:
+
+```text
+Employee-specific rule
+↓
+Employee group rule
+↓
+Department rule
+↓
+Location rule
+↓
+Entity rule
+↓
+Tenant default rule
+↓
+Platform default rule
+```
+
+Example:
+
+```text
+Tenant default: 12 Casual Leave
+Entity A: 10 Casual Leave
+Department Sales: 8 Casual Leave
+Employee Rahul: 6 Casual Leave
+
+Final applied to Rahul = 6 Casual Leave
+```
+
+---
+
+# 7. Leave Rule: Add Leave Types
+
+This is the section you specifically mentioned: **inside Leave Rules, we call/Add Leave Types**.
+
+## 7.1 UI: Add Leave Types inside Leave Rule
+
+Inside the rule wizard, show:
+
+```text
+Leave Types
+[+ Add Leave Type]
+
+Selected Leave Types Table:
+Leave Type | Entitlement | Accrual | Carry Forward | Encashment | Restrictions | Workflow | Status | Action
+```
+
+When admin clicks **+ Add Leave Type**, modal opens.
+
+### Add Leave Type Modal
+
+Fields:
+
+```text
+Select Leave Type *
+Custom Display Name
+Applicable in this rule: Active/Inactive
+Entitlement Type
+Total Entitlement
+Accrual Frequency
+Opening Balance Allowed
+Allow Negative Balance
+Paid/Unpaid Override
+Workflow Override
+Restriction Override
+```
+
+Example:
+
+```text
+Select Leave Type: Sick Leave
+Total Entitlement: 10 days
+Accrual: Yearly
+Document Required: If more than 2 days
+Workflow: Reporting Manager → HR
+```
+
+---
+
+## 7.2 Leave Type inside Rule should have separate configuration
+
+This is important.
+
+The same leave type can behave differently in different rules.
+
+Example:
+
+```text
+Sick Leave in India Policy = 10 days yearly
+Sick Leave in UAE Policy = 15 days yearly
+Sick Leave for Probation = 0 or 3 days
+Sick Leave for Contract = unpaid only
+```
+
+So do not put all logic directly in Leave Type master. Put main behavior in **Leave Rule Leave Type Mapping**.
+
+---
+
+# 8. Entitlement Configuration
+
+## 8.1 Entitlement Type
+
+Fields:
+
+```text
+Entitlement Type
+Total Entitlement
+Entitlement Unit
+Entitlement Frequency
+Credit Timing
+Proration
+Rounding
+```
+
+Options:
+
+```text
+Fixed entitlement
+Accrual based
+Experience based
+Attendance based
+Grant based
+Manual allocation
+Unlimited
+No balance required
+```
+
+Zoho mentions fixed, experience, grant-based, and attendance-based entitlement models. ([Zoho][4])
+
+---
+
+## 8.2 Fixed Entitlement
+
+Example:
+
+```text
+Casual Leave = 12 days per year
+Sick Leave = 10 days per year
+```
+
+Fields:
+
+```text
+Total Days
+Credit Date
+Credit Full Balance at Year Start
+Credit on Joining
+Prorate for New Joiners
+```
+
+---
+
+## 8.3 Accrual-Based Entitlement
+
+Accrual means leave is earned over time. Zoho explains prorated accrual for employees who join after the policy valid-from date. ([Zoho Corporation][5])
+
+Options:
+
+```text
+Daily accrual
+Weekly accrual
+Monthly accrual
+Quarterly accrual
+Half-yearly accrual
+Yearly accrual
+Payroll-cycle accrual
+Attendance-based accrual
+```
+
+Fields:
+
+```text
+Accrual Frequency
+Accrual Amount
+Accrual Date
+Accrual Start From
+Accrual End Date
+Prorate on Joining
+Prorate on Exit
+Rounding Rule
+Maximum Accrual Limit
+Stop Accrual During LOP
+Stop Accrual During Notice Period
+Stop Accrual During Suspension
+```
+
+Example:
+
+```text
+Earned Leave = 1.5 days per month
+Accrual Date = Last day of month
+Max Balance = 45 days
+Prorate New Joiners = Yes
+```
+
+---
+
+## 8.4 Experience-Based Entitlement
+
+Example:
+
+```text
+0-1 year: 12 days
+1-3 years: 18 days
+3+ years: 24 days
+```
+
+Fields:
+
+```text
+Tenure From
+Tenure To
+Entitlement Days
+Effective From
+Apply Immediately / Next Cycle
+```
+
+---
+
+## 8.5 Attendance-Based Entitlement
+
+Example:
+
+```text
+If employee works 20 days in month → earns 1 earned leave
+```
+
+Fields:
+
+```text
+Minimum present days
+Minimum working hours
+Leave earned
+Attendance period
+Include holidays
+Include week offs
+Exclude LOP
+Exclude unpaid leave
+```
+
+---
+
+# 9. Leave Restrictions
+
+## 9.1 Duration restrictions
+
+Fields:
+
+```text
+Minimum leave per request
+Maximum leave per request
+Maximum continuous leave
+Maximum leave per month
+Maximum leave per quarter
+Maximum leave per year
+Minimum gap between two leaves
+Allow half-day
+Allow hourly leave
+Allow multiple leaves same day
+```
+
+SAP Time Type configuration can regulate maximum duration for a given absence type, which is an important enterprise control. ([SAP Help Portal][3])
+
+---
+
+## 9.2 Application date restrictions
+
+Fields:
+
+```text
+Allow past date leave
+Past date limit
+Allow future date leave
+Future date limit
+Minimum advance notice
+Maximum advance application
+Allow same-day leave
+Allow emergency leave
+Require reason for emergency leave
+```
+
+Example:
+
+```text
+Casual Leave must be applied 3 days in advance.
+Sick Leave can be applied on same day or past 2 days.
+```
+
+---
+
+## 9.3 Probation / Notice period restrictions
+
+Fields:
+
+```text
+Allowed during probation
+Allowed during notice period
+Allowed during suspension
+Allowed during training period
+Allowed for interns
+Allowed for contract employees
+```
+
+Example:
+
+```text
+Earned Leave not allowed during probation.
+LOP allowed for all.
+Maternity leave allowed after 80 working days.
+```
+
+---
+
+## 9.4 Weekend and holiday rules
+
+Fields:
+
+```text
+Exclude holidays
+Include holidays
+Exclude weekly offs
+Include weekly offs
+Apply sandwich rule
+Apply prefix rule
+Apply suffix rule
+Apply both prefix and suffix
+```
+
+### Sandwich example
+
+```text
+Friday leave + Monday leave
+Saturday/Sunday weekly off in between
+
+If sandwich rule ON:
+Leave counted = Friday + Saturday + Sunday + Monday = 4 days
+
+If sandwich rule OFF:
+Leave counted = Friday + Monday = 2 days
+```
+
+---
+
+## 9.5 Clubbing rules
+
+Clubbing means whether two leave types can be joined together.
+
+Example:
+
+```text
+Casual Leave cannot be clubbed with Earned Leave.
+Sick Leave can be clubbed with Earned Leave.
+Maternity Leave can be clubbed with Sick Leave.
+```
+
+Fields:
+
+```text
+Can club with same leave type
+Can club with other leave types
+Allowed leave types
+Restricted leave types
+Gap days rule
+Holiday/weekend between leaves handling
+```
+
+---
+
+## 9.6 Document rules
+
+Fields:
+
+```text
+Attachment required
+Attachment required if leave exceeds X days
+Allowed file types
+Max file size
+Document verification required
+Document verifier
+Reject if document missing
+```
+
+Example:
+
+```text
+Sick Leave > 2 days → Medical certificate mandatory
+Maternity Leave → Medical proof mandatory
+```
+
+---
+
+# 10. Carry Forward Configuration
+
+Darwinbox mentions that software should support carrying unused leave balance to the next calendar year. ([Darwinbox][6])
+
+Fields:
+
+```text
+Carry forward allowed
+Maximum carry forward days
+Minimum balance required
+Carry forward expiry
+Carry forward effective date
+Carry forward approval required
+Auto carry forward
+Manual carry forward
+Round off carry forward
+```
+
+Example:
+
+```text
+Earned Leave:
+Carry forward max = 30 days
+Expires after = 12 months
+Balance above 30 = lapse or encash
+```
+
+Options:
+
+```text
+Carry forward full balance
+Carry forward limited balance
+Lapse unused balance
+Encash unused balance
+Split carry forward + encashment
+```
+
+---
+
+# 11. Leave Encashment Configuration
+
+Fields:
+
+```text
+Encashment allowed
+Minimum balance for encashment
+Maximum encashment days
+Encashment frequency
+Encashment during service
+Encashment during exit
+Encashment formula
+Approval workflow
+Payroll component mapping
+Taxable / non-taxable
+```
+
+Example:
+
+```text
+Earned Leave Encashment:
+Allowed only if balance > 15
+Max encashment = 10 days yearly
+Formula = Basic Salary / 30 * Encashment Days
+Approval = Manager → HR → Payroll
+```
+
+---
+
+# 12. Negative Balance / Advance Leave
+
+Fields:
+
+```text
+Allow negative balance
+Maximum negative balance
+Allowed for selected roles
+Manager approval required
+HR approval required
+Recover from future accrual
+Recover from payroll if employee exits
+```
+
+Example:
+
+```text
+Casual Leave can go negative up to -2 days.
+Earned Leave cannot go negative.
+```
+
+---
+
+# 13. LOP / Unpaid Leave Configuration
+
+LOP is very important because it directly impacts payroll.
+
+Fields:
+
+```text
+Allow LOP
+Auto convert absent to LOP
+Auto convert insufficient balance to LOP
+Partial paid leave allowed
+Payroll deduction component
+LOP formula
+Include LOP in payslip
+Require approval
+```
+
+Example:
+
+```text
+Employee applies 5 Casual Leave but balance is 3.
+System can:
+- Block request
+- Allow only 3 days
+- Convert extra 2 days to LOP
+- Allow negative balance
+```
+
+---
+
+# 14. Comp-Off Configuration
+
+Comp-off is earned from overtime, holiday work, or weekly-off work.
+
+Fields:
+
+```text
+Comp-off enabled
+Source
+Minimum working hours required
+Expiry days
+Approval required before credit
+Employee can apply comp-off
+Manager can grant comp-off
+Auto credit from attendance
+Manual credit by HR
+Payroll impact
+```
+
+Sources:
+
+```text
+Worked on weekly off
+Worked on holiday
+Overtime hours
+On-call duty
+Manual grant
+```
+
+Example:
+
+```text
+If employee works 6+ hours on Sunday:
+Credit 1 comp-off day
+Expiry = 60 days
+Approval = Manager
+```
+
+---
+
+# 15. Leave Workflow
+
+## 15.1 Workflow should be configurable per tenant/entity/leave type
+
+Darwinbox highlights flexible workflows where organizations can set approvals as per departments; Zoho People supports approval automation on the Leave Form; SAP Time Off supports manager workflows and even two-step approval for long-term absence. ([Darwinbox][7])
+
+---
+
+## 15.2 Workflow builder UI
+
+```text
+Workflow Name
+Workflow Code
+Module: Leave
+Applicable Leave Types
+Applicable Entity
+Applicable Department
+Applicable Employee Type
+Trigger Event
+Steps
+SLA
+Escalation
+Notification
+Status
+```
+
+Trigger events:
+
+```text
+On leave apply
+On leave cancel
+On leave withdrawal
+On leave balance adjustment
+On leave encashment request
+On comp-off request
+On leave import
+```
+
+---
+
+## 15.3 Approver types
+
+```text
+Reporting Manager
+Manager of Manager
+Department Head
+Location Head
+HRBP
+HR Admin
+Payroll Admin
+Specific User
+Role-based Approver
+Employee Group Approver
+Project Manager
+Cost Center Owner
+Dynamic Approver from Field
+```
+
+---
+
+## 15.4 Workflow patterns
+
+### Single-level approval
+
+```text
+Employee → Reporting Manager → Approved
+```
+
+### Two-level approval
+
+```text
+Employee → Reporting Manager → HR → Approved
+```
+
+### Conditional approval
+
+```text
+If leave days <= 2:
+Employee → Reporting Manager
+
+If leave days > 2:
+Employee → Reporting Manager → HR
+```
+
+### Long leave approval
+
+```text
+Employee → Manager → Department Head → HR
+```
+
+### LOP approval
+
+```text
+Employee → Manager → HR → Payroll
+```
+
+### Encashment approval
+
+```text
+Employee → Manager → HR → Payroll → Finance
+```
+
+---
+
+## 15.5 Workflow step fields
+
+```text
+Step Name
+Step Order
+Approver Type
+Specific Approver
+Approval Mode
+SLA Days
+Reminder Frequency
+Escalation To
+Allow Approver Edit
+Allow Send Back
+Allow Reject
+Allow Delegate
+Require Comment
+Require Attachment
+Auto Approve After SLA
+Auto Reject After SLA
+```
+
+Approval mode:
+
+```text
+Any one approver
+All approvers
+Sequential
+Parallel
+Majority approval
+```
+
+---
+
+# 16. Leave Application Flow
+
+## 16.1 Employee applies leave
+
+Employee opens:
+
+```text
+My Leave → Apply Leave
+```
+
+Form fields:
+
+```text
+Leave Type *
+From Date *
+To Date *
+Full Day / Half Day
+First Half / Second Half
+Reason *
+Attachment
+Emergency Contact
+Notify Team Members
+Backup Person
+Handover Notes
+```
+
+Dynamic fields can change by leave type.
+
+Example:
+
+```text
+If Sick Leave selected:
+Show Medical Document Upload
+
+If Maternity Leave selected:
+Show Expected Delivery Date
+Show Medical Certificate
+
+If Bereavement Leave selected:
+Show Relationship
+
+If Study Leave selected:
+Show Course Details
+```
+
+---
+
+## 16.2 System validations before submission
+
+System should check:
+
+```text
+Is employee eligible?
+Is leave type active?
+Is leave rule assigned?
+Is balance available?
+Is leave allowed during probation?
+Is leave allowed during notice period?
+Is advance notice valid?
+Is max continuous leave exceeded?
+Is document required?
+Is clubbing allowed?
+Is sandwich rule applicable?
+Is overlapping leave already present?
+Is attendance already locked?
+Is payroll already processed?
+Is holiday/weekoff included?
+Is leave workflow configured?
+```
+
+---
+
+## 16.3 After submission
+
+Status:
+
+```text
+Draft
+Submitted
+Pending Manager Approval
+Pending HR Approval
+Approved
+Rejected
+Cancelled
+Withdrawn
+Partially Approved
+Auto Approved
+Auto Rejected
+Expired
+```
+
+System actions:
+
+```text
+Create workflow instance
+Deduct tentative leave balance
+Show request in manager inbox
+Send notification
+Update calendar as pending
+Lock overlapping attendance edit
+```
+
+---
+
+# 17. Approval Flow
+
+## 17.1 Manager approval screen
+
+Manager sees:
+
+```text
+Employee name
+Employee code
+Leave type
+Date range
+Total days
+Reason
+Attachment
+Current balance
+Team members on leave
+Past leave history
+Conflict warning
+Action buttons
+```
+
+Action buttons:
+
+```text
+Approve
+Reject
+Send Back
+Request More Info
+Delegate
+Approve Partially
+```
+
+## 17.2 Partial approval
+
+Example:
+
+```text
+Employee applied 5 days
+Manager approves 3 days
+Remaining 2 days rejected or sent back
+```
+
+Fields:
+
+```text
+Approved From Date
+Approved To Date
+Approved Days
+Comment
+```
+
+---
+
+# 18. Leave Balance Calculation
+
+## 18.1 Balance components
+
+```text
+Opening Balance
+Accrued
+Granted
+Adjusted
+Used
+Pending
+Cancelled
+Rejected
+Lapsed
+Encashed
+Carry Forward
+Expired
+Available Balance
+```
+
+Formula:
+
+```text
+Available Balance =
+Opening + Accrued + Granted + Adjusted + Carry Forward
+- Used - Pending - Encashed - Lapsed - Expired
+```
+
+## 18.2 Leave ledger
+
+Every balance change should create ledger entry.
+
+Ledger columns:
+
+```text
+Employee
+Leave Type
+Transaction Date
+Transaction Type
+Credit
+Debit
+Balance After Transaction
+Reference Type
+Reference ID
+Remarks
+Created By
+Created At
+```
+
+Transaction types:
+
+```text
+Opening Balance
+Accrual
+Manual Credit
+Manual Debit
+Leave Applied
+Leave Approved
+Leave Cancelled
+Leave Rejected
+Carry Forward
+Encashment
+Lapse
+Payroll Adjustment
+Migration
+```
+
+---
+
+# 19. Leave Settings: Tenant-Wise Configuration
+
+You asked how settings work tenant-wise.
+
+## 19.1 Setting levels
+
+```text
+Platform Default
+Tenant Default
+Company / Entity
+Location
+Department
+Grade
+Employee Type
+Specific Employee
+```
+
+## 19.2 Setting priority
+
+```text
+Specific Employee
+↓
+Employee Group
+↓
+Department
+↓
+Location
+↓
+Entity / Company
+↓
+Tenant
+↓
+Platform Default
+```
+
+---
+
+## 19.3 Tenant-level Leave Settings
+
+```text
+Enable Leave Module
+Leave Year Type
+Default Leave Policy
+Default Holiday Calendar
+Default Weekly Off Calendar
+Allow Employee Leave Apply
+Allow Manager Apply on Behalf
+Allow HR Apply on Behalf
+Allow Past Leave Application
+Allow Future Leave Application
+Leave Balance Visibility
+Show Team Leave Calendar
+Show Leave Policy to Employee
+Enable Leave Encashment
+Enable Carry Forward
+Enable Comp-Off
+Enable LOP
+Enable Sandwich Rule
+Enable Clubbing Rule
+Enable Leave Cancellation
+Enable Leave Withdrawal
+Enable Leave Delegation
+Enable Mobile Leave Apply
+Enable Email Notifications
+Enable Push Notifications
+Enable Payroll Sync
+Enable Attendance Sync
+```
+
+---
+
+## 19.4 Entity-wise leave settings
+
+Example:
+
+```text
+Tenant: ABC Group
+Entity A: India Pvt Ltd
+Entity B: UAE LLC
+Entity C: USA Inc
+```
+
+Each entity can have:
+
+```text
+Different leave year
+Different holiday calendar
+Different weekly off
+Different leave policy
+Different statutory leave
+Different approval workflow
+Different payroll formula
+Different document rules
+Different carry forward rules
+Different leave encashment rules
+```
+
+---
+
+# 20. Dynamic Form Configuration for Leave
+
+This is critical because you want all forms editable.
+
+## 20.1 Leave forms that should be dynamic
+
+```text
+Leave Application Form
+Leave Cancellation Form
+Leave Withdrawal Form
+Leave Encashment Form
+Comp-Off Request Form
+Leave Adjustment Form
+Leave Balance Import Form
+Maternity Leave Form
+Paternity Leave Form
+Sick Leave Form
+LOP Request Form
+```
+
+---
+
+## 20.2 Form builder fields
+
+```text
+Text
+Textarea
+Date
+Date Range
+Dropdown
+Multi-select
+Employee Picker
+Manager Picker
+Attachment
+Number
+Currency
+Checkbox
+Radio
+Toggle
+Rich Text
+Formula Field
+Hidden Field
+Read-only Field
+Repeater / Child Table
+```
+
+---
+
+## 20.3 Leave form field settings
+
+Each field should support:
+
+```text
+Label
+Placeholder
+Help Text
+Required
+Read-only
+Visible/Hidden
+Default Value
+Validation Rule
+Conditional Visibility
+Role-based Edit Permission
+Stage-based Edit Permission
+Entity Applicability
+Leave Type Applicability
+```
+
+Example:
+
+```text
+Field: Medical Certificate
+Visible when Leave Type = Sick Leave
+Required when Total Leave Days > 2
+Editable by Employee before approval
+Viewable by Manager and HR
+```
+
+---
+
+# 21. Leave Calendar
+
+## 21.1 Calendar views
+
+```text
+My Calendar
+Team Calendar
+Department Calendar
+Location Calendar
+Company Calendar
+HR Calendar
+Manager Calendar
+```
+
+## 21.2 Calendar features
+
+```text
+Month view
+Week view
+Day view
+Leave color by type
+Pending/approved status color
+Holiday overlay
+Weekly off overlay
+Attendance overlay
+Shift overlay
+Filter by department
+Filter by leave type
+Filter by status
+Conflict warning
+Export calendar
+Sync with Google/Outlook
+```
+
+---
+
+# 22. Holiday Calendar and Weekly Off
+
+Leave calculation depends on holiday and weekly-off setup.
+
+## 22.1 Holiday calendar fields
+
+```text
+Calendar Name
+Country
+State
+Location
+Entity
+Year
+Holiday Name
+Holiday Date
+Holiday Type
+Optional / Mandatory
+Half-day Holiday
+Description
+```
+
+## 22.2 Weekly off calendar fields
+
+```text
+Calendar Name
+Entity
+Location
+Week Off Type
+Fixed Weekly Off
+Alternate Saturday
+Rotational Week Off
+Shift-based Week Off
+Effective From
+Effective To
+```
+
+Options:
+
+```text
+Saturday/Sunday off
+Only Sunday off
+Second and fourth Saturday off
+Rotational weekly off
+Custom weekly off
+```
+
+---
+
+# 23. Leave and Attendance Integration
+
+SAP separates Time Off from attendance tracking but both are part of time management. Your HRMS should keep them separate but integrated. ([SAP Learning][1])
+
+## 23.1 Integration behavior
+
+When leave is approved:
+
+```text
+Attendance calendar marks Leave
+Punch requirement disabled
+Absence converted to leave
+LOP sent to payroll
+Working days recalculated
+Team calendar updated
+```
+
+## 23.2 Attendance conflict checks
+
+System should block or warn if:
+
+```text
+Attendance already present
+Employee already punched in
+Shift is locked
+Attendance period is locked
+Payroll is processed
+Another leave exists
+Holiday exists
+Week off exists
+```
+
+---
+
+# 24. Leave and Payroll Integration
+
+Zoho highlights that leave management helps payroll by tracking working days, absences, and LOP days accurately. ([Zoho][4])
+
+## 24.1 Payroll sync data
+
+```text
+Paid leave days
+LOP days
+Half-paid leave days
+Leave encashment amount
+Leave recovery
+Negative balance recovery
+Comp-off adjustment
+Attendance days
+Working days
+```
+
+## 24.2 Payroll lock rule
+
+```text
+If payroll processed for month:
+- Block backdated leave
+- Or allow with payroll adjustment
+- Or create arrear/recovery entry
+```
+
+Settings:
+
+```text
+Allow leave after payroll lock
+Require payroll admin approval
+Auto create arrear
+Auto create deduction
+```
+
+---
+
+# 25. Bulk Actions
+
+Admin/Manager should have bulk actions.
+
+```text
+Bulk approve leave
+Bulk reject leave
+Bulk cancel leave
+Bulk adjust balance
+Bulk import opening balance
+Bulk assign leave policy
+Bulk recalculate balance
+Bulk carry forward
+Bulk encash leave
+Bulk export
+Bulk lock period
+Bulk unlock period
+```
+
+Mass approval is an actual enterprise pattern; SAP mentions line managers can process a single time off request or mass approve several requests. ([SAP Help Portal][2])
+
+---
+
+# 26. Imports
+
+Import screens:
+
+```text
+Import Leave Types
+Import Leave Balance
+Import Leave Policy Assignment
+Import Holiday Calendar
+Import Weekly Off
+Import Leave Adjustment
+Import Comp-Off Balance
+```
+
+Import features:
+
+```text
+Download sample Excel
+Validate before upload
+Show error rows
+Partial import
+Full rollback
+Duplicate detection
+Preview data
+Import history
+```
+
+---
+
+# 27. Reports
+
+## 27.1 Admin reports
+
+```text
+Leave Balance Report
+Leave Transaction Report
+Leave Ledger Report
+Leave Request Report
+Leave Approval Pending Report
+LOP Report
+Leave Encashment Report
+Carry Forward Report
+Leave Lapse Report
+Comp-Off Report
+Holiday Report
+Policy Assignment Report
+Department-wise Leave Report
+Location-wise Leave Report
+Employee Leave History
+```
+
+## 27.2 Manager reports
+
+```text
+Team Leave Report
+Team Availability Report
+Upcoming Leave Report
+Leave Conflict Report
+Pending Approval Report
+```
+
+## 27.3 Payroll reports
+
+```text
+LOP Days Report
+Paid Leave Days Report
+Encashment Report
+Leave Recovery Report
+Payroll Leave Input Report
+```
+
+---
+
+# 28. Notifications
+
+## 28.1 Notification events
+
+```text
+Leave applied
+Leave approved
+Leave rejected
+Leave sent back
+Leave cancelled
+Leave withdrawn
+Leave balance adjusted
+Leave balance low
+Leave document missing
+Leave request pending approval
+Leave SLA breached
+Leave encashment approved
+Carry forward processed
+Payroll lock warning
+```
+
+## 28.2 Channels
+
+```text
+Email
+SMS
+WhatsApp
+Push notification
+In-app notification
+Microsoft Teams
+Slack
+```
+
+## 28.3 Email templates
+
+Each template should be tenant/entity-wise configurable:
+
+```text
+Leave Application Submitted
+Leave Approval Pending
+Leave Approved
+Leave Rejected
+Leave Cancelled
+Leave Balance Adjusted
+Leave Encashment Approved
+Leave Policy Assigned
+```
+
+Template variables:
+
+```text
+{{EmployeeName}}
+{{EmployeeCode}}
+{{LeaveType}}
+{{FromDate}}
+{{ToDate}}
+{{TotalDays}}
+{{Reason}}
+{{ApproverName}}
+{{Status}}
+{{LeaveBalance}}
+{{CompanyName}}
+```
+
+---
+
+# 29. Leave Module Settings Screen
+
+Recommended settings tabs:
+
+```text
+General
+Leave Year
+Balance
+Application
+Approval
+Calendar
+Payroll
+Attendance
+Notifications
+Security
+Advanced
+```
+
+## 29.1 General settings
+
+```text
+Enable Leave Module
+Default Leave Policy
+Default Leave Year
+Default Holiday Calendar
+Default Weekly Off Calendar
+Leave Unit
+Show Leave Balance
+Show Leave Policy
+Allow Mobile Apply
+Allow Manager Apply on Behalf
+Allow HR Apply on Behalf
+```
+
+## 29.2 Application settings
+
+```text
+Allow backdated leave
+Backdated leave limit
+Allow future leave
+Future leave limit
+Allow half day
+Allow hourly leave
+Allow leave cancellation
+Allow leave withdrawal
+Allow attachment
+Require reason
+Allow overlapping leave
+Allow draft leave
+```
+
+## 29.3 Approval settings
+
+```text
+Approval required
+Auto approve selected leave types
+Allow partial approval
+Allow send back
+Allow delegation
+Escalation enabled
+Reminder enabled
+Approval SLA
+```
+
+## 29.4 Payroll settings
+
+```text
+Sync leave with payroll
+LOP calculation method
+Encashment component
+Negative balance recovery
+Payroll lock behavior
+Arrear generation
+```
+
+## 29.5 Security settings
+
+```text
+Who can view leave balance
+Who can edit leave balance
+Who can adjust leave
+Who can import balance
+Who can override rule
+Who can approve on behalf
+Field-level access
+Audit required
+```
+
+---
+
+# 30. Audit Trail
+
+Every action must be logged.
+
+Audit fields:
+
+```text
+Tenant
+Entity
+Employee
+Module
+Action
+Old Value
+New Value
+Performed By
+Performed At
+IP Address
+Device
+Reason
+Approval Comment
+Reference ID
+```
+
+Audit actions:
+
+```text
+Leave type created
+Leave type edited
+Leave rule created
+Leave rule published
+Leave assigned
+Leave applied
+Leave approved
+Leave rejected
+Balance adjusted
+Carry forward processed
+Encashment processed
+Payroll sync completed
+```
+
+---
+
+# 31. Suggested Database Tables
+
+## 31.1 Main leave tables
+
+```text
+LeaveTypes
+LeaveRules
+LeaveRuleLeaveTypes
+LeaveRuleApplicability
+LeaveEntitlementRules
+LeaveAccrualRules
+LeaveRestrictionRules
+LeaveCarryForwardRules
+LeaveEncashmentRules
+LeaveWorkflowMappings
+LeaveApplications
+LeaveApplicationDays
+LeaveApprovals
+LeaveBalances
+LeaveLedger
+LeaveAdjustments
+LeavePolicyAssignments
+LeaveCalendars
+Holidays
+WeeklyOffCalendars
+CompOffCredits
+LeaveNotifications
+LeaveAuditLogs
+```
+
+## 31.2 Dynamic form tables
+
+```text
+FormDefinitions
+FormVersions
+FormSections
+FormFields
+FormFieldOptions
+FormFieldConditions
+FormSubmission
+FormSubmissionValues
+```
+
+---
+
+# 32. Example Complete Leave Rule
+
+```text
+Rule Name: India Permanent Employee Leave Policy 2026
+Tenant: ABC Group
+Entity: ABC India Pvt Ltd
+Employee Type: Permanent
+Leave Year: Apr-Mar
+Effective From: 01-Apr-2026
+Status: Active
+```
+
+### Leave types inside rule
+
+```text
+Casual Leave
+- Entitlement: 12 days yearly
+- Accrual: 1 day monthly
+- Max continuous: 3 days
+- Advance notice: 2 days
+- Carry forward: No
+- Encashment: No
+- Clubbing: Not with Earned Leave
+- Workflow: Reporting Manager
+
+Sick Leave
+- Entitlement: 10 days yearly
+- Accrual: Full credit yearly
+- Same day allowed: Yes
+- Past date allowed: 2 days
+- Medical certificate: Required if > 2 days
+- Carry forward: No
+- Workflow: Reporting Manager → HR if > 3 days
+
+Earned Leave
+- Entitlement: 18 days yearly
+- Accrual: 1.5 days monthly
+- Max continuous: 15 days
+- Advance notice: 7 days
+- Carry forward: Max 30 days
+- Encashment: Allowed
+- Workflow: Reporting Manager → HR
+
+LOP
+- Balance required: No
+- Paid: No
+- Payroll impact: Deduction
+- Workflow: Reporting Manager → HR → Payroll
+```
+
+---
+
+# 33. Best UI Flow for Admin
+
+## Step 1: Create leave type
+
+```text
+Settings → Leave → Leave Types → Create
+```
+
+Create:
+
+```text
+Sick Leave
+Casual Leave
+Earned Leave
+LOP
+Comp-Off
+```
+
+## Step 2: Create leave rule
+
+```text
+Settings → Leave → Leave Rules → Create Rule
+```
+
+Add:
+
+```text
+Rule name
+Applicability
+Leave year
+Entity mapping
+```
+
+## Step 3: Add leave types inside rule
+
+```text
+Add Leave Type → Select Sick Leave → Configure entitlement/restriction/workflow
+Add Leave Type → Select Casual Leave → Configure entitlement/restriction/workflow
+Add Leave Type → Select Earned Leave → Configure entitlement/restriction/workflow
+```
+
+## Step 4: Configure workflow
+
+```text
+Leave Workflow → Manager → HR → Payroll if required
+```
+
+## Step 5: Publish rule
+
+```text
+Review → Validate conflicts → Publish
+```
+
+## Step 6: Assign to employees
+
+```text
+Assign by Entity / Department / Grade / Employee Type
+```
+
+## Step 7: Generate balances
+
+```text
+Generate Opening Balance
+Run Accrual
+Recalculate Leave Ledger
+```
+
+---
+
+# 34. Important Validation Rules
+
+Before publishing leave rule:
+
+```text
+Leave type duplicate check
+Rule date overlap check
+Applicability conflict check
+Workflow missing check
+Accrual setup missing check
+Holiday calendar missing check
+Payroll component missing for LOP
+Encashment formula missing
+Carry forward expiry missing
+Negative balance limit missing
+Dynamic form required fields missing
+```
+
+Before employee applies leave:
+
+```text
+Balance check
+Eligibility check
+Date overlap check
+Document check
+Payroll lock check
+Attendance lock check
+Clubbing check
+Sandwich check
+Max continuous leave check
+Advance notice check
+Workflow check
+```
+
+---
+
+# 35. Industry-Level Features Checklist
+
+Your Leave module should finally include:
+
+```text
+Create leave type
+Create leave rule
+Add multiple leave types into one rule
+Entity-wise leave policies
+Tenant-wise default policy
+Department/location/grade-wise override
+Employee-specific override
+Accrual rules
+Fixed entitlement
+Experience-based entitlement
+Attendance-based entitlement
+Carry forward
+Encashment
+LOP
+Comp-off
+Sandwich rule
+Clubbing rule
+Prefix/suffix rule
+Document rules
+Half-day leave
+Hourly leave
+Backdated leave
+Future leave
+Leave cancellation
+Leave withdrawal
+Partial approval
+Multi-level approval
+Bulk approval
+Dynamic leave forms
+Custom fields
+Role-wise field permission
+Workflow builder
+Notification templates
+Payroll integration
+Attendance integration
+Holiday calendar
+Weekly off calendar
+Leave ledger
+Audit trail
+Reports
+Import/export
+Mobile apply/approve
+Manager team calendar
+Admin dashboard
+```
+
+---
+
+# 36. Recommended Build Priority
+
+For your HRMS, build in this order:
+
+```text
+1. Leave Type Master
+2. Leave Rule Master
+3. Add Leave Types inside Leave Rule
+4. Leave Rule Applicability
+5. Leave Balance / Ledger
+6. Employee Leave Apply
+7. Approval Workflow
+8. Leave Calendar
+9. Admin Adjustment
+10. Carry Forward
+11. Encashment
+12. Payroll Integration
+13. Attendance Integration
+14. Reports
+15. Dynamic Form Builder Integration
+```
+
+---
+
+# 37. Final Architecture Logic
+
+Use this mental model:
+
+```text
+Tenant
+ └── Entity / Company
+      └── Leave Rule / Policy
+           ├── Leave Type: Casual Leave
+           │    ├── Entitlement
+           │    ├── Accrual
+           │    ├── Restriction
+           │    ├── Workflow
+           │    └── Form
+           ├── Leave Type: Sick Leave
+           │    ├── Entitlement
+           │    ├── Document Rule
+           │    ├── Workflow
+           │    └── Form
+           └── Leave Type: Earned Leave
+                ├── Carry Forward
+                ├── Encashment
+                ├── Workflow
+                └── Payroll Mapping
+```
+
+This structure will let you support **default tenant policy**, **entity-wise custom policy**, **department-wise exception**, **employee-specific override**, and **fully editable leave application forms** without hardcoding.
+
+[1]: https://learning.sap.com/courses/sap-successfactors-time-management-academy/introducing-time-off?utm_source=chatgpt.com "Introducing the SAP SuccessFactors Time Management ..."
+[2]: https://help.sap.com/docs/successfactors-employee-central/manage-time-off-test-script/review-and-approve-time-off-request?utm_source=chatgpt.com "Review and Approve Time Off Request"
+[3]: https://help.sap.com/docs/successfactors-employee-central/implementing-time-management-in-sap-successfactors/time-type?utm_source=chatgpt.com "Time Type - SAP SuccessFactors ..."
+[4]: https://www.zoho.com/people/leave-management-system.html?utm_source=chatgpt.com "Leave Management System | Time-off Tracking"
+[5]: https://help.zoho.com/portal/en/kb/people/administrator-guide/leave/settings/articles/setting-up-leave-policies-in-zoho-people?utm_source=chatgpt.com "Setting up Leave Policies in Zoho People"
+[6]: https://darwinbox.com/blog/hr-management-software?utm_source=chatgpt.com "The Key Features of an HR Management Software"
+[7]: https://explore.darwinbox.com/hr-glossary/leave-management-system?utm_source=chatgpt.com "Leave Management System"

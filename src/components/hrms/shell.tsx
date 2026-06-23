@@ -18,7 +18,7 @@ import {
   LayoutDashboard, Building2, Users, CalendarDays, CalendarRange, Clock,
   Package, FileEdit, Workflow, Megaphone, Settings, ScrollText, Sun, Moon,
   Bell, Search, Menu, ChevronLeft, Sparkles, ShieldCheck, HelpCircle, LogOut,
-  Wallet, Banknote,
+  Wallet, Banknote, UserPlus,
 } from "lucide-react"
 import { useHrmsStore } from "@/store/hrms-store"
 import { ModuleId, ModuleDef } from "@/lib/types"
@@ -27,6 +27,7 @@ const MODULES: (ModuleDef & { icon: any })[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Main", description: "Overview & analytics" },
   { id: "organization", label: "Organization", icon: Building2, group: "Config", description: "Entities, branches, departments" },
   { id: "employees", label: "Employees", icon: Users, group: "People", description: "Employee master" },
+  { id: "onboarding", label: "Onboarding", icon: UserPlus, group: "People", description: "Workflow-driven kanban boards" },
   { id: "leave", label: "Leave", icon: CalendarDays, group: "Time", description: "Types, policies, applications" },
   { id: "shift", label: "Shifts", icon: Clock, group: "Time", description: "Shift master & assignments" },
   { id: "roster", label: "Roster", icon: CalendarRange, group: "Time", description: "Roster planning" },

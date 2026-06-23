@@ -1512,3 +1512,240 @@ model Payslip {
 
   @@unique([payrollRunId, employeeId])
 }
+
+// ============================================================
+// ONBOARDING — Workflow-Driven Kanban
+// ============================================================
+// A Workflow defines the pipeline (board). Each Workflow has ordered Stages.
+// Each Stage is deeply customizable: color, icon, SLA, WIP limit, entry/exit
+// gates, task templates, owner assignment, automation triggers, form requirements.
+// A Candidate is created against a Workflow. An Instance is the candidate's
+// live pipeline; InstanceStage records track per-stage progress.
+// The Kanban board renders columns = Workflow Stages, cards = Candidates,
+// filtered by the selected Workflow (board).
+// ============================================================
+
+model OnboardingWorkflow {
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  code          String
+  description   String?
+  version       Int      @default(1)
+  status        String   @default("Active") // Active | Draft | Archived
+  category      String   @default("General") // General | Fresher | Lateral | Leadership | Intern | Contractor
+  isDefault     Boolean  @default(false)
+  applicability String?  // JSON: { departments: [], grades: [], employmentTypes: [] }
+  icon          String   @default("LayoutGrid")
+  color         String   @default("#10b981")
+  // Board-level defaults
+  cardColorBy   String   @default("stage") // stage | candidateType | priority
+  showSla       Boolean  @default(true)
+  showOwner     Boolean  @default(true)
+  showTaskCount Boolean  @default(true)
+  allowBackward Boolean  @default(false) // allow moving cards to earlier stages
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  stages        OnboardingStage[]
+  candidates    OnboardingCandidate[]
+
+  @@unique([tenantId, code])
+}
+
+model OnboardingStage {
+  id            String   @id @default(cuid())
+  tenantId      String
+  workflowId    String
+  workflow      OnboardingWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  name          String
+  code          String
+  order         Int      // position on the board (0-based)
+  description   String?
+
+  // ---- Visual customization ----
+  color         String   @default("#64748b") // column header + card accent
+  icon          String   @default("Circle")  // lucide icon name
+  stageType     String   @default("standard") // start | standard | gate | end
+  category      String   @default("process") // intake | process | review | gate | completion
+
+  // ---- Timing / SLA ----
+  slaDays       Int?     // expected duration in this stage; null = no SLA
+  slaWarningDays Int?    // days before SLA breach to flag amber
+  isMilestone   Boolean  @default(false) // key checkpoint stage
+
+  // ---- Capacity ----
+  wipLimit      Int?     // max cards allowed in this column; null = unlimited
+  blockOnOverflow Boolean @default(false) // block incoming moves when wipLimit reached
+
+  // ---- Gates / Conditions (JSON) ----
+  // entryGates: [{ type: "approval"|"task_completion"|"field_required"|"document_required", config: {...} }]
+  entryGates    String?
+  // exitGates: [{ type: "approval"|"task_completion"|"form_submitted"|"document_uploaded", config: {...} }]
+  exitGates     String?
+
+  // ---- Ownership ----
+  defaultOwnerId String?  // employee id of default stage owner
+  ownerType     String    @default("assignee") // assignee | default | role | dynamic
+  ownerRole     String?   // role-based assignment (e.g., "HR", "IT", "Manager")
+
+  // ---- Task Templates (auto-created when a card enters this stage) ----
+  taskTemplates OnboardingTaskTemplate[]
+
+  // ---- Form / Document requirements ----
+  requiresForm  Boolean  @default(false)
+  formSchemaId  String?  // reference to FormSchema.id if requiresForm
+  requiredDocuments String? // JSON array of doc types: ["offer_letter","id_proof","address_proof"]
+
+  // ---- Automation triggers (JSON) ----
+  // [{ event: "on_enter"|"on_exit"|"on_overdue", action: "notify"|"create_task"|"assign_owner"|"webhook", config: {...} }]
+  automations   String?
+
+  // ---- Behavior ----
+  isSkippable   Boolean  @default(false) // can a card jump past this stage
+  isRequired    Boolean  @default(true)  // must every pipeline pass through this stage
+  autoAdvance   Boolean  @default(false) // auto-advance to next when all exit gates met
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  instanceStages OnboardingInstanceStage[]
+  currentCandidates OnboardingCandidate[] @relation("CandidateCurrentStage")
+
+  @@unique([workflowId, code])
+  @@unique([workflowId, order])
+}
+
+model OnboardingTaskTemplate {
+  id            String   @id @default(cuid())
+  tenantId      String
+  stageId       String
+  stage         OnboardingStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  daysFromStage Int      @default(0) // due date offset from stage entry
+  ownerType     String   @default("stage_owner") // stage_owner | candidate | default
+  defaultOwnerId String?
+  isBlocking    Boolean  @default(false) // must complete to exit stage
+  priority      String   @default("Medium") // Low | Medium | High
+  category      String   @default("General") // General | IT | HR | Admin | Documentation | Training
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model OnboardingCandidate {
+  id            String   @id @default(cuid())
+  tenantId      String
+  workflowId    String
+  workflow      OnboardingWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  // Candidate identity
+  candidateName String
+  email         String?
+  phone         String?
+  employeeCode  String?  // proposed employee code
+  designation   String?
+  department    String?
+  grade         String?
+  employmentType String   @default("Full-time") // Full-time | Part-time | Contract | Intern
+  joinDate      DateTime?
+  reportTo      String?  // manager name/id
+
+  // Card display
+  priority      String   @default("Medium") // Low | Medium | High | Critical
+  avatarColor   String   @default("#10b981")
+  tags          String?  // JSON array of strings
+
+  // Pipeline state
+  currentStageId String?
+  currentStage   OnboardingStage? @relation("CandidateCurrentStage", fields: [currentStageId], references: [id])
+  status        String   @default("Active") // Active | OnHold | Completed | Withdrawn | Terminated
+  progress      Int      @default(0) // 0-100 percentage
+
+  // Ownership
+  ownerId       String?  // primary owner/HR BP
+
+  enteredAt     DateTime? // when candidate entered current stage
+  startedAt     DateTime @default(now()) // onboarding started
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  instance      OnboardingInstance?
+  notes         OnboardingNote[]
+
+  @@unique([tenantId, email])
+}
+
+model OnboardingInstance {
+  id            String   @id @default(cuid())
+  tenantId      String
+  candidateId   String   @unique
+  candidate     OnboardingCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  workflowId    String
+  workflowSnapshot String? // JSON snapshot of workflow at creation time
+  currentStageOrder Int   @default(0)
+  overallProgress Int     @default(0)
+  isComplete    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  stages        OnboardingInstanceStage[]
+  tasks         OnboardingInstanceTask[]
+}
+
+model OnboardingInstanceStage {
+  id            String   @id @default(cuid())
+  tenantId      String
+  instanceId    String
+  instance      OnboardingInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stageId       String
+  stage         OnboardingStage @relation(fields: [stageId], references: [id])
+  order         Int
+  status        String   @default("Pending") // Pending | Active | Completed | Skipped | Blocked
+  enteredAt     DateTime?
+  completedAt   DateTime?
+  slaDueAt      DateTime?
+  ownerId       String?
+  notes         String?
+  metadata      String?  // JSON for gate evaluation results etc.
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([instanceId, stageId])
+}
+
+model OnboardingInstanceTask {
+  id            String   @id @default(cuid())
+  tenantId      String
+  instanceId    String
+  instance      OnboardingInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stageId       String?
+  title         String
+  description   String?
+  status        String   @default("Pending") // Pending | InProgress | Completed | Skipped
+  priority      String   @default("Medium")
+  category      String   @default("General")
+  ownerType     String   @default("stage_owner")
+  ownerId       String?
+  dueDate       DateTime?
+  completedAt   DateTime?
+  isBlocking    Boolean  @default(false)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model OnboardingNote {
+  id            String   @id @default(cuid())
+  tenantId      String
+  candidateId   String
+  candidate     OnboardingCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  authorId      String?
+  authorName    String?
+  body          String
+  stageId       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

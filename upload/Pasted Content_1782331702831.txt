@@ -1,0 +1,1917 @@
+Yes. Now final onboarding design should be **entity-wise configurable**, where every entity/company can have its own:
+
+```text
+Kanban board
+Workflow
+Candidate form
+Document templates
+Email templates
+Checklist
+Verification rules
+Approval rules
+Candidate portal settings
+Employee conversion settings
+Logs and audit
+```
+
+And if entity has no custom setup, it should use **Tenant Default**.
+
+# Final Onboarding Module Structure
+
+```text
+Onboarding
+ ├── Dashboard
+ ├── Candidates
+ │    ├── Add Candidate
+ │    ├── Bulk Upload
+ │    └── Bulk Update
+ ├── Kanban Board
+ ├── Document Library
+ ├── Workflow Configuration
+ ├── Email Templates
+ ├── Checklists
+ ├── Logs
+ └── Settings
+```
+
+The main rule is:
+
+```text
+Reusable things are created separately.
+
+But workflow configuration connects everything step-wise.
+```
+
+Example:
+
+```text
+Document Library = Create offer letter / appointment letter / NDA templates
+Email Templates = Create candidate invite / reminder / offer email templates
+Checklists = Create HR / IT / Payroll / Manager task checklist
+Kanban Board = Create stages
+Workflow Configuration = Decide which form, email, document, checklist, approval, verification runs at each stage
+Settings = Decide entity-wise defaults and module-level behavior
+```
+
+# 1. Entity-Wise Configuration Concept
+
+Every setup should have a common scope header.
+
+## Common Scope Fields
+
+```text
+Configuration Scope:
+- Tenant Default
+- Entity / Company
+- Branch
+- Location
+- Department
+- Grade
+- Employee Type
+- Work Mode
+- Specific Candidate
+
+Entity / Company
+Branch
+Location
+Department
+Grade
+Employee Type
+Work Mode
+
+Use Default Configuration: Yes / No
+Override Default Configuration: Yes / No
+Effective From
+Effective To
+Status
+Priority
+Version
+```
+
+## Example
+
+```text
+Tenant Default:
+Workflow = Standard Onboarding
+Kanban Board = Default Kanban
+Documents = Basic documents
+Email Group = Default emails
+Checklist = Default checklist
+
+Entity: ABC India Pvt Ltd:
+Workflow = India Full-Time Onboarding
+Kanban Board = India Kanban
+Documents = PAN, Aadhaar, Bank Proof, PF, ESIC, Offer Letter
+Email Group = India Onboarding Emails
+Checklist = India HR + IT + Payroll Checklist
+
+Entity: ABC UAE LLC:
+Workflow = UAE Onboarding
+Kanban Board = UAE Kanban
+Documents = Passport, Visa, Emirates ID, Contract Letter
+Email Group = UAE Emails
+Checklist = UAE HR + Visa + Payroll Checklist
+```
+
+# 2. Configuration Fallback Priority
+
+When candidate is added, system should find configuration in this order:
+
+```text
+1. Candidate-specific configuration
+2. Work mode + employee type + department + location configuration
+3. Employee type configuration
+4. Department configuration
+5. Location configuration
+6. Entity / Company configuration
+7. Tenant default configuration
+```
+
+Example:
+
+```text
+Candidate: Rahul
+Entity: ABC India
+Department: Engineering
+Employee Type: Full Time
+Work Mode: Office
+
+System checks:
+- Is there a candidate-specific workflow?
+- Is there Engineering + Full Time + Office workflow?
+- Is there Full Time workflow?
+- Is there ABC India workflow?
+- If not, use Tenant Default workflow.
+```
+
+# 3. Dashboard
+
+## Where
+
+```text
+Onboarding → Dashboard
+```
+
+## Purpose
+
+Dashboard only shows tracking and summary.
+
+## Cards
+
+```text
+Total Candidates
+Candidates Added Today
+Onboarding Initiated
+Invite Sent
+Candidate Form Pending
+Documents Pending
+Offer Letter Pending
+HR Verification Pending
+Joining Today
+Joining This Week
+Checklist Pending
+Overdue Tasks
+Completed Onboarding
+Dropped Candidates
+```
+
+## Filters
+
+```text
+Entity / Company
+Branch
+Location
+Department
+Designation
+Grade
+Employee Type
+Work Mode
+Workflow
+Kanban Stage
+HR Owner
+Reporting Manager
+Joining Date Range
+Candidate Status
+```
+
+# 4. Candidates Page
+
+## Where
+
+```text
+Onboarding → Candidates
+```
+
+This is the main operational page.
+
+## Top Buttons
+
+```text
+Add Candidate
+Bulk Upload
+Bulk Update
+Export
+Import
+Send Invite
+Send Reminder
+Assign Workflow
+```
+
+## Candidate Table Columns
+
+```text
+Checkbox
+Candidate ID
+Candidate Name
+Email
+Mobile
+Entity / Company
+Branch
+Location
+Department
+Designation
+Grade
+Employee Type
+Work Mode
+Joining Date
+Workflow
+Current Stage
+Document Status
+Form Status
+Offer Status
+Checklist Status
+Verification Status
+HR Owner
+Reporting Manager
+Candidate Status
+Action
+```
+
+## Row Actions
+
+```text
+View Candidate
+Edit Candidate
+Send Invite
+Resend Invite
+Assign / Change Workflow
+Move Stage
+Generate Offer Letter
+Request Documents
+Verify Documents
+Assign Checklist
+Mark Joined
+Convert to Employee
+Put On Hold
+Drop Candidate
+Delete, only if draft
+View Logs
+```
+
+## Bulk Actions
+
+```text
+Assign Workflow
+Change Stage
+Send Invite
+Resend Invite
+Send Reminder
+Assign HR Owner
+Assign Reporting Manager
+Assign Checklist
+Request Documents
+Generate Letters
+Bulk Update Candidate Data
+Put On Hold
+Drop Selected
+Export Selected
+```
+
+# 5. Add Candidate Form
+
+## Where
+
+```text
+Onboarding → Candidates → Add Candidate
+```
+
+Use stepper UI.
+
+```text
+Step 1: Candidate Details
+Step 2: Job Details
+Step 3: Workflow Selection
+Step 4: Documents & Checklist Preview
+Step 5: Email / Invite
+Step 6: Review & Create
+```
+
+## Step 1: Candidate Details
+
+```text
+First Name
+Middle Name
+Last Name
+Display Name
+Personal Email
+Mobile Number
+Alternate Mobile
+Gender
+Date of Birth
+Candidate ID
+Recruitment Source
+Recruiter Name
+Candidate Photo
+Current Address
+Permanent Address
+Emergency Contact Name
+Emergency Contact Number
+```
+
+## Step 2: Job Details
+
+```text
+Entity / Company
+Branch
+Location
+Department
+Designation
+Grade
+Band
+Business Unit
+Cost Center
+Employment Type
+Employee Type
+Work Mode
+Joining Date
+Expected Joining Date
+Reporting Manager
+Functional Manager
+HR Owner
+Recruiter
+Probation Period
+Notice Period
+Salary Structure
+Payroll Group
+Attendance Policy
+Leave Rule
+Shift
+Weekly Off
+Holiday Calendar
+```
+
+## Step 3: Workflow Selection
+
+```text
+Workflow Selection Mode:
+- Auto Select
+- Manual Select
+
+Selected Workflow
+Workflow Version
+Kanban Board
+Candidate Form
+Document Set
+Checklist Set
+Email Template Group
+Verification Rule
+Approval Workflow
+Candidate Portal Setting
+```
+
+System should auto-suggest workflow using:
+
+```text
+Entity
+Location
+Department
+Designation
+Grade
+Employee Type
+Work Mode
+Country
+Joining Type
+```
+
+## Step 4: Documents & Checklist Preview
+
+Show what the selected workflow will request.
+
+```text
+Documents:
+- Offer Letter
+- Appointment Letter
+- NDA
+- PAN Card
+- Aadhaar Card
+- Bank Proof
+- Education Proof
+- Experience Letter
+- Photo
+- Resume
+
+Checklist:
+- Candidate fills joining form
+- Candidate uploads documents
+- HR verifies documents
+- IT creates official email
+- Admin assigns laptop
+- Payroll verifies bank details
+- Manager schedules induction
+- HR marks candidate joined
+```
+
+HR can override if workflow allows:
+
+```text
+Add extra document
+Remove optional document
+Make document mandatory
+Add extra checklist task
+Remove optional checklist task
+Change task owner
+Change due date
+```
+
+## Step 5: Email / Invite
+
+```text
+Send Candidate Portal Invite
+Use Email Template
+Invite Expiry Date
+Require OTP Verification
+Require Email Verification
+Require Mobile Verification
+Allow Candidate Save as Draft
+Allow Candidate Edit After Submit
+Send Copy To HR
+Send Copy To Manager
+```
+
+## Step 6: Review & Create
+
+Actions:
+
+```text
+Save as Draft
+Create Candidate
+Create & Send Invite
+Create & Start Onboarding
+```
+
+# 6. Kanban Board
+
+## Where
+
+```text
+Onboarding → Kanban Board
+```
+
+Kanban board should be dynamic based on selected workflow.
+
+## Default Kanban Board
+
+```text
+Draft
+Invite Sent
+Candidate Details Pending
+Documents Pending
+HR Verification
+Offer Letter Pending
+Offer Accepted
+Pre-Joining Setup
+Joining Day
+Post-Joining
+Completed
+On Hold
+Dropped
+```
+
+## Kanban Card Fields
+
+```text
+Candidate Name
+Candidate ID
+Profile Photo
+Designation
+Department
+Entity
+Location
+Joining Date
+HR Owner
+Manager
+Current Stage
+Completion %
+Pending Documents
+Pending Forms
+Pending Checklist
+Overdue Tasks
+Offer Status
+Verification Status
+Last Activity
+```
+
+## Kanban Card Actions
+
+```text
+View Candidate
+Move Stage
+Send Reminder
+Send Invite
+Generate Offer Letter
+Request Document
+Verify Document
+Assign Checklist
+Mark Joined
+Convert to Employee
+Put On Hold
+Drop Candidate
+View Logs
+```
+
+# 7. Kanban Board Configuration
+
+## Where
+
+```text
+Onboarding → Workflow Configuration → Kanban Boards
+```
+
+## Kanban Board List Columns
+
+```text
+Board Name
+Board Code
+Scope Type
+Entity / Company
+Workflow
+No. of Stages
+Default Board
+Status
+Version
+Created By
+Updated At
+Action
+```
+
+## Create Kanban Board Fields
+
+```text
+Board Name
+Board Code
+Description
+Scope Type
+Entity / Company
+Default Board: Yes / No
+Use Tenant Default: Yes / No
+Effective From
+Effective To
+Status
+Version
+```
+
+## Stage Fields
+
+```text
+Stage Name
+Stage Code
+Description
+Color
+Icon
+Sort Order
+Is Initial Stage
+Is Final Stage
+Is Mandatory Stage
+Allow Manual Move
+Allow Auto Move
+Allow Skip
+Requires Approval To Enter
+Requires Approval To Exit
+SLA Days
+Reminder Rule
+Escalation Rule
+Status
+```
+
+## Stage Entry Conditions
+
+```text
+Previous stage completed
+Candidate invite sent
+Required forms assigned
+Required forms submitted
+Required documents uploaded
+Required approval completed
+Offer letter accepted
+Checklist completed
+```
+
+## Stage Exit Conditions
+
+```text
+All mandatory forms submitted
+All mandatory documents uploaded
+All mandatory documents verified
+All mandatory checklist tasks completed
+Offer letter accepted
+Verification completed
+Approval completed
+Joining date confirmed
+```
+
+# 8. Document Library
+
+## Where
+
+```text
+Onboarding → Document Library
+```
+
+This is the template library for onboarding documents.
+
+## Document Categories
+
+```text
+Offer Letter
+Appointment Letter
+NDA
+Employment Agreement
+Internship Letter
+Contract Letter
+Joining Letter
+Welcome Letter
+Policy Acknowledgment
+Background Verification Form
+Medical Declaration
+Asset Declaration
+Bank Declaration
+Nominee Declaration
+Custom Document
+```
+
+## Document Category Page
+
+Example:
+
+```text
+Onboarding → Document Library → Offer Letter
+```
+
+Shows all offer letter templates.
+
+## Template List Columns
+
+```text
+Template Name
+Template Code
+Document Type
+Scope Type
+Entity / Company
+Department
+Employee Type
+Language
+Version
+Default Template
+Status
+Created By
+Updated At
+Action
+```
+
+## Template Actions
+
+```text
+Create New
+Edit
+View
+Clone
+Preview
+Set as Default
+Publish
+Deactivate
+Archive
+Delete, only if unused
+View Version History
+```
+
+## Create Document Template Fields
+
+```text
+Template Name
+Template Code
+Document Type
+Scope Type
+Entity / Company
+Branch
+Location
+Department
+Employee Type
+Language
+Effective From
+Effective To
+Default Template
+Status
+Version
+```
+
+## Template Editor Sections
+
+```text
+Header
+Body
+Footer
+```
+
+## Formatting Tools
+
+```text
+Bold
+Italic
+Underline
+Strikethrough
+Font Family
+Font Size
+Text Color
+Background Color
+Alignment
+Bullet List
+Number List
+Indent
+Outdent
+Line Spacing
+Table
+Image
+Logo
+Page Break
+Horizontal Line
+Link
+Signature Block
+Watermark
+Undo
+Redo
+Clear Formatting
+```
+
+## Page Settings
+
+```text
+Page Size: A4 / Letter
+Orientation: Portrait / Landscape
+Margin Top
+Margin Bottom
+Margin Left
+Margin Right
+Header Height
+Footer Height
+Company Logo
+Authorized Signature
+Watermark
+```
+
+## Document Variables / Slugs
+
+```text
+{{CandidateName}}
+{{CandidateFirstName}}
+{{CandidateLastName}}
+{{CandidateEmail}}
+{{CandidateMobile}}
+{{CandidateAddress}}
+
+{{Designation}}
+{{Department}}
+{{Grade}}
+{{Location}}
+{{Branch}}
+{{EntityName}}
+{{CompanyName}}
+{{JoiningDate}}
+{{ReportingManager}}
+{{HRManager}}
+{{WorkMode}}
+{{EmploymentType}}
+
+{{CTC}}
+{{BasicSalary}}
+{{HRA}}
+{{SpecialAllowance}}
+{{Bonus}}
+{{GrossSalary}}
+{{NetSalary}}
+{{SalaryCurrency}}
+
+{{ProbationPeriod}}
+{{NoticePeriod}}
+{{WorkingHours}}
+{{LeavePolicy}}
+{{AttendancePolicy}}
+
+{{CompanyLogo}}
+{{CompanyAddress}}
+{{CompanyWebsite}}
+{{CompanyEmail}}
+{{CompanyPhone}}
+{{AuthorizedSignatory}}
+{{SignatoryDesignation}}
+
+{{CurrentDate}}
+{{OfferDate}}
+{{OfferExpiryDate}}
+{{LetterDate}}
+```
+
+# 9. Email Templates
+
+## Where
+
+```text
+Onboarding → Email Templates
+```
+
+Email Templates page creates email content. Workflow decides when to send it.
+
+## Email Template Categories
+
+```text
+Candidate Invite
+Invite Reminder
+Candidate Form Pending
+Candidate Form Submitted
+Document Pending
+Document Uploaded
+Document Approved
+Document Rejected
+Offer Letter Sent
+Offer Accepted
+Offer Declined
+Task Assigned
+Task Reminder
+Task Overdue
+Approval Required
+Approval Completed
+Joining Reminder
+Welcome Email
+Onboarding Completed
+Candidate Dropped
+```
+
+## Email Template List Columns
+
+```text
+Template Name
+Template Code
+Event Type
+Scope Type
+Entity / Company
+Workflow
+Language
+Default Template
+Status
+Created By
+Updated At
+Action
+```
+
+## Create Email Template Fields
+
+```text
+Template Name
+Template Code
+Event Type
+Scope Type
+Entity / Company
+Workflow, optional
+Language
+Subject
+Header
+Body
+Footer
+Default Template
+Status
+Version
+```
+
+## Email Recipient Settings
+
+```text
+Default Send To
+Default CC
+Default BCC
+
+Recipient Options:
+- Candidate
+- HR Owner
+- Recruiter
+- Reporting Manager
+- Department Head
+- IT Admin
+- Admin Team
+- Payroll Admin
+- Finance Admin
+- Specific Role
+- Specific Employee
+- Specific Email
+```
+
+## Email Variables
+
+```text
+{{CandidateName}}
+{{CandidateEmail}}
+{{CandidateMobile}}
+{{EntityName}}
+{{CompanyName}}
+{{Department}}
+{{Designation}}
+{{Location}}
+{{JoiningDate}}
+{{ReportingManager}}
+{{HROwner}}
+{{WorkflowName}}
+{{CurrentStage}}
+{{FormName}}
+{{DocumentName}}
+{{TaskName}}
+{{DueDate}}
+{{PortalLink}}
+{{OfferLetterLink}}
+{{ApprovalLink}}
+{{RejectReason}}
+{{CompanyLogo}}
+```
+
+# 10. Checklists
+
+## Where
+
+```text
+Onboarding → Checklists
+```
+
+Checklist creates reusable task groups.
+
+## Checklist Categories
+
+```text
+Candidate Checklist
+HR Checklist
+Manager Checklist
+IT Checklist
+Admin Checklist
+Payroll Checklist
+Finance Checklist
+Training Checklist
+Compliance Checklist
+```
+
+## Checklist List Columns
+
+```text
+Checklist Name
+Checklist Code
+Category
+Scope Type
+Entity / Company
+Department
+Employee Type
+No. of Tasks
+Default Checklist
+Status
+Version
+Action
+```
+
+## Create Checklist Fields
+
+```text
+Checklist Name
+Checklist Code
+Description
+Category
+Scope Type
+Entity / Company
+Department
+Employee Type
+Default Checklist
+Status
+Version
+```
+
+## Task Fields
+
+```text
+Task Name
+Task Code
+Description
+Owner Type
+Owner
+Due Date Rule
+Priority
+Mandatory
+Blocking
+Requires Attachment
+Requires Comment
+Requires Approval
+Auto Complete Condition
+Reminder Rule
+Escalation Rule
+Stage Mapping
+Status
+```
+
+## Owner Types
+
+```text
+Candidate
+HR Owner
+Recruiter
+Reporting Manager
+Department Head
+IT Admin
+Admin Team
+Payroll Admin
+Finance Admin
+Training Owner
+Specific Employee
+Role-Based Owner
+```
+
+## Due Date Rules
+
+```text
+On Onboarding Start Date
+Before Joining Date - X Days
+On Joining Date
+After Joining Date + X Days
+After Previous Task Completion + X Days
+Manual Date
+```
+
+# 11. Workflow Configuration
+
+## Where
+
+```text
+Onboarding → Workflow Configuration
+```
+
+This is the brain of the onboarding module.
+
+Here we wire:
+
+```text
+Entity
+Kanban Board
+Forms
+Documents
+Emails
+Checklists
+Verification
+Approvals
+Candidate Portal
+Employee Conversion
+Setup Rules
+```
+
+## Workflow List Columns
+
+```text
+Workflow Name
+Workflow Code
+Scope Type
+Entity / Company
+Location
+Department
+Employee Type
+Work Mode
+Kanban Board
+Document Set
+Checklist Set
+Email Group
+Default Workflow
+Priority
+Status
+Version
+Action
+```
+
+## Workflow Actions
+
+```text
+Create Workflow
+Edit Draft
+Clone
+Preview
+Validate
+Publish
+Deactivate
+Archive
+Create New Version
+Delete, only if unused
+View Assigned Candidates
+View Version History
+```
+
+# 12. Create Workflow Wizard
+
+```text
+Step 1: Basic Details
+Step 2: Applicability
+Step 3: Kanban Board
+Step 4: Candidate Forms
+Step 5: Documents
+Step 6: Checklists
+Step 7: Verification Rules
+Step 8: Approval Rules
+Step 9: Email Rules
+Step 10: Setup Rules
+Step 11: Candidate Portal
+Step 12: Review & Publish
+```
+
+# Step 1: Basic Details
+
+```text
+Workflow Name
+Workflow Code
+Description
+Scope Type
+Entity / Company
+Country
+State
+Effective From
+Effective To
+Default Workflow
+Priority
+Status
+Version
+```
+
+# Step 2: Applicability
+
+```text
+Apply Workflow To:
+- Tenant Default
+- Entity / Company
+- Branch
+- Location
+- Department
+- Designation
+- Grade
+- Employee Type
+- Work Mode
+- Hiring Source
+- Specific Candidate
+```
+
+# Step 3: Kanban Board
+
+```text
+Use Default Kanban Board: Yes / No
+Selected Kanban Board
+Allow Stage Customization For This Workflow
+Allow HR Manual Stage Movement
+Allow Auto Stage Movement
+Require Reason For Manual Movement
+```
+
+If custom:
+
+```text
+Add Stage
+Remove Optional Stage
+Reorder Stages
+Make Stage Mandatory
+Configure Entry Conditions
+Configure Exit Conditions
+Configure SLA
+Configure Notifications
+Configure Stage Owner
+```
+
+# Step 4: Candidate Forms
+
+```text
+Form Template
+Stage Mapping
+Send To
+Visible To Candidate
+Editable By Candidate
+Editable By HR
+Mandatory
+Due Date Rule
+Requires Verification
+Verifier Type
+After Submission Action
+Auto Send On Stage Entry
+Block Stage Exit Until Submitted
+Block Stage Exit Until Verified
+Allow Send Back For Correction
+Email Template For Sending Form
+Email Template For Reminder
+Correction Email Template
+```
+
+## After Submission Actions
+
+```text
+Create HR verification task
+Create manager verification task
+Create payroll verification task
+Update candidate profile
+Map submitted fields to employee draft profile
+Send email to HR
+Move candidate to next stage
+Keep candidate in same stage until verification
+Ask candidate for correction if rejected
+Generate document from submitted data
+Trigger approval workflow
+```
+
+# Step 5: Documents
+
+```text
+Document Name
+Document Type
+Stage Mapping
+Template
+Mandatory
+Candidate Upload Required
+HR Upload Required
+Company Generated
+E-Sign Required
+Approval Required
+Verification Required
+Verifier Type
+Allowed File Types
+Max File Size
+Expiry Required
+Block Stage Exit Until Uploaded
+Block Stage Exit Until Verified
+Email Template For Request
+Email Template For Rejection
+```
+
+# Step 6: Checklists
+
+```text
+Checklist Template
+Stage Mapping
+Task Owner
+Due Date Rule
+Mandatory Task
+Blocking Task
+Requires Attachment
+Requires Comment
+Requires Approval
+Reminder Rule
+Escalation Rule
+Auto Create On Stage Entry
+Block Stage Exit Until Completed
+```
+
+# Step 7: Verification Rules
+
+```text
+Verification Required
+Verification Type
+Verifier Type
+Verifier Employee / Role
+Verification SLA Days
+Allow Approve
+Allow Reject
+Allow Send Back For Correction
+Correction Allowed Count
+Remarks Required
+Attachment Required
+Email On Approval
+Email On Rejection
+Email On Correction
+Block Stage Exit Until Verification
+```
+
+## Verification Types
+
+```text
+HR Verification
+Manager Verification
+Payroll Verification
+Document Verification
+Bank Verification
+Identity Verification
+Education Verification
+Experience Verification
+Background Verification
+Medical Verification
+```
+
+# Step 8: Approval Rules
+
+```text
+Approval Required
+Approval Type
+Approver Type
+Approver
+Approval Level
+Sequential / Parallel
+Auto Approve If Approver Missing
+Escalation After Days
+Reminder Frequency
+Block Stage Until Approved
+```
+
+## Approval Types
+
+```text
+Offer Approval
+Salary Approval
+Document Approval
+Form Approval
+Background Verification Approval
+Employee Conversion Approval
+Payroll Activation Approval
+Asset Approval
+```
+
+# Step 9: Email Rules
+
+This is where we set **what email to send and when**.
+
+```text
+Stage
+Trigger Event
+Email Template
+Send To
+CC
+BCC
+Send Timing
+Delay
+Repeat Reminder
+Reminder Frequency
+Maximum Reminder Count
+Escalation Required
+Escalate To
+Condition
+Status
+```
+
+## Trigger Events
+
+```text
+Candidate created
+Candidate enters stage
+Candidate exits stage
+Candidate invite sent
+Candidate form assigned
+Candidate form submitted
+Form sent back for correction
+Document requested
+Document uploaded
+Document rejected
+Document verified
+Offer generated
+Offer sent
+Offer accepted
+Offer declined
+Checklist task assigned
+Checklist task overdue
+Approval pending
+Approval approved
+Approval rejected
+Candidate marked joined
+Candidate converted to employee
+Onboarding completed
+```
+
+## Example Email Rule
+
+```text
+Stage: Candidate Details Pending
+Trigger: Candidate enters stage
+Email Template: Candidate Portal Invite
+Send To: Candidate
+CC: HR Owner
+When: Immediately
+```
+
+## Reminder Rule Example
+
+```text
+Trigger: Candidate form not submitted
+Condition: Pending for 2 days
+Email Template: Candidate Form Reminder
+Send To: Candidate
+Repeat: Every 2 days
+Maximum Count: 3
+Escalate To: HR Owner
+```
+
+# Step 10: Setup Rules
+
+```text
+Generate Employee Code
+Employee Code Format
+Create Employee Draft Profile
+Create Official Email
+Create HRMS Login
+Activate Login On Joining Date
+Assign Role
+Assign Reporting Manager
+Assign Leave Rule
+Assign Attendance Policy
+Assign Shift
+Assign Weekly Off
+Assign Holiday Calendar
+Assign Payroll Group
+Assign Salary Structure
+Assign Asset
+Create Biometric ID
+Create IT Setup Task
+Create Asset Setup Task
+Create Payroll Setup Task
+Block Conversion If Setup Pending
+Allow HR Override Setup Pending
+```
+
+# Step 11: Candidate Portal
+
+```text
+Enable Candidate Portal
+Portal Theme
+Show Company Logo
+Show Joining Date
+Show Reporting Manager
+Show Progress Tracker
+Show Checklist
+Show Documents
+Show Forms
+Show Offer Letter
+Show FAQ
+Allow Candidate Contact HR
+Require OTP
+Require Email Verification
+Invite Expiry Days
+Allow Resend Invite
+Allow Save As Draft
+Allow Candidate Edit After Submit
+Allow Correction After HR Sends Back
+```
+
+# Step 12: Review & Publish
+
+Before publish, show:
+
+```text
+Applicability
+Kanban Board
+Stages
+Candidate Forms
+Documents
+Checklists
+Verification Rules
+Approval Rules
+Email Rules
+Setup Rules
+Portal Settings
+Impacted Candidates
+Conflicts
+Missing Required Settings
+```
+
+Actions:
+
+```text
+Save Draft
+Validate
+Publish
+Clone
+Cancel
+```
+
+# 13. Settings
+
+## Where
+
+```text
+Onboarding → Settings
+```
+
+Settings are for module-level and entity-wise default control.
+
+## Settings Tabs
+
+```text
+General Settings
+Candidate Settings
+Entity Configuration
+Kanban Settings
+Workflow Settings
+Document Settings
+Template Settings
+Checklist Settings
+Email Settings
+Verification Settings
+Approval Settings
+Candidate Portal Settings
+Employee Conversion Settings
+Import / Export Settings
+Audit & Security
+```
+
+# 14. Entity Configuration Settings
+
+This is the page you specifically need.
+
+## Where
+
+```text
+Onboarding → Settings → Entity Configuration
+```
+
+## Purpose
+
+For each entity/company, select default onboarding setup.
+
+## Fields
+
+```text
+Entity / Company
+Use Tenant Default: Yes / No
+
+Default Workflow
+Default Kanban Board
+Default Candidate Form
+Default Document Set
+Default Checklist Set
+Default Email Template Group
+Default Verification Rule
+Default Approval Workflow
+Default Candidate Portal Setting
+Default Employee Conversion Rule
+Default HR Owner
+Default Recruiter
+Default Reporting Manager Rule
+Default Setup Rule
+
+Effective From
+Effective To
+Status
+```
+
+## Example
+
+```text
+Entity: ABC India Pvt Ltd
+Use Tenant Default: No
+
+Default Workflow: India Full-Time Onboarding
+Default Kanban Board: India Standard Kanban
+Default Candidate Form: India Joining Form
+Default Document Set: India Documents
+Default Checklist Set: India Checklist
+Default Email Template Group: India Emails
+Default Verification Rule: India Verification Rule
+Default Approval Workflow: India Approval Flow
+Default Portal Setting: India Candidate Portal
+Default Conversion Rule: India Conversion Rule
+```
+
+# 15. General Settings
+
+```text
+Enable Onboarding Module
+Enable Candidate Onboarding
+Enable Employee Onboarding
+Enable Bulk Candidate Upload
+Enable Rehire Onboarding
+Enable Internal Transfer Onboarding
+Default Workflow
+Default Kanban Board
+Default HR Owner
+Allow Save as Draft
+Allow Delete Draft Candidate
+```
+
+# 16. Candidate Settings
+
+```text
+Candidate ID Auto Generate
+Candidate ID Prefix
+Candidate ID Format
+Duplicate Check By Email
+Duplicate Check By Mobile
+Allow Candidate Edit After Submit
+Allow HR Edit Candidate Data
+Candidate Portal Expiry Days
+Candidate Status Master
+```
+
+# 17. Kanban Settings
+
+```text
+Allow Custom Kanban Board
+Allow Entity-Wise Board
+Allow Workflow-Wise Board
+Allow Stage Rename
+Allow Stage Reorder
+Allow Mandatory Stage
+Allow Stage Skip
+Allow Stage SLA
+Allow Auto Stage Movement
+Allow Manual Stage Movement
+Allow Drag and Drop
+Require Reason for Manual Stage Move
+```
+
+# 18. Workflow Settings
+
+```text
+Allow Multiple Workflows
+Allow Entity-Wise Workflow
+Allow Department-Wise Workflow
+Allow Employee Type-Wise Workflow
+Allow Work Mode-Wise Workflow
+Allow Workflow Priority
+Allow Workflow Versioning
+Allow Clone Workflow
+Allow Archive Workflow
+Allow Workflow Publish Approval
+Conflict Handling:
+- Highest Priority Wins
+- Block Conflict
+- Ask Admin To Resolve
+```
+
+# 19. Document Settings
+
+```text
+Allow Document Library
+Allow Entity-Wise Document Template
+Allow Workflow-Wise Document Template
+Allow Custom Document Type
+Allow E-Sign
+Allow Template Versioning
+Allowed File Types
+Maximum File Size
+Document Verification Required
+Document Expiry Tracking
+Block Onboarding If Mandatory Document Missing
+```
+
+# 20. Email Settings
+
+```text
+Enable Email Notifications
+Enable Entity-Wise Email Templates
+Enable Workflow-Wise Email Templates
+Enable Stage-Wise Email Rules
+Enable Reminder Emails
+Enable Escalation Emails
+Enable Email Logs
+Enable Retry Failed Emails
+Default Email Template Group
+Default From Email
+Default Reply-To Email
+Send Emails Immediately / Queue
+Retry Count
+Retry Interval
+```
+
+# 21. Verification Settings
+
+```text
+Enable Document Verification
+Enable Form Verification
+Enable Bank Verification
+Enable Identity Verification
+Enable Background Verification
+Enable Education Verification
+Enable Experience Verification
+Allow Send Back For Correction
+Require Verification Remarks
+Correction Attempt Limit
+```
+
+# 22. Approval Settings
+
+```text
+Enable Approval Workflow
+Offer Approval Required
+Document Approval Required
+Form Approval Required
+Salary Approval Required
+Employee Conversion Approval Required
+Allow Role-Based Approver
+Allow Multi-Level Approval
+Allow Parallel Approval
+Allow Delegation
+Allow Escalation
+```
+
+# 23. Candidate Portal Settings
+
+```text
+Enable Candidate Portal
+Require OTP Login
+Require Email Verification
+Require Mobile Verification
+Show Progress Tracker
+Show Documents
+Show Forms
+Show Offer Letter
+Show Checklist
+Show HR Contact
+Show FAQ
+Allow Candidate Download Documents
+Allow Candidate Save As Draft
+Allow Candidate Correction After Rejection
+```
+
+# 24. Employee Conversion Settings
+
+```text
+Generate Employee Code
+Create Employee Profile
+Create Employee Draft First
+Create Login
+Activate Login On Joining Date
+Assign Role
+Assign Reporting Manager
+Assign Leave Rule
+Assign Attendance Policy
+Assign Shift
+Assign Weekly Off
+Assign Holiday Calendar
+Assign Payroll Group
+Assign Salary Structure
+Assign Assets
+Block Conversion If Mandatory Data Missing
+Block Conversion If Verification Pending
+Block Conversion If Approval Pending
+```
+
+# 25. Logs
+
+## Where
+
+```text
+Onboarding → Logs
+```
+
+## Log Types
+
+```text
+Candidate Activity Logs
+Workflow Logs
+Stage Movement Logs
+Document Logs
+Email Logs
+Checklist Logs
+Approval Logs
+Verification Logs
+Employee Conversion Logs
+System Logs
+Error Logs
+```
+
+## Log Columns
+
+```text
+Date & Time
+Candidate
+Employee Code
+Entity
+Action Type
+Old Value
+New Value
+Performed By
+Role
+IP Address
+Device
+Status
+Remarks
+```
+
+# 26. Candidate Submission Flow
+
+When candidate submits form:
+
+```text
+Candidate submits form
+        ↓
+System saves submission
+        ↓
+System validates mandatory fields
+        ↓
+System creates verification task based on workflow
+        ↓
+HR / Payroll / Manager verifies
+        ↓
+If approved:
+    Map data to employee draft profile
+    Move candidate to next configured stage
+    Send configured email
+        ↓
+If rejected:
+    Send correction email
+    Candidate updates form
+    Verification starts again
+```
+
+# 27. Final Wiring Logic
+
+This is how everything is connected:
+
+```text
+Add Candidate
+    ↓
+Select Entity + Job Details
+    ↓
+System finds Entity Configuration
+    ↓
+System gets Default / Custom Workflow
+    ↓
+Workflow gets Kanban Board
+    ↓
+Workflow stages define forms, documents, emails, checklist, approvals, verification
+    ↓
+Candidate moves through Kanban stages
+    ↓
+Each stage triggers configured actions
+    ↓
+Candidate submits forms/documents
+    ↓
+Verification happens
+    ↓
+Data maps to employee draft
+    ↓
+Joining day setup happens
+    ↓
+Candidate is converted to employee
+```
+
+# 28. Final Complete Menu
+
+```text
+Onboarding
+ ├── Dashboard
+ ├── Candidates
+ │    ├── Add Candidate
+ │    ├── Bulk Upload
+ │    └── Bulk Update
+ ├── Kanban Board
+ ├── Document Library
+ │    ├── Offer Letter
+ │    ├── Appointment Letter
+ │    ├── NDA
+ │    ├── Employment Agreement
+ │    └── Custom Documents
+ ├── Workflow Configuration
+ │    ├── Basic Details
+ │    ├── Applicability
+ │    ├── Kanban Board
+ │    ├── Candidate Forms
+ │    ├── Documents
+ │    ├── Checklists
+ │    ├── Verification Rules
+ │    ├── Approval Rules
+ │    ├── Email Rules
+ │    ├── Setup Rules
+ │    ├── Candidate Portal
+ │    └── Review & Publish
+ ├── Email Templates
+ ├── Checklists
+ ├── Logs
+ └── Settings
+      ├── General Settings
+      ├── Candidate Settings
+      ├── Entity Configuration
+      ├── Kanban Settings
+      ├── Workflow Settings
+      ├── Document Settings
+      ├── Template Settings
+      ├── Checklist Settings
+      ├── Email Settings
+      ├── Verification Settings
+      ├── Approval Settings
+      ├── Candidate Portal Settings
+      ├── Employee Conversion Settings
+      ├── Import / Export Settings
+      └── Audit & Security
+```
+
+# Final Rule
+
+Your onboarding module should work like this:
+
+```text
+Settings define what is allowed.
+Libraries create reusable items.
+Entity Configuration selects defaults per company/entity.
+Workflow Configuration wires everything step-wise.
+Candidate page runs the actual onboarding.
+Kanban board tracks progress.
+Logs track everything.
+```
+
+This is the correct complete structure for your HRMS onboarding module.
