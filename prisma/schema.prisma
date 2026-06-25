@@ -576,6 +576,52 @@ model EmployeeDocumentFolder {
   @@index([tenantId, employeeId])
 }
 
+// ============================================================================
+//  HR Documents (company-wide policy documents with folder hierarchy)
+// ============================================================================
+model HRDocumentFolder {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  color       String? // tailwind color name: violet | emerald | amber | rose | sky | cyan | slate
+  createdBy   String? // user name who created the folder
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  documents   HRDocument[]
+
+  @@index([tenantId])
+}
+
+model HRDocument {
+  id                    String   @id @default(cuid())
+  tenantId              String
+  folderId              String?
+  folder                HRDocumentFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  name                  String
+  category              String? // HR Policy | Leave Policy | Attendance Policy | etc.
+  entityId              String? // optional entity scoping
+  department            String? // optional department scoping
+  visibleTo             String   @default("All Employees") // All Employees | Selected Entity | Selected Branch | Selected Location | Selected Department
+  status                String   @default("Published") // Published | Unpublished | Draft
+  fileUrl               String?
+  fileExt               String? // pdf | docx | etc.
+  fileSize              Int?
+  version               String?  @default("1.0")
+  description           String?
+  remarks               String?
+  acknowledgmentRequired Boolean @default(false)
+  acknowledgmentDueDate DateTime?
+  uploadedBy            String? // user name who uploaded the document
+  uploadedAt            DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, folderId])
+}
+
 model EmployeeCompensationHistory {
   id               String   @id @default(cuid())
   tenantId         String
