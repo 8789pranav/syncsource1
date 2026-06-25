@@ -658,56 +658,86 @@ function TemplateEditorDialog({
             </DialogDescription>
           </DialogHeader>
 
-          {/* Body — 3 column grid */}
-          <div className="flex-1 overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-7 h-full">
-              {/* LEFT: metadata form (col-span-2) */}
-              <div className="lg:col-span-2 border-r border-border/60 bg-muted/20 p-4 overflow-y-auto max-h-[68vh]">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Tag className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Template Details
-                    </span>
-                  </div>
+          {/* Body — editor-first layout:
+              • compact always-visible metadata bar on top (key fields in a row)
+              • collapsible "more details" panel beneath it
+              • main 2-pane area: WYSIWYG editor (hero, flex-1) + Slug palette (fixed, always visible) */}
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            {/* ---- Top metadata bar (always visible) ---- */}
+            <div className="border-b border-border/60 bg-muted/20 px-4 py-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                <div className="col-span-2 sm:col-span-1 lg:col-span-2">
+                  <Label htmlFor="tpl-name" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Name <span className="text-rose-500">*</span></Label>
+                  <Input
+                    id="tpl-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Standard Offer Letter — Engineering"
+                    className="mt-0.5 h-8 text-sm bg-background"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="tpl-code" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Code <span className="text-rose-500">*</span></Label>
+                  <Input
+                    id="tpl-code"
+                    value={code}
+                    onChange={(e) => { setCode(e.target.value); codeTouchedRef.current = true }}
+                    placeholder="OFFER_ENG_2025"
+                    className="mt-0.5 h-8 text-xs font-mono bg-background"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Type <span className="text-rose-500">*</span></Label>
+                  <Select value={documentType} onValueChange={setDocumentType}>
+                    <SelectTrigger className="mt-0.5 h-8 text-sm bg-background w-full">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((c) => (
+                        <SelectItem key={c.label} value={c.label}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Language</Label>
+                  <Select value={language} onValueChange={setLanguage}>
+                    <SelectTrigger className="mt-0.5 h-8 text-sm bg-background w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map((l) => (
+                        <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Status</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger className="mt-0.5 h-8 text-sm bg-background w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Collapsible extra details + slug usage summary */}
+              <details className="mt-2 group">
+                <summary className="flex items-center gap-1.5 cursor-pointer text-[11px] font-medium text-muted-foreground hover:text-foreground select-none list-none">
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                  More details (scope, version, effective dates, default)
+                </summary>
+                <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 items-end">
                   <div>
-                    <Label htmlFor="tpl-name" className="text-xs font-medium">Template Name <span className="text-rose-500">*</span></Label>
-                    <Input
-                      id="tpl-name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Standard Offer Letter — Engineering"
-                      className="mt-1 h-8 text-sm bg-background"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="tpl-code" className="text-xs font-medium">Template Code <span className="text-rose-500">*</span></Label>
-                    <Input
-                      id="tpl-code"
-                      value={code}
-                      onChange={(e) => { setCode(e.target.value); codeTouchedRef.current = true }}
-                      placeholder="e.g. OFFER_ENG_2025"
-                      className="mt-1 h-8 text-sm font-mono bg-background"
-                    />
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Auto-generated from name. Must be unique.</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium">Document Type <span className="text-rose-500">*</span></Label>
-                    <Select value={documentType} onValueChange={setDocumentType}>
-                      <SelectTrigger className="mt-1 h-8 text-sm bg-background w-full">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIES.map((c) => (
-                          <SelectItem key={c.label} value={c.label}>{c.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium">Scope Type</Label>
+                    <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Scope</Label>
                     <Select value={scopeType} onValueChange={setScopeType}>
-                      <SelectTrigger className="mt-1 h-8 text-sm bg-background w-full">
+                      <SelectTrigger className="mt-0.5 h-8 text-sm bg-background w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -717,91 +747,68 @@ function TemplateEditorDialog({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs font-medium">Language</Label>
-                      <Select value={language} onValueChange={setLanguage}>
-                        <SelectTrigger className="mt-1 h-8 text-sm bg-background w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LANGUAGES.map((l) => (
-                            <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="tpl-version" className="text-xs font-medium">Version</Label>
-                      <Input
-                        id="tpl-version"
-                        type="number"
-                        min={1}
-                        value={version}
-                        onChange={(e) => setVersion(Math.max(1, Number(e.target.value) || 1))}
-                        className="mt-1 h-8 text-sm bg-background"
-                      />
-                    </div>
+                  <div>
+                    <Label htmlFor="tpl-version" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Version</Label>
+                    <Input
+                      id="tpl-version"
+                      type="number"
+                      min={1}
+                      value={version}
+                      onChange={(e) => setVersion(Math.max(1, Number(e.target.value) || 1))}
+                      className="mt-0.5 h-8 text-sm bg-background"
+                    />
                   </div>
                   <div>
-                    <Label className="text-xs font-medium">Status</Label>
-                    <Select value={status} onValueChange={setStatus}>
-                      <SelectTrigger className="mt-1 h-8 text-sm bg-background w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUS_OPTIONS.map((s) => (
-                          <SelectItem key={s} value={s}>{s}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="tpl-from" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Effective From</Label>
+                    <Input
+                      id="tpl-from"
+                      type="date"
+                      value={effectiveFrom}
+                      onChange={(e) => setEffectiveFrom(e.target.value)}
+                      className="mt-0.5 h-8 text-sm bg-background"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label htmlFor="tpl-from" className="text-xs font-medium">Effective From</Label>
-                      <Input
-                        id="tpl-from"
-                        type="date"
-                        value={effectiveFrom}
-                        onChange={(e) => setEffectiveFrom(e.target.value)}
-                        className="mt-1 h-8 text-sm bg-background"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="tpl-to" className="text-xs font-medium">Effective To</Label>
-                      <Input
-                        id="tpl-to"
-                        type="date"
-                        value={effectiveTo}
-                        onChange={(e) => setEffectiveTo(e.target.value)}
-                        className="mt-1 h-8 text-sm bg-background"
-                      />
-                    </div>
+                  <div>
+                    <Label htmlFor="tpl-to" className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Effective To</Label>
+                    <Input
+                      id="tpl-to"
+                      type="date"
+                      value={effectiveTo}
+                      onChange={(e) => setEffectiveTo(e.target.value)}
+                      className="mt-0.5 h-8 text-sm bg-background"
+                    />
                   </div>
-                  <Separator className="my-2 bg-border/60" />
-                  <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 bg-background">
-                    <div>
-                      <Label htmlFor="tpl-default" className="text-xs font-medium cursor-pointer">Default Template</Label>
-                      <p className="text-[10px] text-muted-foreground">Use as the default for this document type</p>
-                    </div>
+                  <div className="col-span-2 sm:col-span-1 flex items-center justify-between rounded-md border border-border/60 px-3 py-1.5 bg-background h-8">
+                    <Label htmlFor="tpl-default" className="text-[10px] font-medium cursor-pointer">Default</Label>
                     <Switch
                       id="tpl-default"
                       checked={isDefault}
                       onCheckedChange={setIsDefault}
                     />
                   </div>
-
-                  <SlugUsageSummary used={usedVariables} className="mt-2" />
                 </div>
-              </div>
+              </details>
+            </div>
 
-              {/* CENTER: WYSIWYG editor (col-span-3) */}
-              <div className="lg:col-span-3 min-w-0 border-r border-border/60 p-4 flex flex-col min-h-0 max-h-[68vh]">
-                <div className="flex items-center gap-1.5 mb-2">
+            {/* ---- Slug usage strip (at-a-glance) ---- */}
+            {usedVariables.length > 0 && (
+              <div className="px-4 py-1.5 border-b border-border/60 bg-cyan-500/5">
+                <SlugUsageSummary used={usedVariables} />
+              </div>
+            )}
+
+            {/* ---- Main 2-pane area: editor (hero) + slug palette (always visible) ---- */}
+            <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
+              {/* LEFT/MAIN: WYSIWYG editor — the hero */}
+              <div className="flex-1 min-w-0 p-3 flex flex-col min-h-0">
+                <div className="flex items-center gap-1.5 mb-1.5 px-0.5">
                   <FileCode2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Template Content (WYSIWYG)
+                    Template Content
                   </span>
+                  <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[9px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-0">
+                    Header · Body · Footer
+                  </Badge>
                 </div>
                 <div className="flex-1 min-h-0">
                   <SectionedRichEditor
@@ -811,13 +818,13 @@ function TemplateEditorDialog({
                     footer={footer}
                     onChange={handleSectionChange}
                     initialSection="body"
-                    minHeight={320}
+                    minHeight={360}
                   />
                 </div>
               </div>
 
-              {/* RIGHT: shared slug library (col-span-2) */}
-              <div className="lg:col-span-2 min-w-0 flex flex-col min-h-0 max-h-[68vh] border-l border-border/60">
+              {/* RIGHT: shared slug library — always visible, fixed width */}
+              <div className="lg:w-[320px] xl:w-[340px] shrink-0 min-w-0 flex flex-col min-h-0 border-t lg:border-t-0 lg:border-l border-border/60 max-h-[44vh] lg:max-h-none">
                 <SlugPalette
                   onInsert={insertVariable}
                   usedVariables={usedVariables}

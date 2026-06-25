@@ -1206,3 +1206,38 @@ Stage Summary:
 - The email editor's invisible-slug-list bug (`hidden xl:block` vs `max-w-6xl` dialog) is fixed — palette is always visible.
 - Full WYSIWYG editor (rich-editor.tsx) remains: formatting toolbar (bold/italic/underline/strike/headings/lists/alignment/color/highlight/link/image/HR/clear-formatting/source-view/fullscreen) + Header/Body/Footer tabs + slug insertion via imperative ref.
 - Lint clean; dev server compiles cleanly; both editors verified interactive end-to-end via agent-browser.
+
+---
+Task ID: ONBOARDING-EDITOR-REDESIGN
+Agent: main (Z.ai Code)
+Task: User complaint (with screenshot): "where is correct editor with header footer, and body with good editor .. and slugs are very less so that I can copy slugs and use". Screenshot showed the document editor modal displaying ONLY the metadata form + "Slugs in use (12)" panel — the WYSIWYG editor (Header/Body/Footer + toolbar) and the slug sidebar were NOT visible.
+
+Root cause:
+- The document editor used a 3-column grid (`lg:grid-cols-7`) with `max-h-[68vh]` per column. Below the `lg` (1024px) breakpoint the grid collapsed to a single column, and the center editor + right slug panel were pushed below the dialog's visible area (clipped by max-h). On the user's viewport the metadata column alone filled the screen.
+- Slug count was only ~60 across 9 categories ("slugs are very less").
+- Copy functionality existed but copy icons were hover-only and there was no bulk "copy all".
+
+Work Log:
+- Expanded `src/components/hrms/onboarding/slug-catalog.tsx` from 9 categories / ~60 slugs → 23 categories / 148 slugs. Added new categories: Bank & Payroll, Emergency Contact, Education, Experience, Assets & IT, Training & Induction, Benefits & Perks, Tax & Statutory, Documents Checklist, Policies & Handbook, Travel & Relocation, System & Meta, Announcement, Shift & Schedule. Each slug carries label/description/sample/appliesTo.
+- Enhanced `<SlugPalette>`:
+  - Added prominent "Copy all" button (copies every visible slug token, one per line, to clipboard) with "Copied!" confirmation.
+  - Added "Collapse all / Expand all" toggle.
+  - Made per-slug copy icon ALWAYS visible (was hover-only).
+  - Added "X slugs used in this template" indicator line.
+  - Category badges now show "N used" counts.
+- Redesigned the document editor dialog body (`documents.tsx`) to an editor-first layout:
+  - Top: compact always-visible metadata bar (Name, Code, Type, Language, Status in a single responsive row) + a collapsible "More details" (scope, version, effective dates, default) panel.
+  - At-a-glance slug-usage strip (shown when slugs are used).
+  - Main 2-pane flex area: WYSIWYG editor (Header/Body/Footer + full formatting toolbar) as the HERO taking all remaining width, with the SlugPalette as a fixed-width (~320px) ALWAYS-VISIBLE right sidebar. Uses `flex flex-col lg:flex-row` so on narrow screens the palette stacks BELOW the editor (both visible by scrolling) instead of being hidden.
+- Verified emails.tsx editor already had the same editor-first layout from the prior round (slug palette always visible via `lg:grid-cols-[1fr_300px]`); confirmed it renders correctly at narrow widths too.
+
+Verification (agent-browser at 1100×800 — narrower than the user's report):
+- Document editor: VLM confirms — WYSIWYG editor with Bold/Italic/Underline toolbar ✓, Header/Body/Footer tabs ✓, Slug Library on right with search + chips ✓, "Copy all" button ✓, "148 slugs · 23 categories" ✓. Tested: clicking "Copy all" → button became "Copied!" ✓; clicking a slug chip inserted `{{CandidateFirstName}}` at the editor cursor ✓. No console errors.
+- Email editor: VLM confirms — rich text editor with Bold/Italic/Underline ✓, Header/Body/Footer tabs ✓, Slug Library with search + chips + "Copy all" ✓, 106 email-applicable slugs shown ✓. No console errors.
+- `bun run lint` → 0 errors (1 pre-existing unrelated warning).
+
+Stage Summary:
+- The document & email template editors now lead with a prominent WYSIWYG editor (Header/Body/Footer tabs + full formatting toolbar: bold/italic/underline/strike/headings/lists/alignment/color/highlight/link/image/HR/clear-formatting/source/fullscreen).
+- Slug catalog expanded ~2.5× to 148 slugs across 23 categories (Bank, Education, Experience, Assets, Training, Benefits, Tax, Documents, Policies, Travel, System, Announcement, Shift, etc.).
+- SlugPalette gains a prominent "Copy all" button + always-visible per-slug copy icons + expand/collapse all — slugs can be copied and pasted anywhere.
+- Layout is editor-first and responsive: at every width the editor + slug library are both visible (stacking vertically on narrow screens instead of hiding).

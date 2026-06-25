@@ -1,0 +1,2191 @@
+Yes. Offboarding should be refactored in the **same style as onboarding**:
+
+```text
+Settings define what is allowed.
+Libraries create reusable templates.
+Entity Configuration selects defaults per company/entity.
+Workflow Configuration wires everything step-wise.
+Employee Exit page runs the actual offboarding.
+Kanban board tracks progress.
+Logs track everything.
+```
+
+Offboarding is not only resignation. It must handle **resignation, termination, retirement, contract end, absconding, layoff, death case, clearance, asset recovery, IT access removal, notice period, exit interview, FnF, exit letters, and alumni/ex-employee record**. Zoho People highlights exit interviews, paperwork, and exit records; greytHR highlights clearance tasks, reminders, and exit process control; Keka’s FnF guidance covers closing dues and deductions during exit. ([Zoho][1])
+
+# Final Offboarding Module Structure
+
+```text
+Offboarding / Exit Management
+ ├── Dashboard
+ ├── Employees / Exit Cases
+ │    ├── Initiate Exit
+ │    ├── Bulk Exit Initiation
+ │    └── Bulk Update
+ ├── Resignation Requests
+ ├── Kanban Board
+ ├── Clearance
+ ├── Asset Recovery
+ ├── IT Access Revocation
+ ├── Full & Final Settlement
+ ├── Document Library
+ ├── Workflow Configuration
+ ├── Email Templates
+ ├── Checklists
+ ├── Exit Interview Forms
+ ├── Alumni / Ex-Employees
+ ├── Logs
+ └── Settings
+```
+
+The most important page is **Employees / Exit Cases**. That is like your onboarding **Candidates** page.
+
+# 1. Entity-Wise Configuration Concept
+
+Every company/entity should be able to use default offboarding setup or custom setup.
+
+## Common Scope Fields
+
+Every workflow, Kanban board, checklist, letter template, email template, clearance rule, FnF rule, and exit interview form should have this header:
+
+```text
+Configuration Scope
+- Tenant Default
+- Entity / Company
+- Branch
+- Location
+- Department
+- Grade
+- Employee Type
+- Work Mode
+- Exit Type
+- Specific Employee
+
+Use Tenant Default: Yes / No
+Override Default: Yes / No
+Effective From
+Effective To
+Priority
+Status
+Version
+```
+
+## Example
+
+```text
+Tenant Default:
+Workflow = Standard Exit Workflow
+Kanban Board = Default Exit Kanban
+Clearance Checklist = Default Clearance
+Email Group = Default Exit Emails
+Exit Letter Templates = Default Templates
+FnF Rule = Standard FnF Rule
+
+Entity: ABC India:
+Workflow = India Full-Time Exit Workflow
+Kanban Board = India Exit Kanban
+Clearance Checklist = India HR + IT + Payroll + Admin Clearance
+Email Group = India Exit Emails
+Exit Letters = India Relieving / Experience / FnF Letters
+FnF Rule = India Payroll FnF Rule
+
+Entity: ABC UAE:
+Workflow = UAE Exit Workflow
+Kanban Board = UAE Exit Kanban
+Clearance Checklist = Passport / Visa / Admin / Payroll Clearance
+Email Group = UAE Exit Emails
+Exit Letters = UAE Service Letter / Contract Closure Letter
+FnF Rule = UAE Payroll Settlement Rule
+```
+
+# 2. Configuration Fallback Priority
+
+When exit is initiated, system should resolve configuration like this:
+
+```text
+1. Employee-specific exit configuration
+2. Exit type + employee type + department + location configuration
+3. Employee type configuration
+4. Department configuration
+5. Location configuration
+6. Entity / Company configuration
+7. Tenant default configuration
+```
+
+Example:
+
+```text
+Employee: Rahul
+Entity: ABC India
+Department: Engineering
+Employee Type: Full-Time
+Exit Type: Voluntary Resignation
+
+System checks:
+- Is there Rahul-specific exit workflow?
+- Is there Full-Time + Engineering + Resignation workflow?
+- Is there Full-Time resignation workflow?
+- Is there ABC India exit workflow?
+- If not, use Tenant Default workflow.
+```
+
+# 3. Dashboard
+
+## Where
+
+```text
+Offboarding → Dashboard
+```
+
+## Dashboard Cards
+
+```text
+Total Active Exit Cases
+Resignation Requests Pending
+Manager Approval Pending
+HR Approval Pending
+Employees in Notice Period
+Last Working Day Today
+Last Working Day This Week
+Clearance Pending
+Asset Recovery Pending
+IT Access Revocation Pending
+Knowledge Transfer Pending
+Exit Interview Pending
+FnF Pending
+Exit Letters Pending
+Employees Exited This Month
+Withdrawn Resignations
+Terminated Employees
+No-Dues Pending
+```
+
+## Filters
+
+```text
+Entity / Company
+Branch
+Location
+Department
+Designation
+Grade
+Employee Type
+Exit Type
+Exit Reason
+Manager
+HR Owner
+Last Working Day Range
+Exit Status
+Clearance Status
+FnF Status
+```
+
+# 4. Employees / Exit Cases Page
+
+## Where
+
+```text
+Offboarding → Employees / Exit Cases
+```
+
+This is the main operational page.
+
+## Top Buttons
+
+```text
+Initiate Exit
+Bulk Exit Initiation
+Bulk Update
+Export
+Import
+Assign Workflow
+Send Reminder
+```
+
+## Table Columns
+
+```text
+Checkbox
+Exit Case ID
+Employee Code
+Employee Name
+Entity / Company
+Branch
+Location
+Department
+Designation
+Grade
+Employee Type
+Reporting Manager
+HR Owner
+Exit Type
+Exit Reason
+Resignation Date
+Notice Start Date
+Requested LWD
+Approved LWD
+Actual LWD
+Workflow
+Current Stage
+Clearance Status
+Asset Status
+IT Access Status
+FnF Status
+Letter Status
+Exit Status
+Action
+```
+
+## Row Actions
+
+```text
+View Exit Case
+Edit Exit Details
+Assign / Change Workflow
+Move Stage
+Approve Resignation
+Reject Resignation
+Change LWD
+Start Clearance
+Assign Checklist
+Send Reminder
+Initiate FnF
+Generate Relieving Letter
+Generate Experience Letter
+Mark Exited
+Cancel Exit
+Withdraw Resignation
+View Logs
+```
+
+## Bulk Actions
+
+```text
+Assign Workflow
+Change Stage
+Assign HR Owner
+Send Reminder
+Start Clearance
+Assign Checklist
+Initiate FnF
+Generate Letters
+Bulk Update LWD
+Bulk Update Exit Status
+Put On Hold
+Export Selected
+```
+
+# 5. Initiate Exit Form
+
+## Where
+
+```text
+Offboarding → Employees / Exit Cases → Initiate Exit
+```
+
+Use stepper UI.
+
+```text
+Step 1: Employee Selection
+Step 2: Exit Details
+Step 3: Workflow Selection
+Step 4: Clearance & Checklist Preview
+Step 5: Notice / FnF Preview
+Step 6: Email / Notification
+Step 7: Review & Initiate
+```
+
+## Step 1: Employee Selection
+
+```text
+Employee
+Employee Code
+Entity
+Department
+Designation
+Location
+Reporting Manager
+Date of Joining
+Employment Type
+Employee Status
+```
+
+Auto-filled after selecting employee.
+
+## Step 2: Exit Details
+
+```text
+Exit Type
+Exit Category
+Exit Reason
+Sub Reason
+Detailed Reason
+Resignation Date
+Notice Start Date
+Requested Last Working Day
+Approved Last Working Day
+Actual Last Working Day
+Notice Period Required
+Notice Served Days
+Notice Shortfall Days
+Notice Waiver Required
+Notice Buyout Required
+Notice Recovery Required
+Employee Remarks
+Manager Remarks
+HR Remarks
+Attachment
+Legal Hold: Yes / No
+Regrettable Attrition: Yes / No
+Eligible for Rehire: Yes / No
+Confidential Exit: Yes / No
+```
+
+## Exit Types
+
+```text
+Voluntary Resignation
+Involuntary Termination
+Retirement
+End of Contract
+Absconding
+Layoff
+Death
+Mutual Separation
+Internship End
+Probation Failure
+Transfer to Another Entity
+```
+
+Keka’s exit initiation flow captures reason, resignation/termination reason, notice date, last working day, and discussion summary, so your Initiate Exit form should capture these details clearly. ([Keka Help][2])
+
+## Step 3: Workflow Selection
+
+```text
+Workflow Selection Mode
+- Auto Select
+- Manual Select
+
+Selected Exit Workflow
+Workflow Version
+Kanban Board
+Clearance Checklist
+Email Template Group
+Exit Interview Form
+FnF Rule
+Approval Workflow
+Exit Letter Template Group
+IT Revocation Rule
+Asset Recovery Rule
+```
+
+Auto selection should use:
+
+```text
+Entity
+Location
+Department
+Grade
+Employee Type
+Exit Type
+Exit Reason
+Notice Period Policy
+```
+
+## Step 4: Clearance & Checklist Preview
+
+Show all clearance tasks from selected workflow:
+
+```text
+Manager Clearance
+HR Clearance
+IT Clearance
+Admin / Facility Clearance
+Finance Clearance
+Payroll Clearance
+Asset Clearance
+Legal Clearance
+Knowledge Transfer Checklist
+Exit Interview Checklist
+```
+
+HR can override if workflow allows:
+
+```text
+Add extra task
+Remove optional task
+Make task mandatory
+Change task owner
+Change due date
+Mark financial impact
+Mark blocking task
+```
+
+## Step 5: Notice / FnF Preview
+
+```text
+Notice Period Required
+Notice Served
+Notice Shortfall
+Notice Recovery
+Notice Buyout
+Leave Encashment Eligibility
+Pending Salary
+Pending Reimbursements
+Loan / Advance Recovery
+Asset Damage Recovery
+FnF Rule
+Payroll Cut-Off
+FnF Approval Required
+```
+
+Keka explains FnF as closing all dues and deductions accurately during exit; its FnF policy content also includes deductions, encashments, provident fund, gratuity, incentives, benefits, and bonuses. ([Keka Help][2])
+
+## Step 6: Email / Notification
+
+```text
+Send Resignation Accepted Email
+Send Clearance Task Emails
+Send Manager Approval Email
+Send HR Approval Email
+Send Exit Interview Email
+Send FnF Notification
+Use Email Template Group
+CC To HR
+CC To Manager
+CC To Payroll
+```
+
+## Step 7: Review & Initiate
+
+Actions:
+
+```text
+Save as Draft
+Initiate Exit
+Initiate & Notify
+Initiate & Start Clearance
+```
+
+# 6. Resignation Requests
+
+## Where
+
+```text
+Offboarding → Resignation Requests
+```
+
+Employee side:
+
+```text
+Employee Portal → Resignation
+```
+
+Manager side:
+
+```text
+Manager Portal → Approvals → Resignation
+```
+
+## Employee Resignation Form
+
+```text
+Resignation Date
+Requested Last Working Day
+Exit Reason
+Detailed Reason
+Attachment
+Notice Period Auto Calculation
+Notice Shortfall Preview
+Employee Remarks
+Submit
+```
+
+## Manager Review Fields
+
+```text
+Manager Decision
+Recommended Last Working Day
+Retention Discussion Done
+Discussion Summary
+Regrettable Attrition
+Manager Remarks
+Forward to HR
+```
+
+## HR Review Fields
+
+```text
+Final Last Working Day
+Notice Waiver
+Notice Buyout
+Notice Recovery
+Exit Workflow
+Clearance Checklist
+HR Remarks
+Approve / Reject / Send Back
+```
+
+## Request Status
+
+```text
+Draft
+Submitted
+Pending Manager Approval
+Pending HR Approval
+Approved
+Rejected
+Withdrawn
+Cancelled
+Exit Initiated
+```
+
+# 7. Kanban Board
+
+## Where
+
+```text
+Offboarding → Kanban Board
+```
+
+The board should be dynamic based on selected exit workflow.
+
+## Default Exit Kanban Stages
+
+```text
+Draft
+Resignation Submitted
+Manager Review
+HR Review
+Notice Period
+Clearance In Progress
+Asset Recovery
+IT Revocation
+FnF Settlement
+Exit Letters
+Exited
+Alumni
+On Hold
+Withdrawn / Cancelled
+```
+
+For UI, you can also use a shorter board:
+
+```text
+Submitted
+Manager Review
+HR Review
+Notice Period
+Clearance
+FnF Settlement
+Exit Letters
+Exited
+On Hold
+Cancelled
+```
+
+## Kanban Card Fields
+
+```text
+Employee Name
+Employee Code
+Photo
+Entity
+Department
+Designation
+Location
+Manager
+HR Owner
+Exit Type
+Exit Reason
+Last Working Day
+Days Remaining
+Current Stage
+Clearance %
+Asset Pending Count
+IT Access Pending Count
+FnF Status
+Letter Status
+Risk Flag
+Pending With
+Last Activity
+```
+
+## Card Badges
+
+```text
+LWD Today
+LWD This Week
+Clearance Overdue
+Asset Pending
+IT Pending
+FnF Pending
+Legal Hold
+High Risk Exit
+Notice Shortfall
+No-Dues Pending
+Letter Pending
+```
+
+## Card Actions
+
+```text
+View Exit Case
+Move Stage
+Approve Resignation
+Reject Resignation
+Change LWD
+Start Clearance
+Assign Task
+Send Reminder
+Initiate FnF
+Generate Letter
+Mark Exited
+Cancel Exit
+View Timeline
+```
+
+# 8. Kanban Board Configuration
+
+## Where
+
+```text
+Offboarding → Workflow Configuration → Kanban Boards
+```
+
+## Board List Columns
+
+```text
+Board Name
+Board Code
+Scope Type
+Entity / Company
+Workflow
+No. of Stages
+Default Board
+Status
+Version
+Created By
+Updated At
+Action
+```
+
+## Create Board Fields
+
+```text
+Board Name
+Board Code
+Description
+Scope Type
+Entity / Company
+Default Board
+Use Tenant Default
+Effective From
+Effective To
+Status
+Version
+```
+
+## Stage Fields
+
+```text
+Stage Name
+Stage Code
+Description
+Color
+Icon
+Sort Order
+Is Initial Stage
+Is Final Stage
+Is Mandatory Stage
+Allow Manual Move
+Allow Auto Move
+Allow Skip
+Requires Approval To Enter
+Requires Approval To Exit
+SLA Days
+Reminder Rule
+Escalation Rule
+Status
+```
+
+## Stage Entry Conditions
+
+```text
+Resignation submitted
+Manager approval completed
+HR approval completed
+Notice period started
+Clearance initiated
+All required documents generated
+FnF initiated
+```
+
+## Stage Exit Conditions
+
+```text
+Manager approval completed
+HR approval completed
+Mandatory clearance completed
+Assets recovered or waived
+IT access revoked or scheduled
+Exit interview completed or waived
+FnF approved or marked not required
+Exit letters generated
+Employee marked exited
+```
+
+# 9. Exit Case Profile Page
+
+## Where
+
+```text
+Offboarding → Employees / Exit Cases → View Exit Case
+```
+
+## Tabs
+
+```text
+Overview
+Resignation / Separation Details
+Notice Period
+Workflow
+Clearance
+Tasks
+Assets
+IT Access
+Knowledge Transfer
+Exit Interview
+Payroll / FnF
+Letters
+Approvals
+Timeline
+Logs
+Notes
+```
+
+## Overview Tab
+
+```text
+Employee details
+Current workflow
+Current stage
+Exit type
+Exit reason
+Resignation date
+Approved LWD
+Days remaining
+Clearance %
+Asset status
+IT status
+FnF status
+Letter status
+Pending tasks
+Overdue tasks
+Next action
+```
+
+# 10. Clearance
+
+## Where
+
+```text
+Offboarding → Clearance
+```
+
+and inside:
+
+```text
+Exit Case → Clearance
+```
+
+greytHR describes the exit process around open clearance tasks, completing tasks, sending reminders, post-clearance, and marking the employee exited. That is exactly why Clearance must be a first-class page, not hidden inside comments. ([greythr][3])
+
+## Clearance Departments
+
+```text
+Reporting Manager
+HR
+IT
+Admin / Facilities
+Finance
+Payroll
+Legal
+Compliance
+Security
+Project Manager
+Training / L&D
+Asset Team
+Travel Desk
+Library / Store
+```
+
+## Clearance Task Fields
+
+```text
+Task Name
+Task Code
+Department
+Owner Type
+Owner
+Due Date Rule
+SLA Days
+Mandatory
+Blocking
+Requires Comment
+Requires Attachment
+Requires Approval
+Financial Impact
+Recovery Amount
+Waiver Allowed
+Reminder Rule
+Escalation Rule
+Stage Mapping
+Status
+```
+
+## Clearance Status
+
+```text
+Not Started
+Pending
+In Progress
+Submitted
+Approved
+Rejected
+Needs Correction
+Completed
+Overdue
+Waived
+Not Applicable
+```
+
+## Clearance Actions
+
+```text
+Start Task
+Submit Task
+Approve Task
+Reject Task
+Send Back
+Mark Complete
+Waive Task
+Add Recovery Amount
+Add Comment
+Upload Attachment
+Reassign Owner
+Send Reminder
+```
+
+# 11. Asset Recovery
+
+## Where
+
+```text
+Offboarding → Asset Recovery
+```
+
+## Asset Types
+
+```text
+Laptop
+Desktop
+Monitor
+Keyboard
+Mouse
+Mobile
+SIM Card
+ID Card
+Access Card
+Uniform
+Vehicle
+Tools
+Software License
+Company Documents
+Accommodation Items
+Office Keys
+```
+
+## Asset Recovery Fields
+
+```text
+Asset Code
+Asset Type
+Serial Number
+Assigned Date
+Expected Return Date
+Actual Return Date
+Return Status
+Condition at Return
+Damage: Yes / No
+Lost: Yes / No
+Damage Amount
+Recovery Amount
+Waiver Approved
+Remarks
+Attachment
+Push Recovery to FnF
+```
+
+## Actions
+
+```text
+Mark Returned
+Mark Damaged
+Mark Lost
+Add Recovery Amount
+Waive Recovery
+Send Reminder
+Generate Asset No-Dues
+Push to FnF
+```
+
+# 12. IT Access Revocation
+
+## Where
+
+```text
+Offboarding → IT Access Revocation
+```
+
+## Access Items
+
+```text
+HRMS Login
+Official Email
+SSO / Azure AD / Google Workspace
+VPN
+Wi-Fi
+Slack / Teams
+GitHub / GitLab
+Jira / Azure DevOps
+CRM
+ERP
+Payroll System
+Cloud Storage
+Shared Drives
+Biometric Device
+Access Control System
+Project Management Tools
+Finance Tools
+Admin Tools
+```
+
+## IT Revocation Fields
+
+```text
+System Name
+Access Type
+Owner Team
+Revoke Timing
+- Immediately
+- On LWD End of Day
+- After Clearance
+- Manual
+
+Revoke Date
+Revoke Time
+Data Backup Required
+Data Transfer Required
+New Owner
+License Deactivation Required
+Revocation Status
+Verification Status
+Remarks
+```
+
+## Important Rules
+
+```text
+Termination / high-risk exit: revoke immediately.
+Normal resignation: revoke on LWD end of day.
+Garden leave: revoke on garden leave start.
+HRMS employee self-service: keep limited access until FnF/letters if configured.
+```
+
+# 13. Full & Final Settlement
+
+## Where
+
+```text
+Offboarding → Full & Final Settlement
+```
+
+## FnF Input Sections
+
+```text
+Employee & Exit Details
+Attendance & Paid Days
+Leave Encashment
+Notice Recovery / Buyout
+Salary Hold
+Pending Salary
+Bonus / Incentive
+Arrears
+Expense Reimbursements
+Loans / Advances
+Asset Recovery
+Tax / Statutory Deductions
+Gratuity
+Other Earnings
+Other Deductions
+Net Payable / Recoverable
+```
+
+## FnF Earnings
+
+```text
+Salary till LWD
+Bonus
+Incentive
+Arrears
+Leave Encashment
+Gratuity
+Reimbursement Payable
+Other Earnings
+```
+
+## FnF Deductions
+
+```text
+LWP / LOP
+Notice Recovery
+Loan Recovery
+Advance Recovery
+Asset Damage Recovery
+Tax / TDS
+PF / ESI / Statutory Deductions
+Other Deductions
+```
+
+## FnF Status
+
+```text
+Not Started
+Draft
+Inputs Pending
+Calculated
+Under Review
+Approved
+Rejected
+Paid
+Closed
+On Hold
+```
+
+## FnF Actions
+
+```text
+Fetch Payroll Inputs
+Fetch Leave Encashment
+Fetch Asset Recovery
+Fetch Loan Balance
+Calculate FnF
+Add Manual Earning
+Add Manual Deduction
+Send for Approval
+Approve
+Reject
+Mark Paid
+Generate Settlement Letter
+Export
+```
+
+# 14. Document Library
+
+## Where
+
+```text
+Offboarding → Document Library
+```
+
+## Document Categories
+
+```text
+Resignation Acceptance Letter
+Relieving Letter
+Experience Letter
+Service Certificate
+Termination Letter
+No Dues Certificate
+FnF Settlement Letter
+Recovery Letter
+Exit Interview Form
+Alumni Welcome Letter
+Custom Exit Document
+```
+
+Zoho People highlights generating exit documents like relieving and experience letters and emailing/downloading them, so these templates should be part of Offboarding Document Library. ([Zoho][1])
+
+## Template List Columns
+
+```text
+Template Name
+Template Code
+Document Type
+Scope Type
+Entity / Company
+Department
+Employee Type
+Language
+Version
+Default Template
+Status
+Created By
+Updated At
+Action
+```
+
+## Template Editor
+
+Same editor as onboarding:
+
+```text
+Header
+Body
+Footer
+```
+
+Formatting:
+
+```text
+Bold
+Italic
+Underline
+Font Family
+Font Size
+Text Color
+Alignment
+Table
+Logo
+Signature Block
+Watermark
+Page Break
+Preview
+Generate PDF
+Version History
+```
+
+## Exit Document Variables
+
+```text
+{{EmployeeName}}
+{{EmployeeCode}}
+{{EntityName}}
+{{CompanyName}}
+{{Department}}
+{{Designation}}
+{{Location}}
+{{DateOfJoining}}
+{{ResignationDate}}
+{{NoticeDate}}
+{{LastWorkingDay}}
+{{ExitType}}
+{{ExitReason}}
+{{ManagerName}}
+{{HRName}}
+{{FnFAmount}}
+{{RecoveryAmount}}
+{{LetterDate}}
+{{CompanyLogo}}
+{{AuthorizedSignatory}}
+```
+
+# 15. Email Templates
+
+## Where
+
+```text
+Offboarding → Email Templates
+```
+
+## Email Template Categories
+
+```text
+Resignation Submitted
+Manager Approval Pending
+HR Approval Pending
+Resignation Approved
+Resignation Rejected
+Resignation Withdrawn
+Exit Process Initiated
+Notice Period Started
+LWD Changed
+Clearance Task Assigned
+Clearance Task Reminder
+Clearance Task Overdue
+Asset Return Pending
+IT Revocation Pending
+Exit Interview Request
+Exit Interview Reminder
+FnF Inputs Pending
+FnF Calculated
+FnF Approved
+FnF Paid
+Relieving Letter Generated
+Experience Letter Generated
+Employee Marked Exited
+Alumni Profile Created
+```
+
+## Email Template Fields
+
+```text
+Template Name
+Template Code
+Event Type
+Scope Type
+Entity / Company
+Workflow
+Language
+Subject
+Header
+Body
+Footer
+Default Template
+Status
+Version
+```
+
+## Recipient Options
+
+```text
+Employee
+Reporting Manager
+Manager of Manager
+HR Owner
+Department Head
+IT Admin
+Admin Team
+Finance Admin
+Payroll Admin
+Asset Owner
+Legal Team
+Specific Role
+Specific Employee
+Specific Email
+CC
+BCC
+```
+
+## Email Variables
+
+```text
+{{EmployeeName}}
+{{EmployeeCode}}
+{{EntityName}}
+{{CompanyName}}
+{{Department}}
+{{Designation}}
+{{ManagerName}}
+{{HRName}}
+{{ResignationDate}}
+{{NoticeDate}}
+{{LastWorkingDay}}
+{{ExitReason}}
+{{TaskName}}
+{{DueDate}}
+{{PendingTasks}}
+{{ClearanceStatus}}
+{{FnFStatus}}
+{{ApprovalLink}}
+{{PortalLink}}
+{{RelievingLetterLink}}
+```
+
+# 16. Checklists
+
+## Where
+
+```text
+Offboarding → Checklists
+```
+
+## Checklist Categories
+
+```text
+Employee Exit Checklist
+Manager Clearance Checklist
+HR Checklist
+IT Checklist
+Admin Checklist
+Payroll Checklist
+Finance Checklist
+Asset Checklist
+Legal Checklist
+Knowledge Transfer Checklist
+Exit Interview Checklist
+```
+
+## Checklist Fields
+
+```text
+Checklist Name
+Checklist Code
+Category
+Scope Type
+Entity / Company
+Department
+Employee Type
+Exit Type
+No. of Tasks
+Default Checklist
+Status
+Version
+```
+
+## Task Fields
+
+```text
+Task Name
+Task Code
+Description
+Owner Type
+Owner
+Due Date Rule
+Priority
+Mandatory
+Blocking
+Requires Attachment
+Requires Comment
+Requires Approval
+Financial Impact
+Recovery Allowed
+Auto Complete Condition
+Reminder Rule
+Escalation Rule
+Stage Mapping
+Status
+```
+
+## Due Date Rules
+
+```text
+On Exit Initiation
+On Resignation Approval
+Before LWD - X Days
+On LWD
+After LWD + X Days
+After Previous Task Completion + X Days
+Manual Date
+```
+
+# 17. Exit Interview Forms
+
+## Where
+
+```text
+Offboarding → Exit Interview Forms
+```
+
+Zoho states exit interviews help gather constructive feedback and understand pain points, so exit interviews should support custom forms, scoring, and analytics. ([Zoho][1])
+
+## Form Categories
+
+```text
+HR Exit Interview
+Manager Exit Discussion
+Anonymous Exit Survey
+Department Exit Feedback
+Final HR Call
+```
+
+## Form Fields
+
+```text
+Primary Reason for Leaving
+Secondary Reason
+New Company, optional
+New Role, optional
+Compensation Satisfaction
+Manager Relationship Rating
+Work Culture Rating
+Career Growth Rating
+Workload Rating
+Would You Rejoin?
+Would You Recommend Company?
+Suggestions
+Final Remarks
+```
+
+## Form Settings
+
+```text
+Anonymous Allowed
+Mandatory / Optional
+Visible To Manager
+Visible To HR
+Allow Employee Edit After Submit
+Requires HR Review
+Map Answers to Analytics
+```
+
+# 18. Workflow Configuration
+
+## Where
+
+```text
+Offboarding → Workflow Configuration
+```
+
+This is the brain of offboarding.
+
+## Workflow List Columns
+
+```text
+Workflow Name
+Workflow Code
+Scope Type
+Entity / Company
+Department
+Employee Type
+Exit Type
+Kanban Board
+Clearance Checklist
+Email Group
+FnF Rule
+Default Workflow
+Priority
+Status
+Version
+Action
+```
+
+## Workflow Actions
+
+```text
+Create Workflow
+Edit Draft
+Clone
+Preview
+Validate
+Publish
+Deactivate
+Archive
+Create New Version
+Delete, only if unused
+View Assigned Exit Cases
+View Version History
+```
+
+# 19. Create Workflow Wizard
+
+```text
+Step 1: Basic Details
+Step 2: Applicability
+Step 3: Kanban Board
+Step 4: Exit Request / Resignation Rules
+Step 5: Clearance & Checklists
+Step 6: Asset Recovery Rules
+Step 7: IT Revocation Rules
+Step 8: Exit Interview Rules
+Step 9: FnF Rules
+Step 10: Document / Letter Rules
+Step 11: Approval Rules
+Step 12: Email Rules
+Step 13: Employee Status / Alumni Rules
+Step 14: Review & Publish
+```
+
+## Step 1: Basic Details
+
+```text
+Workflow Name
+Workflow Code
+Description
+Scope Type
+Entity / Company
+Country
+State
+Effective From
+Effective To
+Default Workflow
+Priority
+Status
+Version
+```
+
+## Step 2: Applicability
+
+```text
+Apply Workflow To:
+- Tenant Default
+- Entity / Company
+- Branch
+- Location
+- Department
+- Designation
+- Grade
+- Employee Type
+- Exit Type
+- Exit Reason
+- Specific Employee
+```
+
+## Step 3: Kanban Board
+
+```text
+Use Default Kanban Board
+Selected Kanban Board
+Allow Stage Customization
+Allow HR Manual Stage Movement
+Allow Auto Stage Movement
+Require Reason for Manual Movement
+```
+
+## Step 4: Exit Request / Resignation Rules
+
+```text
+Allow Employee Resignation
+Allow Manager Initiated Exit
+Allow HR Initiated Exit
+Allow Bulk Exit Initiation
+Allow Future Dated Resignation
+Allow Backdated Resignation
+Minimum Notice Required
+Allow Withdrawal Before Approval
+Allow Withdrawal After Approval
+Withdrawal Requires Approval
+Allow LWD Change
+LWD Change Requires Approval
+Require Exit Reason
+Require Detailed Reason
+Require Attachment
+Require Manager Discussion
+```
+
+## Step 5: Clearance & Checklists
+
+```text
+Clearance Checklist
+Stage Mapping
+Auto Create Clearance Tasks
+Task Owner
+Due Date Rule
+Mandatory Task
+Blocking Task
+Requires Attachment
+Requires Comment
+Requires Approval
+Financial Impact
+Recovery Allowed
+Reminder Rule
+Escalation Rule
+Block Stage Exit Until Completed
+```
+
+## Step 6: Asset Recovery Rules
+
+```text
+Asset Recovery Required
+Auto Fetch Assigned Assets
+Require Asset Return Before Exit
+Allow Asset Waiver
+Allow Damage Recovery
+Allow Lost Asset Recovery
+Push Recovery Amount to FnF
+Asset Owner
+Reminder Rule
+Escalation Rule
+```
+
+## Step 7: IT Revocation Rules
+
+```text
+IT Revocation Required
+Auto Fetch Access List
+Revoke Timing
+- Immediately
+- On LWD End of Day
+- After Clearance
+- Manual
+
+Data Backup Required
+Ownership Transfer Required
+Disable HRMS Login
+Disable Email
+Disable SSO / VPN / Tools
+Disable Biometric Access
+Allow Limited Alumni Access
+Block Exit Closure Until Revoked
+```
+
+## Step 8: Exit Interview Rules
+
+```text
+Exit Interview Required
+Exit Interview Form
+Send To Employee
+Anonymous Allowed
+Due Date Rule
+HR Review Required
+Block Exit Closure Until Submitted
+Allow HR Waiver
+```
+
+## Step 9: FnF Rules
+
+```text
+FnF Required
+FnF Rule
+Auto Fetch Payroll Inputs
+Auto Fetch Leave Encashment
+Auto Fetch Notice Recovery
+Auto Fetch Loan Recovery
+Auto Fetch Asset Recovery
+Allow Manual Earnings
+Allow Manual Deductions
+FnF Approval Required
+FnF Must Be Completed Before Exit Closure
+Allow FnF After Exit
+Generate FnF Letter
+```
+
+## Step 10: Document / Letter Rules
+
+```text
+Generate Resignation Acceptance Letter
+Generate Relieving Letter
+Generate Experience Letter
+Generate No Dues Certificate
+Generate FnF Settlement Letter
+Generate Termination Letter
+Letter Template
+Stage Mapping
+Approval Required Before Issue
+Digital Signature Required
+Email Letter To Employee
+Block Closure Until Letter Generated
+```
+
+## Step 11: Approval Rules
+
+```text
+Approval Required
+Approval Type
+Approver Type
+Approver
+Approval Level
+Sequential / Parallel
+Auto Approve If Approver Missing
+Escalation After Days
+Reminder Frequency
+Block Stage Until Approved
+```
+
+## Approval Types
+
+```text
+Resignation Approval
+HR Exit Approval
+LWD Change Approval
+Notice Waiver Approval
+Clearance Approval
+Asset Waiver Approval
+FnF Approval
+Letter Approval
+Exit Closure Approval
+```
+
+## Step 12: Email Rules
+
+This is where you set **what email goes when**.
+
+```text
+Stage
+Trigger Event
+Email Template
+Send To
+CC
+BCC
+Send Timing
+Delay
+Repeat Reminder
+Reminder Frequency
+Maximum Reminder Count
+Escalation Required
+Escalate To
+Condition
+Status
+```
+
+## Trigger Events
+
+```text
+Resignation submitted
+Exit initiated
+Employee enters stage
+Employee exits stage
+Manager approval pending
+HR approval pending
+LWD changed
+Notice period started
+Clearance task assigned
+Clearance task overdue
+Asset return pending
+IT revocation pending
+Exit interview assigned
+Exit interview submitted
+FnF initiated
+FnF approved
+FnF paid
+Letter generated
+Employee marked exited
+Alumni profile created
+```
+
+## Example Email Rule
+
+```text
+Stage: Clearance
+Trigger: Employee enters stage
+Email Template: Clearance Task Assigned
+Send To: Task Owner
+CC: HR Owner
+When: Immediately
+```
+
+Reminder example:
+
+```text
+Trigger: Asset return pending
+Condition: Pending for 2 days
+Template: Asset Return Reminder
+Send To: Employee
+CC: Admin Team, HR Owner
+Repeat: Every 2 days
+Maximum Count: 3
+Escalate To: HR Manager
+```
+
+## Step 13: Employee Status / Alumni Rules
+
+```text
+Mark Employee Exited On
+- Actual LWD
+- Exit Closure
+- Manual HR Action
+
+Deactivate Employee Profile
+Deactivate Login
+Keep Limited Exit Portal Access
+Create Alumni Profile
+Allow Rehire
+Default Rehire Eligibility
+Blacklist / No-Rehire Option
+Data Retention Rule
+```
+
+# 20. Settings
+
+## Where
+
+```text
+Offboarding → Settings
+```
+
+Settings are for module-level and entity-wise defaults.
+
+## Settings Tabs
+
+```text
+General Settings
+Employee Exit Settings
+Entity Configuration
+Kanban Settings
+Workflow Settings
+Clearance Settings
+Asset Recovery Settings
+IT Revocation Settings
+FnF Settings
+Document / Letter Settings
+Email Settings
+Exit Interview Settings
+Approval Settings
+Employee Portal Settings
+Alumni Settings
+Import / Export Settings
+Audit & Security
+```
+
+# 21. Entity Configuration Settings
+
+## Where
+
+```text
+Offboarding → Settings → Entity Configuration
+```
+
+## Purpose
+
+For each entity/company, select default offboarding setup.
+
+## Fields
+
+```text
+Entity / Company
+Use Tenant Default: Yes / No
+
+Default Exit Workflow
+Default Exit Kanban Board
+Default Clearance Checklist
+Default Asset Recovery Rule
+Default IT Revocation Rule
+Default FnF Rule
+Default Exit Interview Form
+Default Email Template Group
+Default Approval Workflow
+Default Letter Template Group
+Default HR Owner
+Default Exit Reason Set
+Default Notice Period Policy
+Default Alumni Rule
+
+Effective From
+Effective To
+Status
+```
+
+## Example
+
+```text
+Entity: ABC India Pvt Ltd
+Use Tenant Default: No
+
+Default Exit Workflow: India Full-Time Exit Workflow
+Default Kanban Board: India Exit Kanban
+Default Clearance Checklist: India Clearance Checklist
+Default FnF Rule: India FnF Rule
+Default Email Template Group: India Exit Emails
+Default Exit Interview Form: India Exit Interview Form
+Default Letter Template Group: India Exit Letters
+Default Notice Period Policy: India Notice Policy
+```
+
+# 22. Important Settings Fields
+
+## General Settings
+
+```text
+Enable Offboarding Module
+Allow Employee Resignation
+Allow Manager Initiated Exit
+Allow HR Initiated Exit
+Allow Bulk Exit Initiation
+Allow Resignation Withdrawal
+Allow Exit Cancellation
+Allow Rehire
+Default Exit Workflow
+Default Kanban Board
+Default HR Owner
+```
+
+## Employee Exit Settings
+
+```text
+Employee Exit ID Auto Generate
+Exit ID Prefix
+Exit ID Format
+Duplicate Active Exit Case Check
+Allow Backdated Exit Initiation
+Allow Future-Dated Exit
+Allow LWD Change
+Allow Exit Hold
+Allow Exit Reopen
+```
+
+## Workflow Settings
+
+```text
+Allow Multiple Workflows
+Allow Entity-Wise Workflow
+Allow Department-Wise Workflow
+Allow Employee Type-Wise Workflow
+Allow Exit Type-Wise Workflow
+Allow Workflow Priority
+Allow Workflow Versioning
+Allow Clone Workflow
+Allow Archive Workflow
+Allow Workflow Publish Approval
+Conflict Handling
+```
+
+## Clearance Settings
+
+```text
+Enable Clearance
+Allow Entity-Wise Clearance Checklist
+Allow Department-Wise Clearance Checklist
+Allow Mandatory Task
+Allow Blocking Task
+Allow Task Waiver
+Allow Recovery Amount
+Require Clearance Before FnF
+Require Clearance Before Exit Closure
+```
+
+## FnF Settings
+
+```text
+Enable FnF
+Allow Entity-Wise FnF Rule
+Allow Payroll Group-Wise FnF Rule
+Auto Fetch Payroll Inputs
+Auto Fetch Leave Encashment
+Auto Fetch Asset Recovery
+Auto Fetch Loan Recovery
+Allow Manual Earnings
+Allow Manual Deductions
+FnF Approval Required
+FnF Payment Tracking
+```
+
+## Email Settings
+
+```text
+Enable Email Notifications
+Enable Entity-Wise Email Templates
+Enable Workflow-Wise Email Templates
+Enable Stage-Wise Email Rules
+Enable Reminder Emails
+Enable Escalation Emails
+Enable Email Logs
+Enable Retry Failed Emails
+Default Email Template Group
+Default From Email
+Default Reply-To Email
+Send Immediately / Queue
+Retry Count
+Retry Interval
+```
+
+## Audit & Security Settings
+
+```text
+Enable Audit Log
+Track Exit Details Changes
+Track Workflow Changes
+Track Stage Movement
+Track Clearance Changes
+Track Asset Recovery Changes
+Track IT Revocation Changes
+Track FnF Changes
+Track Letter Generation
+Track Employee Status Change
+Soft Delete Only
+Role-Based Access Control
+Field-Level Permission
+```
+
+# 23. Logs
+
+## Where
+
+```text
+Offboarding → Logs
+```
+
+## Log Types
+
+```text
+Exit Case Logs
+Resignation Logs
+Workflow Logs
+Stage Movement Logs
+Clearance Logs
+Asset Recovery Logs
+IT Revocation Logs
+FnF Logs
+Document / Letter Logs
+Email Logs
+Approval Logs
+Employee Status Logs
+Alumni Logs
+System Error Logs
+```
+
+## Log Columns
+
+```text
+Date & Time
+Exit Case ID
+Employee
+Employee Code
+Entity
+Action Type
+Old Value
+New Value
+Performed By
+Role
+IP Address
+Device
+Status
+Remarks
+```
+
+# 24. Employee Portal
+
+## Employee Can Do
+
+```text
+Submit resignation
+View resignation status
+Withdraw resignation, if allowed
+View approved LWD
+View notice period details
+View exit checklist
+Complete employee-owned tasks
+Upload handover documents
+Submit exit interview
+View FnF status, if allowed
+Download relieving / experience letter
+Update alumni contact details
+```
+
+# 25. Manager Portal
+
+## Manager Can Do
+
+```text
+Approve / reject resignation
+Recommend LWD
+Add retention discussion notes
+Assign knowledge transfer owner
+Track team member clearance
+Approve KT completion
+Approve exit tasks
+View team exit calendar
+```
+
+# 26. Candidate/Employee Submission Flow Equivalent
+
+For offboarding, employee submits resignation or HR initiates exit.
+
+```text
+Employee submits resignation
+        ↓
+System saves resignation request
+        ↓
+Manager approval task created
+        ↓
+Manager approves/rejects/recommends LWD
+        ↓
+HR approval task created
+        ↓
+HR finalizes LWD and workflow
+        ↓
+Exit case created
+        ↓
+System creates clearance, asset, IT, FnF, interview tasks
+        ↓
+Employee completes handover / exit interview
+        ↓
+Departments complete clearance
+        ↓
+FnF is calculated and approved
+        ↓
+Letters are generated
+        ↓
+Employee is marked exited
+        ↓
+Access is revoked
+        ↓
+Alumni profile is created
+```
+
+# 27. Final Wiring Logic
+
+```text
+Employee / HR initiates exit
+    ↓
+Select Entity + Employee + Exit Type
+    ↓
+System finds Entity Configuration
+    ↓
+System gets Default / Custom Exit Workflow
+    ↓
+Workflow gets Kanban Board
+    ↓
+Workflow stages define clearance, emails, checklist, approvals, FnF, letters, IT revocation
+    ↓
+Employee moves through Kanban stages
+    ↓
+Each stage triggers configured actions
+    ↓
+Manager/HR/IT/Admin/Payroll complete tasks
+    ↓
+FnF and letters are completed
+    ↓
+Employee is marked exited
+    ↓
+Alumni record is created
+    ↓
+Logs track everything
+```
+
+# Final Complete Menu
+
+```text
+Offboarding / Exit Management
+ ├── Dashboard
+ ├── Employees / Exit Cases
+ │    ├── Initiate Exit
+ │    ├── Bulk Exit Initiation
+ │    └── Bulk Update
+ ├── Resignation Requests
+ ├── Kanban Board
+ ├── Clearance
+ ├── Asset Recovery
+ ├── IT Access Revocation
+ ├── Full & Final Settlement
+ ├── Document Library
+ │    ├── Resignation Acceptance Letter
+ │    ├── Relieving Letter
+ │    ├── Experience Letter
+ │    ├── No Dues Certificate
+ │    ├── FnF Settlement Letter
+ │    └── Custom Exit Documents
+ ├── Workflow Configuration
+ │    ├── Basic Details
+ │    ├── Applicability
+ │    ├── Kanban Board
+ │    ├── Exit Request Rules
+ │    ├── Clearance & Checklists
+ │    ├── Asset Recovery Rules
+ │    ├── IT Revocation Rules
+ │    ├── Exit Interview Rules
+ │    ├── FnF Rules
+ │    ├── Document / Letter Rules
+ │    ├── Approval Rules
+ │    ├── Email Rules
+ │    ├── Employee Status / Alumni Rules
+ │    └── Review & Publish
+ ├── Email Templates
+ ├── Checklists
+ ├── Exit Interview Forms
+ ├── Alumni / Ex-Employees
+ ├── Logs
+ └── Settings
+      ├── General Settings
+      ├── Employee Exit Settings
+      ├── Entity Configuration
+      ├── Kanban Settings
+      ├── Workflow Settings
+      ├── Clearance Settings
+      ├── Asset Recovery Settings
+      ├── IT Revocation Settings
+      ├── FnF Settings
+      ├── Document / Letter Settings
+      ├── Email Settings
+      ├── Exit Interview Settings
+      ├── Approval Settings
+      ├── Employee Portal Settings
+      ├── Alumni Settings
+      ├── Import / Export Settings
+      └── Audit & Security
+```
+
+This is the proper offboarding architecture: **entity-wise default/custom settings + reusable libraries + stage-wise workflow wiring + exit case execution + full audit logs**.
+
+[1]: https://www.zoho.com/people/employee-offboarding-software.html?utm_source=chatgpt.com "Employee Offboarding Software | Exit Management System"
+[2]: https://help.keka.com/hc/en-us/articles/39946770277009-Processing-a-Full-and-Final-F-F-Settlement?utm_source=chatgpt.com "Processing a Full and Final (F&F) Settlement"
+[3]: https://www.greythr.com/blog/greythr-introduces-employee-exit-module/?utm_source=chatgpt.com "Introduction of the Employee Exit Module"
