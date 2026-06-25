@@ -1,0 +1,1675 @@
+     1→"use client"
+     2→
+     3→// =============================================================
+     4→// Onboarding — Document Library (spec #8)
+     5→// Reusable document templates for offer letters, agreements,
+     6→// declarations, etc. 15 categories, full template editor with
+     7→// HTML Header/Body/Footer sections, variable picker, preview.
+     8→// =============================================================
+     9→
+    10→import * as React from "react"
+    11→import { useMemo, useState, useCallback, useRef, useEffect } from "react"
+    12→import { motion, AnimatePresence } from "framer-motion"
+    13→import { toast } from "sonner"
+    14→import {
+    15→  FileText, FileCheck2, ShieldCheck, Briefcase, GraduationCap, ScrollText,
+    16→  FilePlus2, Mail, ClipboardCheck, SearchCheck, HeartPulse, Laptop, Landmark,
+    17→  Users, FileBox, Layers2,
+    18→  Search, Plus, Pencil, Copy, Trash2, Star, Power, History, Eye, MoreHorizontal,
+    19→  Save, X, Braces, ChevronDown,
+    20→  Inbox, Loader2, Variable, PenLine, FileCode2, Tag, Sparkles, RotateCcw,
+    21→} from "lucide-react"
+    22→import type { LucideIcon } from "lucide-react"
+    23→
+    24→import { cn } from "@/lib/utils"
+    25→import { Button } from "@/components/ui/button"
+    26→import { Input } from "@/components/ui/input"
+    27→import { Label } from "@/components/ui/label"
+    28→import { Badge } from "@/components/ui/badge"
+    29→import { Switch } from "@/components/ui/switch"
+    30→import { Separator } from "@/components/ui/separator"
+    31→import { Skeleton } from "@/components/ui/skeleton"
+    32→import { ScrollArea } from "@/components/ui/scroll-area"
+    33→import {
+    34→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+    35→} from "@/components/ui/dialog"
+    36→import {
+    37→  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+    38→  AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel,
+    39→} from "@/components/ui/alert-dialog"
+    40→import {
+    41→  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+    42→} from "@/components/ui/select"
+    43→import {
+    44→  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+    45→  DropdownMenuSeparator,
+    46→} from "@/components/ui/dropdown-menu"
+    47→import {
+    48→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    49→} from "@/components/ui/table"
+    50→import {
+    51→  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+    52→} from "@/components/ui/tooltip"
+    53→
+    54→import { PageHeader, StatCard, EmptyState } from "@/components/hrms/ui"
+    55→import {
+    56→  useFetch, apiPost, apiPatch, apiDelete, safeToast,
+    57→  timeAgo, formatDate,
+    58→} from "@/components/hrms/onboarding/shared"
+    59→import {
+    60→  SectionedRichEditor,
+    61→  type RichEditorHandle,
+    62→  type EditorSection,
+    63→} from "@/components/hrms/onboarding/rich-editor"
+    64→
+    65→// =============================================================
+    66→// Types
+    67→// =============================================================
+    68→
+    69→export interface DocumentTemplate {
+    70→  id: string
+    71→  tenantId: string
+    72→  name: string
+    73→  code: string
+    74→  documentType: string
+    75→  scopeType: string
+    76→  entityId?: string | null
+    77→  branchId?: string | null
+    78→  locationId?: string | null
+    79→  departmentId?: string | null
+    80→  employeeType?: string | null
+    81→  language: string
+    82→  version: number
+    83→  isDefault: boolean
+    84→  status: string
+    85→  createdBy?: string | null
+    86→  headerHtml?: string | null
+    87→  bodyHtml: string
+    88→  footerHtml?: string | null
+    89→  pageSettings?: string | null
+    90→  variablesUsed?: string | null
+    91→  effectiveFrom?: string | null
+    92→  effectiveTo?: string | null
+    93→  createdAt: string
+    94→  updatedAt: string
+    95→}
+    96→
+    97→// =============================================================
+    98→// Constants — categories, scope types, statuses, languages
+    99→// =============================================================
+   100→
+   101→interface CategoryDef {
+   102→  label: string
+   103→  icon: LucideIcon
+   104→}
+   105→
+   106→const CATEGORIES: CategoryDef[] = [
+   107→  { label: "Offer Letter", icon: FileText },
+   108→  { label: "Appointment Letter", icon: FileCheck2 },
+   109→  { label: "NDA", icon: ShieldCheck },
+   110→  { label: "Employment Agreement", icon: Briefcase },
+   111→  { label: "Internship Letter", icon: GraduationCap },
+   112→  { label: "Contract Letter", icon: ScrollText },
+   113→  { label: "Joining Letter", icon: FilePlus2 },
+   114→  { label: "Welcome Letter", icon: Mail },
+   115→  { label: "Policy Acknowledgment", icon: ClipboardCheck },
+   116→  { label: "Background Verification Form", icon: SearchCheck },
+   117→  { label: "Medical Declaration", icon: HeartPulse },
+   118→  { label: "Asset Declaration", icon: Laptop },
+   119→  { label: "Bank Declaration", icon: Landmark },
+   120→  { label: "Nominee Declaration", icon: Users },
+   121→  { label: "Custom Document", icon: FileBox },
+   122→]
+   123→
+   124→const ALL_DOCS = "All Documents"
+   125→
+   126→const SCOPE_TYPES: { value: string; label: string }[] = [
+   127→  { value: "tenant", label: "Tenant (Org-wide)" },
+   128→  { value: "entity", label: "Entity" },
+   129→  { value: "branch", label: "Branch" },
+   130→  { value: "location", label: "Location" },
+   131→  { value: "department", label: "Department" },
+   132→  { value: "employee_type", label: "Employee Type" },
+   133→]
+   134→
+   135→const STATUS_OPTIONS = ["Active", "Draft", "Archived"]
+   136→const LANGUAGES = [
+   137→  { value: "en", label: "English" },
+   138→  { value: "hi", label: "Hindi" },
+   139→  { value: "ta", label: "Tamil" },
+   140→  { value: "te", label: "Telugu" },
+   141→  { value: "kn", label: "Kannada" },
+   142→  { value: "mr", label: "Marathi" },
+   143→  { value: "bn", label: "Bengali" },
+   144→  { value: "gu", label: "Gujarati" },
+   145→  { value: "pa", label: "Punjabi" },
+   146→]
+   147→
+   148→const STATUS_BADGE: Record<string, string> = {
+   149→  Active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+   150→  Draft: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300",
+   151→  Archived: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+   152→}
+   153→
+   154→const SCOPE_BADGE: Record<string, string> = {
+   155→  tenant: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300",
+   156→  entity: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+   157→  branch: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
+   158→  location: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300",
+   159→  department: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-300",
+   160→  employee_type: "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-300",
+   161→}
+   162→
+   163→const SCOPE_LABEL: Record<string, string> = {
+   164→  tenant: "Tenant",
+   165→  entity: "Entity",
+   166→  branch: "Branch",
+   167→  location: "Location",
+   168→  department: "Department",
+   169→  employee_type: "Employee Type",
+   170→}
+   171→
+   172→// =============================================================
+   173→// Document Variables / Slugs
+   174→// =============================================================
+   175→
+   176→interface VariableGroup {
+   177→  name: string
+   178→  icon: LucideIcon
+   179→  variables: string[]
+   180→}
+   181→
+   182→const VARIABLE_GROUPS: VariableGroup[] = [
+   183→  {
+   184→    name: "Candidate", icon: Users, variables: [
+   185→      "CandidateName", "CandidateFirstName", "CandidateLastName", "CandidateEmail",
+   186→      "CandidateMobile", "CandidateAddress",
+   187→    ],
+   188→  },
+   189→  {
+   190→    name: "Job", icon: Briefcase, variables: [
+   191→      "Designation", "Department", "Grade", "Location", "Branch", "EntityName",
+   192→      "CompanyName", "JoiningDate", "ReportingManager", "HRManager", "WorkMode", "EmploymentType",
+   193→    ],
+   194→  },
+   195→  {
+   196→    name: "Salary", icon: Landmark, variables: [
+   197→      "CTC", "BasicSalary", "HRA", "SpecialAllowance", "Bonus", "GrossSalary",
+   198→      "NetSalary", "SalaryCurrency",
+   199→    ],
+   200→  },
+   201→  {
+   202→    name: "Policies", icon: ClipboardCheck, variables: [
+   203→      "ProbationPeriod", "NoticePeriod", "WorkingHours", "LeavePolicy", "AttendancePolicy",
+   204→    ],
+   205→  },
+   206→  {
+   207→    name: "Company", icon: FileCheck2, variables: [
+   208→      "CompanyLogo", "CompanyAddress", "CompanyWebsite", "CompanyEmail", "CompanyPhone",
+   209→      "AuthorizedSignatory", "SignatoryDesignation",
+   210→    ],
+   211→  },
+   212→  {
+   213→    name: "Dates", icon: FileCode2, variables: [
+   214→      "CurrentDate", "OfferDate", "OfferExpiryDate", "LetterDate",
+   215→    ],
+   216→  },
+   217→]
+   218→
+   219→const ALL_VARIABLES = VARIABLE_GROUPS.flatMap((g) => g.variables)
+   220→
+   221→// Sample substitution values used in preview
+   222→const SAMPLE_VALUES: Record<string, string> = {
+   223→  CandidateName: "Priya Sharma",
+   224→  CandidateFirstName: "Priya",
+   225→  CandidateLastName: "Sharma",
+   226→  CandidateEmail: "priya.sharma@example.com",
+   227→  CandidateMobile: "+91 98765 43210",
+   228→  CandidateAddress: "42 MG Road, Bengaluru, KA 560001",
+   229→  Designation: "Senior Software Engineer",
+   230→  Department: "Engineering",
+   231→  Grade: "L5",
+   232→  Location: "Bengaluru",
+   233→  Branch: "Corporate Office",
+   234→  EntityName: "Acme Technologies Pvt Ltd",
+   235→  CompanyName: "Acme Technologies",
+   236→  JoiningDate: "15 Aug 2025",
+   237→  ReportingManager: "Anand Verma",
+   238→  HRManager: "Riya Kapoor",
+   239→  WorkMode: "Hybrid",
+   240→  EmploymentType: "Full-time",
+   241→  CTC: "₹24,00,000",
+   242→  BasicSalary: "₹12,00,000",
+   243→  HRA: "₹4,80,000",
+   244→  SpecialAllowance: "₹3,20,000",
+   245→  Bonus: "₹2,00,000",
+   246→  GrossSalary: "₹22,00,000",
+   247→  NetSalary: "₹18,50,000",
+   248→  SalaryCurrency: "INR",
+   249→  ProbationPeriod: "6 months",
+   250→  NoticePeriod: "60 days",
+   251→  WorkingHours: "9 hours / day",
+   252→  LeavePolicy: "Earned + Sick + Casual Leave",
+   253→  AttendancePolicy: "Biometric + Flexible Hours",
+   254→  CompanyLogo: "[LOGO]",
+   255→  CompanyAddress: "123 Tech Park, Bengaluru, KA 560001",
+   256→  CompanyWebsite: "www.acme-tech.com",
+   257→  CompanyEmail: "hr@acme-tech.com",
+   258→  CompanyPhone: "+91 80 1234 5678",
+   259→  AuthorizedSignatory: "Anand Verma",
+   260→  SignatoryDesignation: "VP, Human Resources",
+   261→  CurrentDate: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+   262→  OfferDate: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+   263→  OfferExpiryDate: new Date(Date.now() + 7 * 86400000).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+   264→  LetterDate: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+   265→}
+   266→
+   267→function substituteVariables(html: string): string {
+   268→  if (!html) return ""
+   269→  return html.replace(/\{\{(\w+)\}\}/g, (_m, key: string) => SAMPLE_VALUES[key] ?? `{{${key}}}`)
+   270→}
+   271→
+   272→function extractVariables(html: string): string[] {
+   273→  if (!html) return []
+   274→  const set = new Set<string>()
+   275→  const re = /\{\{(\w+)\}\}/g
+   276→  let m: RegExpExecArray | null
+   277→  while ((m = re.exec(html)) !== null) {
+   278→    set.add(m[1])
+   279→  }
+   280→  return Array.from(set)
+   281→}
+   282→
+   283→// =============================================================
+   284→// Helpers
+   285→// =============================================================
+   286→
+   287→function toCode(name: string): string {
+   288→  return name
+   289→    .trim()
+   290→    .toUpperCase()
+   291→    .replace(/[^A-Z0-9]+/g, "_")
+   292→    .replace(/^_+|_+$/g, "")
+   293→    .slice(0, 40)
+   294→}
+   295→
+   296→function defaultTemplateBody(category: string): string {
+   297→  // A reasonable starter body for common categories — purely a help to the user.
+   298→  const head = `<div style="font-family: Arial, sans-serif; color: #1f2937; padding: 24px;">\n`
+   299→  const foot = `\n</div>`
+   300→  switch (category) {
+   301→    case "Offer Letter":
+   302→      return `${head}<h1 style="color:#0f766e;margin:0 0 4px;">Offer of Employment</h1>
+   303→<p style="margin:0 0 16px;color:#64748b;">{{CompanyName}} · {{CompanyAddress}}</p>
+   304→<p>Dear {{CandidateName}},</p>
+   305→<p>We are delighted to offer you the position of <strong>{{Designation}}</strong> at {{EntityName}}, reporting to {{ReportingManager}}. Your joining date will be <strong>{{JoiningDate}}</strong>.</p>
+   306→<p>Your annual CTC will be {{CTC}} ({{SalaryCurrency}}), with a probation period of {{ProbationPeriod}}.</p>
+   307→<p>Please indicate your acceptance by signing below.</p>
+   308→<p style="margin-top:32px;">Sincerely,<br/><strong>{{AuthorizedSignatory}}</strong><br/>{{SignatoryDesignation}}, {{CompanyName}}</p>${foot}`
+   309→    case "Welcome Letter":
+   310→      return `${head}<h1 style="color:#0f766e;margin:0 0 8px;">Welcome to {{CompanyName}}, {{CandidateFirstName}}!</h1>
+   311→<p>We're thrilled to have you join the {{Department}} team as a {{Designation}}. Your first day is {{JoiningDate}} and you'll be based at {{Branch}}, {{Location}}.</p>
+   312→<p>If you have any questions before joining, reach out to {{HRManager}} at {{CompanyEmail}}.</p>
+   313→<p>Warm regards,<br/>{{HRManager}}<br/>{{CompanyName}}</p>${foot}`
+   314→    case "NDA":
+   315→      return `${head}<h1 style="color:#0f766e;margin:0 0 8px;">Non-Disclosure Agreement</h1>
+   316→<p>This Non-Disclosure Agreement ("Agreement") is entered into on {{LetterDate}} between {{EntityName}} ("Company") and {{CandidateName}} ("Recipient").</p>
+   317→<p>The Recipient agrees to hold all confidential information of the Company in strict trust for a period of {{NoticePeriod}} following termination of engagement.</p>
+   318→<p>Signed on {{CurrentDate}}:</p>
+   319→<p style="margin-top:24px;">_____________________ &nbsp;&nbsp; _____________________<br/>{{CandidateName}} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {{AuthorizedSignatory}}</p>${foot}`
+   320→    default:
+   321→      return `${head}<h1 style="color:#0f766e;">${category}</h1>
+   322→<p>Dear {{CandidateName}},</p>
+   323→<p>This document is generated from the <strong>${category}</strong> template.</p>
+   324→<p>Issued on {{CurrentDate}} by {{CompanyName}}.</p>${foot}`
+   325→  }
+   326→}
+   327→
+   328→// =============================================================
+   329→// Formatters
+   330→// =============================================================
+   331→
+   332→const SCOPE_FALLBACK = "Tenant"
+   333→
+   334→function scopeBadgeClass(scope?: string): string {
+   335→  return SCOPE_BADGE[scope || "tenant"] || SCOPE_BADGE.tenant
+   336→}
+   337→function scopeLabel(scope?: string): string {
+   338→  return SCOPE_LABEL[scope || "tenant"] || SCOPE_FALLBACK
+   339→}
+   340→
+   341→// =============================================================
+   342→// Sub-components
+   343→// =============================================================
+   344→
+   345→/** Loading skeleton rows for the templates table. */
+   346→function TableSkeleton() {
+   347→  return (
+   348→    <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+   349→      <div className="p-3 space-y-2">
+   350→        {Array.from({ length: 6 }).map((_, i) => (
+   351→          <Skeleton key={i} className="h-11 w-full" />
+   352→        ))}
+   353→      </div>
+   354→    </div>
+   355→  )
+   356→}
+   357→
+   358→/** Category sidebar pill. */
+   359→function CategoryPill({
+   360→  icon: Icon, label, count, active, onClick,
+   361→}: {
+   362→  icon: React.ComponentType<{ className?: string }>
+   363→  label: string
+   364→  count: number
+   365→  active: boolean
+   366→  onClick: () => void
+   367→}) {
+   368→  return (
+   369→    <button
+   370→      type="button"
+   371→      onClick={onClick}
+   372→      aria-pressed={active}
+   373→      className={cn(
+   374→        "group w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-transparent",
+   375→        active
+   376→          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+   377→          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+   378→      )}
+   379→    >
+   380→      <Icon className={cn("h-4 w-4 shrink-0", active ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/80")} />
+   381→      <span className="flex-1 text-left truncate">{label}</span>
+   382→      <span
+   383→        className={cn(
+   384→          "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-semibold tabular-nums",
+   385→          active
+   386→            ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+   387→            : "bg-muted text-muted-foreground",
+   388→        )}
+   389→      >
+   390→        {count}
+   391→      </span>
+   392→    </button>
+   393→  )
+   394→}
+   395→
+   396→/** A small badge that shows the variable count used in a template. */
+   397→function VariablesBadge({ count }: { count: number }) {
+   398→  if (!count) return <span className="text-xs text-muted-foreground/60 italic">No slugs</span>
+   399→  return (
+   400→    <Badge
+   401→      variant="secondary"
+   402→      className="bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300 font-medium border-0"
+   403→    >
+   404→      <Braces className="h-3 w-3 mr-1" />
+   405→      {count} slug{count !== 1 ? "s" : ""}
+   406→    </Badge>
+   407→  )
+   408→}
+   409→
+   410→// =============================================================
+   411→// Variable Picker (right panel of editor)
+   412→// =============================================================
+   413→
+   414→interface VariablePickerProps {
+   415→  /** Insert the slug at the cursor in the currently-focused textarea. */
+   416→  onInsert: (slug: string) => void
+   417→  usedVariables: string[]
+   418→}
+   419→
+   420→function VariablePicker({ onInsert, usedVariables }: VariablePickerProps) {
+   421→  const [search, setSearch] = useState("")
+   422→
+   423→  const filteredGroups = useMemo(() => {
+   424→    const q = search.trim().toLowerCase()
+   425→    if (!q) return VARIABLE_GROUPS
+   426→    return VARIABLE_GROUPS
+   427→      .map((g) => ({
+   428→        ...g,
+   429→        variables: g.variables.filter((v) => v.toLowerCase().includes(q)),
+   430→      }))
+   431→      .filter((g) => g.variables.length > 0)
+   432→  }, [search])
+   433→
+   434→  return (
+   435→    <div className="flex flex-col h-full min-h-0">
+   436→      <div className="flex items-center gap-2 px-1 pb-2">
+   437→        <Variable className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+   438→        <span className="text-sm font-semibold text-foreground">Variables</span>
+   439→        <span className="text-xs text-muted-foreground ml-auto">Click to insert</span>
+   440→      </div>
+   441→      <div className="relative px-1 pb-2">
+   442→        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+   443→        <Input
+   444→          value={search}
+   445→          onChange={(e) => setSearch(e.target.value)}
+   446→          placeholder="Search slugs…"
+   447→          className="pl-8 h-8 text-xs bg-background"
+   448→        />
+   449→      </div>
+   450→      <ScrollArea className="flex-1 min-h-0 px-1 -mr-1">
+   451→        <div className="space-y-3 pr-1">
+   452→          {filteredGroups.length === 0 && (
+   453→            <p className="text-xs text-muted-foreground italic text-center py-6">
+   454→              No slugs match "{search}".
+   455→            </p>
+   456→          )}
+   457→          {filteredGroups.map((g) => {
+   458→            const GIcon = g.icon
+   459→            return (
+   460→              <div key={g.name}>
+   461→                <div className="flex items-center gap-1.5 mb-1.5">
+   462→                  <GIcon className="h-3.5 w-3.5 text-muted-foreground" />
+   463→                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+   464→                    {g.name}
+   465→                  </span>
+   466→                  <Separator className="flex-1 h-px bg-border/40" />
+   467→                </div>
+   468→                <div className="flex flex-wrap gap-1">
+   469→                  {g.variables.map((v) => {
+   470→                    const used = usedVariables.includes(v)
+   471→                    return (
+   472→                      <button
+   473→                        key={v}
+   474→                        type="button"
+   475→                        onClick={() => onInsert(v)}
+   476→                        title={`Insert {{${v}}}`}
+   477→                        className={cn(
+   478→                          "group inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-mono text-[11px] border transition-colors",
+   479→                          "hover:bg-emerald-500/10 hover:border-emerald-500/40 hover:text-emerald-700 dark:hover:text-emerald-300",
+   480→                          used
+   481→                            ? "border-cyan-500/30 bg-cyan-500/5 text-cyan-700 dark:text-cyan-300"
+   482→                            : "border-border/60 bg-muted/40 text-foreground/80",
+   483→                        )}
+   484→                      >
+   485→                        {used && <span className="h-1 w-1 rounded-full bg-cyan-500" />}
+   486→                        {`{{${v}}}`}
+   487→                      </button>
+   488→                    )
+   489→                  })}
+   490→                </div>
+   491→              </div>
+   492→            )
+   493→          })}
+   494→        </div>
+   495→      </ScrollArea>
+   496→    </div>
+   497→  )
+   498→}
+   499→
+   500→// =============================================================
+   501→// HTML Editor panel — provided by the shared <SectionedRichEditor> in
+   502→// ./rich-editor (real WYSIWYG contentEditable editor with formatting
+   503→// toolbar + Header/Body/Footer tabs). The local EditorSection type is
+   504→// re-exported from that module.
+   505→// =============================================================
+   506→
+   507→// (no local declarations — kept for reference)
+   508→
+   509→// =============================================================
+   510→// Preview Dialog (renders HTML with sample substitution)
+   511→// =============================================================
+   512→
+   513→interface PreviewDialogProps {
+   514→  open: boolean
+   515→  onOpenChange: (v: boolean) => void
+   516→  template: {
+   517→    name?: string
+   518→    headerHtml?: string | null
+   519→    bodyHtml?: string
+   520→    footerHtml?: string | null
+   521→  } | null
+   522→}
+   523→
+   524→function PreviewDialog({ open, onOpenChange, template }: PreviewDialogProps) {
+   525→  if (!template) return null
+   526→  const header = substituteVariables(template.headerHtml || "")
+   527→  const body = substituteVariables(template.bodyHtml || "")
+   528→  const footer = substituteVariables(template.footerHtml || "")
+   529→  const combined = `
+   530→    <html>
+   531→      <head>
+   532→        <meta charset="utf-8" />
+   533→        <style>
+   534→          body { font-family: Arial, Helvetica, sans-serif; color: #1f2937; margin: 0; padding: 32px; }
+   535→          .doc-header { border-bottom: 2px solid #0f766e; padding-bottom: 12px; margin-bottom: 16px; }
+   536→          .doc-footer { border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 24px; font-size: 11px; color: #64748b; }
+   537→          .doc-body { min-height: 60vh; }
+   538→          h1, h2, h3 { color: #0f766e; }
+   539→          table { border-collapse: collapse; width: 100%; }
+   540→          td, th { border: 1px solid #e5e7eb; padding: 6px 10px; }
+   541→        </style>
+   542→      </head>
+   543→      <body>
+   544→        ${header ? `<div class="doc-header">${header}</div>` : ""}
+   545→        <div class="doc-body">${body}</div>
+   546→        ${footer ? `<div class="doc-footer">${footer}</div>` : ""}
+   547→      </body>
+   548→    </html>
+   549→  `
+   550→
+   551→  return (
+   552→    <Dialog open={open} onOpenChange={onOpenChange}>
+   553→      <DialogContent className="max-w-4xl w-full max-h-[90vh]">
+   554→        <DialogHeader>
+   555→          <DialogTitle className="flex items-center gap-2">
+   556→            <Eye className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+   557→            Preview · {template.name || "Untitled Template"}
+   558→          </DialogTitle>
+   559→          <DialogDescription>
+   560→            Rendered HTML with sample variable substitution (e.g., {"{{CandidateName}}"} → "Priya Sharma").
+   561→          </DialogDescription>
+   562→        </DialogHeader>
+   563→        <div className="rounded-lg border border-border/60 overflow-hidden bg-white">
+   564→          <iframe
+   565→            title="Document Preview"
+   566→            srcDoc={combined}
+   567→            className="w-full h-[60vh] bg-white"
+   568→            sandbox="allow-same-origin"
+   569→          />
+   570→        </div>
+   571→        <DialogFooter>
+   572→          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+   573→        </DialogFooter>
+   574→      </DialogContent>
+   575→    </Dialog>
+   576→  )
+   577→}
+   578→
+   579→// =============================================================
+   580→// Version History Dialog (read-only — current version + audit note)
+   581→// =============================================================
+   582→
+   583→interface VersionHistoryDialogProps {
+   584→  open: boolean
+   585→  onOpenChange: (v: boolean) => void
+   586→  template: DocumentTemplate | null
+   587→}
+   588→
+   589→function VersionHistoryDialog({ open, onOpenChange, template }: VersionHistoryDialogProps) {
+   590→  if (!template) return null
+   591→  const used = template.variablesUsed
+   592→    ? template.variablesUsed.split(",").map((s) => s.trim()).filter(Boolean)
+   593→    : extractVariables(`${template.headerHtml || ""}${template.bodyHtml || ""}${template.footerHtml || ""}`)
+   594→
+   595→  return (
+   596→    <Dialog open={open} onOpenChange={onOpenChange}>
+   597→      <DialogContent className="max-w-lg">
+   598→        <DialogHeader>
+   599→          <DialogTitle className="flex items-center gap-2">
+   600→            <History className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+   601→            Version History
+   602→          </DialogTitle>
+   603→          <DialogDescription>
+   604→            {template.name} · <span className="font-mono">{template.code}</span>
+   605→          </DialogDescription>
+   606→        </DialogHeader>
+   607→        <div className="space-y-3 py-1">
+   608→          <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2.5">
+   609→            <div>
+   610→              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+   611→                Current Version · v{template.version}
+   612→              </p>
+   613→              <p className="text-xs text-muted-foreground">Last updated {timeAgo(template.updatedAt)}</p>
+   614→            </div>
+   615→            {template.isDefault && (
+   616→              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-0">
+   617→                <Star className="h-3 w-3 mr-1 fill-current" /> Default
+   618→              </Badge>
+   619→            )}
+   620→          </div>
+   621→
+   622→          <div className="grid grid-cols-2 gap-2 text-xs">
+   623→            <div className="rounded-md border border-border/60 px-3 py-2">
+   624→              <p className="text-muted-foreground">Status</p>
+   625→              <p className="font-medium text-foreground">{template.status}</p>
+   626→            </div>
+   627→            <div className="rounded-md border border-border/60 px-3 py-2">
+   628→              <p className="text-muted-foreground">Language</p>
+   629→              <p className="font-medium text-foreground uppercase">{template.language}</p>
+   630→            </div>
+   631→            <div className="rounded-md border border-border/60 px-3 py-2">
+   632→              <p className="text-muted-foreground">Created</p>
+   633→              <p className="font-medium text-foreground">{formatDate(template.createdAt)}</p>
+   634→            </div>
+   635→            <div className="rounded-md border border-border/60 px-3 py-2">
+   636→              <p className="text-muted-foreground">Last Updated</p>
+   637→              <p className="font-medium text-foreground">{formatDate(template.updatedAt)}</p>
+   638→            </div>
+   639→          </div>
+   640→
+   641→          <div className="rounded-md border border-border/60 px-3 py-2">
+   642→            <p className="text-xs text-muted-foreground mb-1.5">Variables used ({used.length})</p>
+   643→            {used.length === 0 ? (
+   644→              <p className="text-xs italic text-muted-foreground/60">No slugs detected in this template.</p>
+   645→            ) : (
+   646→              <div className="flex flex-wrap gap-1">
+   647→                {used.map((v) => (
+   648→                  <code key={v} className="text-[10px] px-1.5 py-0.5 rounded bg-muted font-mono text-foreground/80">
+   649→                    {`{{${v}}}`}
+   650→                  </code>
+   651→                ))}
+   652→              </div>
+   653→            )}
+   654→          </div>
+   655→
+   656→          <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 flex gap-2">
+   657→            <History className="h-4 w-4 shrink-0 mt-0.5" />
+   658→            <p>
+   659→              Each save increments the version number. Prior versions are retained in the audit log
+   660→              for compliance — contact your administrator to restore an earlier version.
+   661→            </p>
+   662→          </div>
+   663→        </div>
+   664→        <DialogFooter>
+   665→          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+   666→        </DialogFooter>
+   667→      </DialogContent>
+   668→    </Dialog>
+   669→  )
+   670→}
+   671→
+   672→// =============================================================
+   673→// Template Editor Dialog
+   674→// =============================================================
+   675→
+   676→interface TemplateEditorDialogProps {
+   677→  open: boolean
+   678→  onOpenChange: (v: boolean) => void
+   679→  /** When editing/previewing — the existing template. null = creating new. */
+   680→  template: DocumentTemplate | null
+   681→  /** Pre-selected category (used as default for new templates). */
+   682→  defaultCategory: string
+   683→  onSaved: () => void
+   684→}
+   685→
+   686→function TemplateEditorDialog({
+   687→  open, onOpenChange, template, defaultCategory, onSaved,
+   688→}: TemplateEditorDialogProps) {
+   689→  const isEdit = !!template
+   690→  const [name, setName] = useState("")
+   691→  const [code, setCode] = useState("")
+   692→  const [documentType, setDocumentType] = useState(defaultCategory)
+   693→  const [scopeType, setScopeType] = useState("tenant")
+   694→  const [language, setLanguage] = useState("en")
+   695→  const [status, setStatus] = useState("Draft")
+   696→  const [isDefault, setIsDefault] = useState(false)
+   697→  const [version, setVersion] = useState(1)
+   698→  const [effectiveFrom, setEffectiveFrom] = useState("")
+   699→  const [effectiveTo, setEffectiveTo] = useState("")
+   700→  const [header, setHeader] = useState("")
+   701→  const [body, setBody] = useState("")
+   702→  const [footer, setFooter] = useState("")
+   703→  const [previewOpen, setPreviewOpen] = useState(false)
+   704→  const [saving, setSaving] = useState(false)
+   705→
+   706→  // Ref to the shared WYSIWYG editor — exposes insertSlug(slug) so the
+   707→  // variable picker can inject {{slugs}} at the cursor of whichever
+   708→  // section (Header/Body/Footer) was last focused.
+   709→  const editorRef = useRef<RichEditorHandle | null>(null)
+   710→
+   711→  // Sync state when template changes / dialog opens
+   712→  useEffect(() => {
+   713→    if (!open) return
+   714→    if (template) {
+   715→      setName(template.name)
+   716→      setCode(template.code)
+   717→      setDocumentType(template.documentType)
+   718→      setScopeType(template.scopeType || "tenant")
+   719→      setLanguage(template.language || "en")
+   720→      setStatus(template.status || "Draft")
+   721→      setIsDefault(template.isDefault || false)
+   722→      setVersion(template.version || 1)
+   723→      setEffectiveFrom(template.effectiveFrom ? template.effectiveFrom.slice(0, 10) : "")
+   724→      setEffectiveTo(template.effectiveTo ? template.effectiveTo.slice(0, 10) : "")
+   725→      setHeader(template.headerHtml || "")
+   726→      setBody(template.bodyHtml || "")
+   727→      setFooter(template.footerHtml || "")
+   728→    } else {
+   729→      setName("")
+   730→      setCode("")
+   731→      setDocumentType(defaultCategory)
+   732→      setScopeType("tenant")
+   733→      setLanguage("en")
+   734→      setStatus("Draft")
+   735→      setIsDefault(false)
+   736→      setVersion(1)
+   737→      setEffectiveFrom("")
+   738→      setEffectiveTo("")
+   739→      setHeader("")
+   740→      setBody(defaultTemplateBody(defaultCategory))
+   741→      setFooter("")
+   742→    }
+   743→  }, [open, template, defaultCategory])
+   744→
+   745→  // Auto-generate code from name (only on create, when user hasn't manually edited code)
+   746→  const codeTouchedRef = useRef(false)
+   747→  useEffect(() => {
+   748→    if (!open) {
+   749→      codeTouchedRef.current = false
+   750→      return
+   751→    }
+   752→    if (!isEdit && !codeTouchedRef.current) {
+   753→      setCode(toCode(name))
+   754→    }
+   755→  }, [name, open, isEdit])
+   756→
+   757→  // Variables used across all sections (for picker highlight)
+   758→  const usedVariables = useMemo(
+   759→    () => extractVariables(`${header}${body}${footer}`),
+   760→    [header, body, footer],
+   761→  )
+   762→
+   763→  // Insert a {{slug}} token at the cursor of the focused editor section
+   764→  const insertVariable = useCallback((slug: string) => {
+   765→    editorRef.current?.insertSlug(slug)
+   766→    toast.info(`Inserted {{${slug}}}`)
+   767→  }, [])
+   768→
+   769→  const handleSectionChange = useCallback((section: EditorSection, value: string) => {
+   770→    if (section === "header") setHeader(value)
+   771→    else if (section === "body") setBody(value)
+   772→    else setFooter(value)
+   773→  }, [])
+   774→
+   775→  const handleSave = async () => {
+   776→    if (!name.trim()) return toast.error("Template name is required")
+   777→    if (!code.trim()) return toast.error("Template code is required")
+   778→    if (!documentType) return toast.error("Document type is required")
+   779→    if (!body.trim()) return toast.error("Body HTML is required — every template needs content.")
+   780→
+   781→    const payload: Record<string, unknown> = {
+   782→      name: name.trim(),
+   783→      code: code.trim(),
+   784→      documentType,
+   785→      scopeType,
+   786→      language,
+   787→      status,
+   788→      isDefault,
+   789→      version,
+   790→      effectiveFrom: effectiveFrom || null,
+   791→      effectiveTo: effectiveTo || null,
+   792→      headerHtml: header || null,
+   793→      bodyHtml: body,
+   794→      footerHtml: footer || null,
+   795→      variablesUsed: usedVariables.join(",") || null,
+   796→    }
+   797→
+   798→    setSaving(true)
+   799→    try {
+   800→      if (isEdit && template) {
+   801→        await safeToast(
+   802→          apiPatch(`/api/onboarding-documents/${template.id}`, payload),
+   803→          "Template updated",
+   804→          "Failed to update template",
+   805→        )
+   806→      } else {
+   807→        await safeToast(
+   808→          apiPost("/api/onboarding-documents", payload),
+   809→          "Template created",
+   810→          "Failed to create template",
+   811→        )
+   812→      }
+   813→      onSaved()
+   814→      onOpenChange(false)
+   815→    } catch {
+   816→      // safeToast already displayed the error
+   817→    } finally {
+   818→      setSaving(false)
+   819→    }
+   820→  }
+   821→
+   822→  const previewTemplate = {
+   823→    name, headerHtml: header, bodyHtml: body, footerHtml: footer,
+   824→  }
+   825→
+   826→  return (
+   827→    <>
+   828→      <Dialog open={open} onOpenChange={(v) => { if (!saving) onOpenChange(v) }}>
+   829→        <DialogContent
+   830→          showCloseButton
+   831→          className="sm:max-w-6xl max-w-[calc(100%-2rem)] w-full max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col"
+   832→        >
+   833→          {/* Header */}
+   834→          <DialogHeader className="px-6 py-4 border-b border-border/60 space-y-1">
+   835→            <DialogTitle className="flex items-center gap-2">
+   836→              <PenLine className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+   837→              {isEdit ? "Edit Template" : "New Document Template"}
+   838→              {isEdit && template && (
+   839→                <Badge variant="secondary" className="bg-muted text-muted-foreground font-mono text-[11px] ml-1">
+   840→                  v{template.version}
+   841→                </Badge>
+   842→              )}
+   843→            </DialogTitle>
+   844→            <DialogDescription>
+   845→              {isEdit
+   846→                ? `Editing "${template?.name}". Slug variables are auto-detected and listed on the right.`
+   847→                : "Configure the template metadata, write the HTML content, and insert slugs from the right panel."}
+   848→            </DialogDescription>
+   849→          </DialogHeader>
+   850→
+   851→          {/* Body — 3 column grid */}
+   852→          <div className="flex-1 overflow-hidden">
+   853→            <div className="grid grid-cols-1 lg:grid-cols-7 h-full">
+   854→              {/* LEFT: metadata form (col-span-2) */}
+   855→              <div className="lg:col-span-2 border-r border-border/60 bg-muted/20 p-4 overflow-y-auto max-h-[68vh]">
+   856→                <div className="space-y-3">
+   857→                  <div className="flex items-center gap-1.5 mb-1">
+   858→                    <Tag className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+   859→                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+   860→                      Template Details
+   861→                    </span>
+   862→                  </div>
+   863→                  <div>
+   864→                    <Label htmlFor="tpl-name" className="text-xs font-medium">Template Name <span className="text-rose-500">*</span></Label>
+   865→                    <Input
+   866→                      id="tpl-name"
+   867→                      value={name}
+   868→                      onChange={(e) => setName(e.target.value)}
+   869→                      placeholder="e.g. Standard Offer Letter — Engineering"
+   870→                      className="mt-1 h-8 text-sm bg-background"
+   871→                    />
+   872→                  </div>
+   873→                  <div>
+   874→                    <Label htmlFor="tpl-code" className="text-xs font-medium">Template Code <span className="text-rose-500">*</span></Label>
+   875→                    <Input
+   876→                      id="tpl-code"
+   877→                      value={code}
+   878→                      onChange={(e) => { setCode(e.target.value); codeTouchedRef.current = true }}
+   879→                      placeholder="e.g. OFFER_ENG_2025"
+   880→                      className="mt-1 h-8 text-sm font-mono bg-background"
+   881→                    />
+   882→                    <p className="text-[10px] text-muted-foreground mt-0.5">Auto-generated from name. Must be unique.</p>
+   883→                  </div>
+   884→                  <div>
+   885→                    <Label className="text-xs font-medium">Document Type <span className="text-rose-500">*</span></Label>
+   886→                    <Select value={documentType} onValueChange={setDocumentType}>
+   887→                      <SelectTrigger className="mt-1 h-8 text-sm bg-background w-full">
+   888→                        <SelectValue placeholder="Select type" />
+   889→                      </SelectTrigger>
+   890→                      <SelectContent>
+   891→                        {CATEGORIES.map((c) => (
+   892→                          <SelectItem key={c.label} value={c.label}>{c.label}</SelectItem>
+   893→                        ))}
+   894→                      </SelectContent>
+   895→                    </Select>
+   896→                  </div>
+   897→                  <div>
+   898→                    <Label className="text-xs font-medium">Scope Type</Label>
+   899→                    <Select value={scopeType} onValueChange={setScopeType}>
+   900→                      <SelectTrigger className="mt-1 h-8 text-sm bg-background w-full">
+   901→                        <SelectValue />
+   902→                      </SelectTrigger>
+   903→                      <SelectContent>
+   904→                        {SCOPE_TYPES.map((s) => (
+   905→                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+   906→                        ))}
+   907→                      </SelectContent>
+   908→                    </Select>
+   909→                  </div>
+   910→                  <div className="grid grid-cols-2 gap-2">
+   911→                    <div>
+   912→                      <Label className="text-xs font-medium">Language</Label>
+   913→                      <Select value={language} onValueChange={setLanguage}>
+   914→                        <SelectTrigger className="mt-1 h-8 text-sm bg-background w-full">
+   915→                          <SelectValue />
+   916→                        </SelectTrigger>
+   917→                        <SelectContent>
+   918→                          {LANGUAGES.map((l) => (
+   919→                            <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+   920→                          ))}
+   921→                        </SelectContent>
+   922→                      </Select>
+   923→                    </div>
+   924→                    <div>
+   925→                      <Label htmlFor="tpl-version" className="text-xs font-medium">Version</Label>
+   926→                      <Input
+   927→                        id="tpl-version"
+   928→                        type="number"
+   929→                        min={1}
+   930→                        value={version}
+   931→                        onChange={(e) => setVersion(Math.max(1, Number(e.target.value) || 1))}
+   932→                        className="mt-1 h-8 text-sm bg-background"
+   933→                      />
+   934→                    </div>
+   935→                  </div>
+   936→                  <div>
+   937→                    <Label className="text-xs font-medium">Status</Label>
+   938→                    <Select value={status} onValueChange={setStatus}>
+   939→                      <SelectTrigger className="mt-1 h-8 text-sm bg-background w-full">
+   940→                        <SelectValue />
+   941→                      </SelectTrigger>
+   942→                      <SelectContent>
+   943→                        {STATUS_OPTIONS.map((s) => (
+   944→                          <SelectItem key={s} value={s}>{s}</SelectItem>
+   945→                        ))}
+   946→                      </SelectContent>
+   947→                    </Select>
+   948→                  </div>
+   949→                  <div className="grid grid-cols-2 gap-2">
+   950→                    <div>
+   951→                      <Label htmlFor="tpl-from" className="text-xs font-medium">Effective From</Label>
+   952→                      <Input
+   953→                        id="tpl-from"
+   954→                        type="date"
+   955→                        value={effectiveFrom}
+   956→                        onChange={(e) => setEffectiveFrom(e.target.value)}
+   957→                        className="mt-1 h-8 text-sm bg-background"
+   958→                      />
+   959→                    </div>
+   960→                    <div>
+   961→                      <Label htmlFor="tpl-to" className="text-xs font-medium">Effective To</Label>
+   962→                      <Input
+   963→                        id="tpl-to"
+   964→                        type="date"
+   965→                        value={effectiveTo}
+   966→                        onChange={(e) => setEffectiveTo(e.target.value)}
+   967→                        className="mt-1 h-8 text-sm bg-background"
+   968→                      />
+   969→                    </div>
+   970→                  </div>
+   971→                  <Separator className="my-2 bg-border/60" />
+   972→                  <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 bg-background">
+   973→                    <div>
+   974→                      <Label htmlFor="tpl-default" className="text-xs font-medium cursor-pointer">Default Template</Label>
+   975→                      <p className="text-[10px] text-muted-foreground">Use as the default for this document type</p>
+   976→                    </div>
+   977→                    <Switch
+   978→                      id="tpl-default"
+   979→                      checked={isDefault}
+   980→                      onCheckedChange={setIsDefault}
+   981→                    />
+   982→                  </div>
+   983→
+   984→                  <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 px-3 py-2 mt-2">
+   985→                    <div className="flex items-center gap-1.5 mb-1">
+   986→                      <Braces className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
+   987→                      <span className="text-[11px] font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">
+   988→                        Slugs detected
+   989→                      </span>
+   990→                    </div>
+   991→                    <p className="text-xs text-foreground/80">
+   992→                      {usedVariables.length === 0
+   993→                        ? "No slugs yet — click a variable on the right to insert."
+   994→                        : `${usedVariables.length} unique slug${usedVariables.length !== 1 ? "s" : ""} across Header/Body/Footer.`}
+   995→                    </p>
+   996→                  </div>
+   997→                </div>
+   998→              </div>
+   999→
+  1000→              {/* CENTER: WYSIWYG editor (col-span-3) */}
+  1001→              <div className="lg:col-span-3 min-w-0 border-r border-border/60 p-4 flex flex-col min-h-0 max-h-[68vh]">
+  1002→                <div className="flex items-center gap-1.5 mb-2">
+  1003→                  <FileCode2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+  1004→                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+  1005→                    Template Content (WYSIWYG)
+  1006→                  </span>
+  1007→                </div>
+  1008→                <div className="flex-1 min-h-0">
+  1009→                  <SectionedRichEditor
+  1010→                    ref={editorRef}
+  1011→                    header={header}
+  1012→                    body={body}
+  1013→                    footer={footer}
+  1014→                    onChange={handleSectionChange}
+  1015→                    initialSection="body"
+  1016→                    minHeight={320}
+  1017→                  />
+  1018→                </div>
+  1019→              </div>
+  1020→
+  1021→              {/* RIGHT: variable picker (col-span-2) */}
+  1022→              <div className="lg:col-span-2 p-4 flex flex-col min-h-0 max-h-[68vh] bg-muted/20">
+  1023→                <VariablePicker onInsert={insertVariable} usedVariables={usedVariables} />
+  1024→              </div>
+  1025→            </div>
+  1026→          </div>
+  1027→
+  1028→          {/* Footer */}
+  1029→          <DialogFooter className="px-6 py-3 border-t border-border/60 bg-muted/20">
+  1030→            <div className="flex items-center gap-2 ml-auto">
+  1031→              <Button
+  1032→                variant="outline"
+  1033→                size="sm"
+  1034→                onClick={() => setPreviewOpen(true)}
+  1035→                disabled={!body}
+  1036→                className="gap-1.5"
+  1037→              >
+  1038→                <Eye className="h-4 w-4" /> Preview
+  1039→              </Button>
+  1040→              <Button
+  1041→                variant="ghost"
+  1042→                size="sm"
+  1043→                onClick={() => onOpenChange(false)}
+  1044→                disabled={saving}
+  1045→              >
+  1046→                Cancel
+  1047→              </Button>
+  1048→              <Button
+  1049→                size="sm"
+  1050→                onClick={handleSave}
+  1051→                disabled={saving}
+  1052→                className="gap-1.5 gradient-emerald text-primary-foreground"
+  1053→              >
+  1054→                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+  1055→                {isEdit ? "Save Changes" : "Create Template"}
+  1056→              </Button>
+  1057→            </div>
+  1058→          </DialogFooter>
+  1059→        </DialogContent>
+  1060→      </Dialog>
+  1061→
+  1062→      <PreviewDialog
+  1063→        open={previewOpen}
+  1064→        onOpenChange={setPreviewOpen}
+  1065→        template={previewTemplate}
+  1066→      />
+  1067→    </>
+  1068→  )
+  1069→}
+  1070→
+  1071→// =============================================================
+  1072→// Row actions dropdown
+  1073→// =============================================================
+  1074→
+  1075→interface RowActionsCallbacks {
+  1076→  onEdit: (t: DocumentTemplate) => void
+  1077→  onClone: (t: DocumentTemplate) => void
+  1078→  onPreview: (t: DocumentTemplate) => void
+  1079→  onSetDefault: (t: DocumentTemplate) => void
+  1080→  onToggleStatus: (t: DocumentTemplate) => void
+  1081→  onVersionHistory: (t: DocumentTemplate) => void
+  1082→  onDelete: (t: DocumentTemplate) => void
+  1083→}
+  1084→
+  1085→interface RowActionsProps extends RowActionsCallbacks {
+  1086→  template: DocumentTemplate
+  1087→}
+  1088→
+  1089→function RowActions({
+  1090→  template, onEdit, onClone, onPreview, onSetDefault, onToggleStatus, onVersionHistory, onDelete,
+  1091→}: RowActionsProps) {
+  1092→  const isActive = template.status !== "Active"
+  1093→  return (
+  1094→    <DropdownMenu>
+  1095→      <DropdownMenuTrigger asChild>
+  1096→        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Template actions">
+  1097→          <MoreHorizontal className="h-4 w-4" />
+  1098→        </Button>
+  1099→      </DropdownMenuTrigger>
+  1100→      <DropdownMenuContent align="end" className="w-48">
+  1101→        <DropdownMenuItem onClick={() => onEdit(template)}>
+  1102→          <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+  1103→        </DropdownMenuItem>
+  1104→        <DropdownMenuItem onClick={() => onPreview(template)}>
+  1105→          <Eye className="h-3.5 w-3.5 mr-2" /> Preview
+  1106→        </DropdownMenuItem>
+  1107→        <DropdownMenuItem onClick={() => onClone(template)}>
+  1108→          <Copy className="h-3.5 w-3.5 mr-2" /> Clone
+  1109→        </DropdownMenuItem>
+  1110→        <DropdownMenuItem
+  1111→          onClick={() => onSetDefault(template)}
+  1112→          disabled={template.isDefault}
+  1113→        >
+  1114→          <Star className={`h-3.5 w-3.5 mr-2 ${template.isDefault ? "fill-current text-amber-500" : ""}`} />
+  1115→          {template.isDefault ? "Default (set)" : "Set as Default"}
+  1116→        </DropdownMenuItem>
+  1117→        <DropdownMenuItem onClick={() => onToggleStatus(template)}>
+  1118→          <Power className="h-3.5 w-3.5 mr-2" />
+  1119→          {isActive ? "Publish / Activate" : "Deactivate"}
+  1120→        </DropdownMenuItem>
+  1121→        <DropdownMenuItem onClick={() => onVersionHistory(template)}>
+  1122→          <History className="h-3.5 w-3.5 mr-2" /> Version History
+  1123→        </DropdownMenuItem>
+  1124→        <DropdownMenuSeparator />
+  1125→        <DropdownMenuItem
+  1126→          onClick={() => onDelete(template)}
+  1127→          disabled={template.isDefault}
+  1128→          className="text-rose-600 dark:text-rose-400 focus:text-rose-700 dark:focus:text-rose-300 focus:bg-rose-500/10"
+  1129→        >
+  1130→          <Trash2 className="h-3.5 w-3.5 mr-2" />
+  1131→          {template.isDefault ? "Delete (disabled — default)" : "Delete"}
+  1132→        </DropdownMenuItem>
+  1133→      </DropdownMenuContent>
+  1134→    </DropdownMenu>
+  1135→  )
+  1136→}
+  1137→
+  1138→// =============================================================
+  1139→// Templates table
+  1140→// =============================================================
+  1141→
+  1142→interface TemplatesTableProps {
+  1143→  rows: DocumentTemplate[]
+  1144→  loading: boolean
+  1145→  onRowClick: (t: DocumentTemplate) => void
+  1146→  actions: RowActionsCallbacks
+  1147→}
+  1148→
+  1149→function TemplatesTable({ rows, loading, onRowClick, actions }: TemplatesTableProps) {
+  1150→  if (loading) return <TableSkeleton />
+  1151→  if (rows.length === 0) {
+  1152→    return (
+  1153→      <div className="rounded-xl border border-border/60 bg-card">
+  1154→        <EmptyState
+  1155→          icon={FileText}
+  1156→          title="No templates yet"
+  1157→          description="Create your first template to standardize this document type."
+  1158→        />
+  1159→      </div>
+  1160→    )
+  1161→  }
+  1162→  return (
+  1163→    <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+  1164→      <div className="overflow-x-auto">
+  1165→        <Table>
+  1166→          <TableHeader>
+  1167→            <TableRow className="bg-muted/40 hover:bg-muted/40">
+  1168→              <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground min-w-[220px]">Template Name</TableHead>
+  1169→              <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Code</TableHead>
+  1170→              <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Document Type</TableHead>
+  1171→              <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Scope</TableHead>
+  1172→              <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lang</TableHead>
+  1173→              <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ver</TableHead>
+  1174→              <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Default</TableHead>
+  1175→              <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</TableHead>
+  1176→              <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Updated</TableHead>
+  1177→              <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-right">Actions</TableHead>
+  1178→            </TableRow>
+  1179→          </TableHeader>
+  1180→          <TableBody>
+  1181→            {rows.map((t) => (
+  1182→              <TableRow
+  1183→                key={t.id}
+  1184→                onClick={() => onRowClick(t)}
+  1185→                className="cursor-pointer hover:bg-muted/30"
+  1186→              >
+  1187→                <TableCell className="text-sm">
+  1188→                  <div className="flex flex-col">
+  1189→                    <span className="font-medium text-foreground truncate max-w-[260px]">{t.name}</span>
+  1190→                    <div className="flex items-center gap-1 mt-0.5">
+  1191→                      <VariablesBadge count={extractVariables(`${t.headerHtml || ""}${t.bodyHtml || ""}${t.footerHtml || ""}`).length} />
+  1192→                    </div>
+  1193→                  </div>
+  1194→                </TableCell>
+  1195→                <TableCell>
+  1196→                  <code className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-muted text-foreground/80">
+  1197→                    {t.code}
+  1198→                  </code>
+  1199→                </TableCell>
+  1200→                <TableCell className="text-xs text-muted-foreground">{t.documentType}</TableCell>
+  1201→                <TableCell>
+  1202→                  <Badge variant="secondary" className={cn("font-medium border-0", scopeBadgeClass(t.scopeType))}>
+  1203→                    {scopeLabel(t.scopeType)}
+  1204→                  </Badge>
+  1205→                </TableCell>
+  1206→                <TableCell className="text-xs text-muted-foreground uppercase">{t.language}</TableCell>
+  1207→                <TableCell>
+  1208→                  <Badge variant="outline" className="font-mono text-[11px]">v{t.version}</Badge>
+  1209→                </TableCell>
+  1210→                <TableCell>
+  1211→                  {t.isDefault ? (
+  1212→                    <Tooltip>
+  1213→                      <TooltipTrigger asChild>
+  1214→                        <span><Star className="h-4 w-4 fill-amber-400 text-amber-500" /></span>
+  1215→                      </TooltipTrigger>
+  1216→                      <TooltipContent>Default for {t.documentType}</TooltipContent>
+  1217→                    </Tooltip>
+  1218→                  ) : (
+  1219→                    <span className="text-muted-foreground/40 text-xs">—</span>
+  1220→                  )}
+  1221→                </TableCell>
+  1222→                <TableCell>
+  1223→                  <Badge variant="secondary" className={cn("font-medium border-0", STATUS_BADGE[t.status] || "bg-muted text-muted-foreground")}>
+  1224→                    {t.status}
+  1225→                  </Badge>
+  1226→                </TableCell>
+  1227→                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+  1228→                  {timeAgo(t.updatedAt)}
+  1229→                </TableCell>
+  1230→                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+  1231→                  <div className="flex justify-end">
+  1232→                    <RowActions template={t} {...actions} />
+  1233→                  </div>
+  1234→                </TableCell>
+  1235→              </TableRow>
+  1236→            ))}
+  1237→          </TableBody>
+  1238→        </Table>
+  1239→      </div>
+  1240→    </div>
+  1241→  )
+  1242→}
+  1243→
+  1244→// =============================================================
+  1245→// Main section
+  1246→// =============================================================
+  1247→
+  1248→export function DocumentsSection() {
+  1249→  // Data: fetch ALL templates once, filter client-side per category
+  1250→  const { data, loading, error, reload } = useFetch<{ items: DocumentTemplate[] }>(
+  1251→    "/api/onboarding-documents",
+  1252→    [],
+  1253→  )
+  1254→  const allTemplates = data?.items ?? []
+  1255→
+  1256→  // UI state
+  1257→  const [activeCategory, setActiveCategory] = useState<string>(ALL_DOCS)
+  1258→  const [search, setSearch] = useState("")
+  1259→  const [editorOpen, setEditorOpen] = useState(false)
+  1260→  const [editingTemplate, setEditingTemplate] = useState<DocumentTemplate | null>(null)
+  1261→  const [previewTemplate, setPreviewTemplate] = useState<DocumentTemplate | null>(null)
+  1262→  const [previewOpen, setPreviewOpen] = useState(false)
+  1263→  const [historyTemplate, setHistoryTemplate] = useState<DocumentTemplate | null>(null)
+  1264→  const [historyOpen, setHistoryOpen] = useState(false)
+  1265→  const [deleteTarget, setDeleteTarget] = useState<DocumentTemplate | null>(null)
+  1266→  const [deleteOpen, setDeleteOpen] = useState(false)
+  1267→  const [deleting, setDeleting] = useState(false)
+  1268→  const [busyId, setBusyId] = useState<string | null>(null)
+  1269→
+  1270→  // Derived: counts per category + filtered list
+  1271→  const categoryCounts = useMemo(() => {
+  1272→    const m: Record<string, number> = {}
+  1273→    for (const c of CATEGORIES) m[c.label] = 0
+  1274→    for (const t of allTemplates) {
+  1275→      m[t.documentType] = (m[t.documentType] ?? 0) + 1
+  1276→    }
+  1277→    return m
+  1278→  }, [allTemplates])
+  1279→
+  1280→  const stats = useMemo(() => {
+  1281→    const active = allTemplates.filter((t) => t.status === "Active").length
+  1282→    const drafts = allTemplates.filter((t) => t.status === "Draft").length
+  1283→    const defaults = allTemplates.filter((t) => t.isDefault).length
+  1284→    return { total: allTemplates.length, active, drafts, defaults }
+  1285→  }, [allTemplates])
+  1286→
+  1287→  const filteredRows = useMemo(() => {
+  1288→    const q = search.trim().toLowerCase()
+  1289→    return allTemplates.filter((t) => {
+  1290→      if (activeCategory !== ALL_DOCS && t.documentType !== activeCategory) return false
+  1291→      if (q) {
+  1292→        return (
+  1293→          t.name.toLowerCase().includes(q) ||
+  1294→          t.code.toLowerCase().includes(q)
+  1295→        )
+  1296→      }
+  1297→      return true
+  1298→    })
+  1299→  }, [allTemplates, activeCategory, search])
+  1300→
+  1301→  // Actions
+  1302→  const openCreate = useCallback(() => {
+  1303→    setEditingTemplate(null)
+  1304→    setEditorOpen(true)
+  1305→  }, [])
+  1306→
+  1307→  const openEdit = useCallback((t: DocumentTemplate) => {
+  1308→    setEditingTemplate(t)
+  1309→    setEditorOpen(true)
+  1310→  }, [])
+  1311→
+  1312→  const openPreview = useCallback((t: DocumentTemplate) => {
+  1313→    setPreviewTemplate(t)
+  1314→    setPreviewOpen(true)
+  1315→  }, [])
+  1316→
+  1317→  const openHistory = useCallback((t: DocumentTemplate) => {
+  1318→    setHistoryTemplate(t)
+  1319→    setHistoryOpen(true)
+  1320→  }, [])
+  1321→
+  1322→  const handleClone = useCallback(async (t: DocumentTemplate) => {
+  1323→    setBusyId(t.id)
+  1324→    try {
+  1325→      await safeToast(
+  1326→        apiPost("/api/onboarding-documents", {
+  1327→          name: `${t.name} (Copy)`,
+  1328→          code: `${t.code}_COPY_${Math.floor(Math.random() * 1000)}`,
+  1329→          documentType: t.documentType,
+  1330→          scopeType: t.scopeType,
+  1331→          language: t.language,
+  1332→          status: "Draft",
+  1333→          isDefault: false,
+  1334→          version: 1,
+  1335→          headerHtml: t.headerHtml,
+  1336→          bodyHtml: t.bodyHtml,
+  1337→          footerHtml: t.footerHtml,
+  1338→          variablesUsed: t.variablesUsed,
+  1339→          effectiveFrom: t.effectiveFrom ? t.effectiveFrom.slice(0, 10) : null,
+  1340→          effectiveTo: t.effectiveTo ? t.effectiveTo.slice(0, 10) : null,
+  1341→        }),
+  1342→        "Template cloned",
+  1343→        "Failed to clone template",
+  1344→      )
+  1345→      reload()
+  1346→    } catch {
+  1347→      // safeToast handles
+  1348→    } finally {
+  1349→      setBusyId(null)
+  1350→    }
+  1351→  }, [reload])
+  1352→
+  1353→  const handleSetDefault = useCallback(async (t: DocumentTemplate) => {
+  1354→    if (t.isDefault) return
+  1355→    setBusyId(t.id)
+  1356→    try {
+  1357→      await safeToast(
+  1358→        apiPatch(`/api/onboarding-documents/${t.id}`, {
+  1359→          isDefault: true,
+  1360→          documentType: t.documentType,
+  1361→        }),
+  1362→        `Set as default for ${t.documentType}`,
+  1363→        "Failed to set default",
+  1364→      )
+  1365→      reload()
+  1366→    } catch {
+  1367→      // safeToast handles
+  1368→    } finally {
+  1369→      setBusyId(null)
+  1370→    }
+  1371→  }, [reload])
+  1372→
+  1373→  const handleToggleStatus = useCallback(async (t: DocumentTemplate) => {
+  1374→    const next = t.status === "Active" ? "Archived" : "Active"
+  1375→    setBusyId(t.id)
+  1376→    try {
+  1377→      await safeToast(
+  1378→        apiPatch(`/api/onboarding-documents/${t.id}`, { status: next }),
+  1379→        next === "Active" ? "Template published" : "Template deactivated",
+  1380→        "Failed to update status",
+  1381→      )
+  1382→      reload()
+  1383→    } catch {
+  1384→      // safeToast handles
+  1385→    } finally {
+  1386→      setBusyId(null)
+  1387→    }
+  1388→  }, [reload])
+  1389→
+  1390→  const handleDelete = useCallback(async () => {
+  1391→    if (!deleteTarget) return
+  1392→    setDeleting(true)
+  1393→    try {
+  1394→      await safeToast(
+  1395→        apiDelete(`/api/onboarding-documents/${deleteTarget.id}`),
+  1396→        "Template deleted",
+  1397→        "Failed to delete template",
+  1398→      )
+  1399→      setDeleteOpen(false)
+  1400→      setDeleteTarget(null)
+  1401→      reload()
+  1402→    } catch {
+  1403→      // safeToast handles
+  1404→    } finally {
+  1405→      setDeleting(false)
+  1406→    }
+  1407→  }, [deleteTarget, reload])
+  1408→
+  1409→  const rowActions: RowActionsCallbacks = {
+  1410→    onEdit: openEdit,
+  1411→    onClone: handleClone,
+  1412→    onPreview: openPreview,
+  1413→    onSetDefault: handleSetDefault,
+  1414→    onToggleStatus: handleToggleStatus,
+  1415→    onVersionHistory: openHistory,
+  1416→    onDelete: (t) => {
+  1417→      if (t.isDefault) {
+  1418→        toast.error("Cannot delete the default template — assign default to another template first.")
+  1419→        return
+  1420→      }
+  1421→      setDeleteTarget(t)
+  1422→      setDeleteOpen(true)
+  1423→    },
+  1424→  }
+  1425→
+  1426→  const activeCategoryDef = CATEGORIES.find((c) => c.label === activeCategory)
+  1427→  const activeIcon: LucideIcon = activeCategoryDef?.icon ?? Layers2
+  1428→
+  1429→  return (
+  1430→    <TooltipProvider delayDuration={200}>
+  1431→      <div className="flex flex-col gap-4">
+  1432→        <PageHeader
+  1433→          title="Document Library"
+  1434→          description="Reusable document templates for offer letters, agreements, and declarations."
+  1435→          icon={FileText}
+  1436→          badge={
+  1437→            <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+  1438→              {stats.total} template{stats.total !== 1 ? "s" : ""}
+  1439→            </Badge>
+  1440→          }
+  1441→          actions={
+  1442→            <Button
+  1443→              size="sm"
+  1444→              onClick={openCreate}
+  1445→              className="gap-1.5 gradient-emerald text-primary-foreground shadow-soft"
+  1446→            >
+  1447→              <Plus className="h-4 w-4" /> New Template
+  1448→            </Button>
+  1449→          }
+  1450→        />
+  1451→
+  1452→        {/* Stat strip */}
+  1453→        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+  1454→          <StatCard label="Total Templates" value={stats.total} icon={FileText} accent="emerald" />
+  1455→          <StatCard label="Active" value={stats.active} icon={FileCheck2} accent="cyan" />
+  1456→          <StatCard label="Defaults" value={stats.defaults} icon={Star} accent="amber" sub="One per type" />
+  1457→          <StatCard label="Drafts" value={stats.drafts} icon={PenLine} accent="fuchsia" />
+  1458→        </div>
+  1459→
+  1460→        {/* Error banner */}
+  1461→        {error && !loading && (
+  1462→          <div className="rounded-lg border border-rose-500/40 bg-rose-500/5 px-4 py-3 text-sm text-rose-700 dark:text-rose-300 flex items-center gap-2">
+  1463→            <Inbox className="h-4 w-4 shrink-0" />
+  1464→            <span>Failed to load templates: {error}</span>
+  1465→            <Button size="sm" variant="outline" className="ml-auto h-7 text-xs" onClick={reload}>
+  1466→              <RotateCcw className="h-3 w-3 mr-1" /> Retry
+  1467→            </Button>
+  1468→          </div>
+  1469→        )}
+  1470→
+  1471→        {/* Two-column layout */}
+  1472→        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+  1473→          {/* LEFT: categories sidebar */}
+  1474→          <aside className="lg:sticky lg:top-4 lg:self-start">
+  1475→            <div className="rounded-xl border border-border/60 bg-card shadow-soft p-2">
+  1476→              <div className="px-2 py-1.5 flex items-center justify-between">
+  1477→                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+  1478→                  Categories
+  1479→                </span>
+  1480→                <span className="text-[10px] text-muted-foreground/70">{CATEGORIES.length}</span>
+  1481→              </div>
+  1482→              <ScrollArea className="h-[calc(100vh-280px)] min-h-[300px]">
+  1483→                <div className="space-y-0.5 pr-1">
+  1484→                  <CategoryPill
+  1485→                    icon={Layers2}
+  1486→                    label={ALL_DOCS}
+  1487→                    count={stats.total}
+  1488→                    active={activeCategory === ALL_DOCS}
+  1489→                    onClick={() => setActiveCategory(ALL_DOCS)}
+  1490→                  />
+  1491→                  <Separator className="my-1.5 bg-border/40" />
+  1492→                  {CATEGORIES.map((c) => {
+  1493→                    const Icon = c.icon
+  1494→                    return (
+  1495→                      <CategoryPill
+  1496→                        key={c.label}
+  1497→                        icon={Icon}
+  1498→                        label={c.label}
+  1499→                        count={categoryCounts[c.label] || 0}
+  1500→                        active={activeCategory === c.label}
+  1501→                        onClick={() => setActiveCategory(c.label)}
+  1502→                      />
+  1503→                    )
+  1504→                  })}
+  1505→                </div>
+  1506→              </ScrollArea>
+  1507→            </div>
+  1508→          </aside>
+  1509→
+  1510→          {/* RIGHT: templates list */}
+  1511→          <section className="flex flex-col gap-3 min-w-0">
+  1512→            {/* Toolbar */}
+  1513→            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+  1514→              <div className="flex items-center gap-2 min-w-0">
+  1515→                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+  1516→                  {React.createElement(activeIcon, { className: "h-4 w-4" })}
+  1517→                </div>
+  1518→                <div className="min-w-0">
+  1519→                  <h2 className="text-sm font-semibold text-foreground truncate">{activeCategory}</h2>
+  1520→                  <p className="text-xs text-muted-foreground">
+  1521→                    {filteredRows.length} template{filteredRows.length !== 1 ? "s" : ""}
+  1522→                    {search && ` matching "${search}"`}
+  1523→                  </p>
+  1524→                </div>
+  1525→              </div>
+  1526→              <div className="flex items-center gap-2">
+  1527→                <div className="relative w-full sm:w-64">
+  1528→                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  1529→                  <Input
+  1530→                    value={search}
+  1531→                    onChange={(e) => setSearch(e.target.value)}
+  1532→                    placeholder="Search by name or code…"
+  1533→                    className="pl-9 h-9 bg-background"
+  1534→                  />
+  1535→                  {search && (
+  1536→                    <button
+  1537→                      type="button"
+  1538→                      onClick={() => setSearch("")}
+  1539→                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+  1540→                      aria-label="Clear search"
+  1541→                    >
+  1542→                      <X className="h-3.5 w-3.5" />
+  1543→                    </button>
+  1544→                  )}
+  1545→                </div>
+  1546→                <Button
+  1547→                  size="sm"
+  1548→                  onClick={openCreate}
+  1549→                  className="gap-1.5 gradient-emerald text-primary-foreground shadow-soft shrink-0"
+  1550→                >
+  1551→                  <Plus className="h-4 w-4" /> New Template
+  1552→                </Button>
+  1553→              </div>
+  1554→            </div>
+  1555→
+  1556→            {/* Table or empty state */}
+  1557→            {loading ? (
+  1558→              <TableSkeleton />
+  1559→            ) : filteredRows.length === 0 ? (
+  1560→              <div className="rounded-xl border border-border/60 bg-card">
+  1561→                <EmptyState
+  1562→                  icon={activeCategory === ALL_DOCS ? FileText : activeIcon}
+  1563→                  title={
+  1564→                    search
+  1565→                      ? "No templates match your search"
+  1566→                      : `No templates in ${activeCategory} yet`
+  1567→                  }
+  1568→                  description={
+  1569→                    search
+  1570→                      ? `Try a different search term, or clear the search to see all templates in ${activeCategory}.`
+  1571→                      : `Create a ${activeCategory} template to standardize this document across your organization.`
+  1572→                  }
+  1573→                  action={
+  1574→                    <div className="flex items-center gap-2">
+  1575→                      {search && (
+  1576→                        <Button variant="outline" size="sm" onClick={() => setSearch("")}>
+  1577→                          Clear search
+  1578→                        </Button>
+  1579→                      )}
+  1580→                      <Button
+  1581→                        size="sm"
+  1582→                        onClick={openCreate}
+  1583→                        className="gap-1.5 gradient-emerald text-primary-foreground"
+  1584→                      >
+  1585→                        <Plus className="h-4 w-4" /> Create Template
+  1586→                      </Button>
+  1587→                    </div>
+  1588→                  }
+  1589→                />
+  1590→              </div>
+  1591→            ) : (
+  1592→              <AnimatePresence mode="wait">
+  1593→                <motion.div
+  1594→                  key={activeCategory + search}
+  1595→                  initial={{ opacity: 0, y: 6 }}
+  1596→                  animate={{ opacity: 1, y: 0 }}
+  1597→                  exit={{ opacity: 0, y: -6 }}
+  1598→                  transition={{ duration: 0.15 }}
+  1599→                >
+  1600→                  <TemplatesTable
+  1601→                    rows={filteredRows}
+  1602→                    loading={false}
+  1603→                    onRowClick={openEdit}
+  1604→                    actions={rowActions}
+  1605→                  />
+  1606→                </motion.div>
+  1607→              </AnimatePresence>
+  1608→            )}
+  1609→
+  1610→            {/* Footer note */}
+  1611→            <p className="text-[11px] text-muted-foreground/70 px-1">
+  1612→              <Sparkles className="inline h-3 w-3 mr-1 text-emerald-500" />
+  1613→              Click a row to edit. Use the actions menu to clone, preview, set as default, or delete.
+  1614→              {busyId && <span className="text-amber-600 dark:text-amber-400 ml-1">· Working…</span>}
+  1615→            </p>
+  1616→          </section>
+  1617→        </div>
+  1618→
+  1619→        {/* Editor dialog */}
+  1620→        <TemplateEditorDialog
+  1621→          open={editorOpen}
+  1622→          onOpenChange={setEditorOpen}
+  1623→          template={editingTemplate}
+  1624→          defaultCategory={activeCategory === ALL_DOCS ? "Offer Letter" : activeCategory}
+  1625→          onSaved={reload}
+  1626→        />
+  1627→
+  1628→        {/* Standalone preview dialog (from row action) */}
+  1629→        <PreviewDialog
+  1630→          open={previewOpen}
+  1631→          onOpenChange={setPreviewOpen}
+  1632→          template={previewTemplate}
+  1633→        />
+  1634→
+  1635→        {/* Version history dialog */}
+  1636→        <VersionHistoryDialog
+  1637→          open={historyOpen}
+  1638→          onOpenChange={setHistoryOpen}
+  1639→          template={historyTemplate}
+  1640→        />
+  1641→
+  1642→        {/* Delete confirmation */}
+  1643→        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+  1644→          <AlertDialogContent>
+  1645→            <AlertDialogHeader>
+  1646→              <AlertDialogTitle className="flex items-center gap-2">
+  1647→                <Trash2 className="h-4 w-4 text-rose-500" />
+  1648→                Delete template?
+  1649→              </AlertDialogTitle>
+  1650→              <AlertDialogDescription>
+  1651→                You are about to permanently delete <strong className="text-foreground">{deleteTarget?.name}</strong>{" "}
+  1652→                (<code className="text-xs font-mono">{deleteTarget?.code}</code>).
+  1653→                This action cannot be undone.
+  1654→              </AlertDialogDescription>
+  1655→            </AlertDialogHeader>
+  1656→            <AlertDialogFooter>
+  1657→              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+  1658→              <AlertDialogAction
+  1659→                onClick={handleDelete}
+  1660→                disabled={deleting}
+  1661→                className="bg-rose-600 hover:bg-rose-700 text-white"
+  1662→              >
+  1663→                {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+  1664→                Delete Template
+  1665→              </AlertDialogAction>
+  1666→            </AlertDialogFooter>
+  1667→          </AlertDialogContent>
+  1668→        </AlertDialog>
+  1669→      </div>
+  1670→    </TooltipProvider>
+  1671→  )
+  1672→}
+  1673→
+  1674→export default DocumentsSection
+  1675→

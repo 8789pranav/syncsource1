@@ -1,0 +1,768 @@
+     1→"use client"
+     2→
+     3→/**
+     4→ * Shared WYSIWYG rich-text editor for the Onboarding module.
+     5→ *
+     6→ * Used by:
+     7→ *   - DocumentsSection  (Document Library template editor)
+     8→ *   - EmailsSection     (Email Templates editor)
+     9→ *
+    10→ * Exposes:
+    11→ *   - <RichTextEditor>            A single-section contentEditable editor with
+    12→ *                                 a full formatting toolbar (bold, italic,
+    13→ *                                 underline, headings, lists, alignment, link,
+    14→ *                                 color, highlight, code, source toggle, etc.).
+    15→ *   - <SectionedRichEditor>       Wraps three RichTextEditor instances behind
+    16→ *                                 Header / Body / Footer tabs. Exposes an
+    17→ *                                 imperative `insertSlug(slug)` API via ref so
+    18→ *                                 the parent can insert {{Variable}} tokens at
+    19→ *                                 the cursor of whichever section was last
+    20→ *                                 focused.
+    21→ *   - extractVariables(html)      Utility used by both sections to detect which
+    22→ *                                  {{slugs}} appear in the template.
+    23→ *
+    24→ * No external rich-text dependency is used. The editor is built on the native
+    25→ * contentEditable + document.execCommand APIs which are still fully supported
+    26→ * by every modern browser for the operations we need. This keeps the bundle
+    27→ * tiny and gives us complete control over the emitted HTML (which is what the
+    28→ * backend stores).
+    29→ */
+    30→
+    31→import * as React from "react"
+    32→import {
+    33→  Bold, Italic, Underline, Strikethrough,
+    34→  Heading1, Heading2, Heading3, Pilcrow, Quote, Code2,
+    35→  List, ListOrdered,
+    36→  AlignLeft, AlignCenter, AlignRight, AlignJustify,
+    37→  Link2, Minus, Image as ImageIcon,
+    38→  Highlighter, Baseline,
+    39→  Undo2, Redo2, RemoveFormatting, ChevronDown, Eye, Code, Maximize2, Minimize2,
+    40→  Type as TypeIcon,
+    41→} from "lucide-react"
+    42→import { cn } from "@/lib/utils"
+    43→import {
+    44→  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+    45→} from "@/components/ui/tooltip"
+    46→import {
+    47→  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+    48→} from "@/components/ui/dropdown-menu"
+    49→import { Separator } from "@/components/ui/separator"
+    50→import { Input } from "@/components/ui/input"
+    51→import { Button } from "@/components/ui/button"
+    52→
+    53→// =====================================================================
+    54→// Types
+    55→// =====================================================================
+    56→
+    57→export type EditorSection = "header" | "body" | "footer"
+    58→
+    59→export interface RichEditorHandle {
+    60→  /** Insert a {{slug}} token at the cursor of the currently-focused section. */
+    61→  insertSlug: (slug: string) => void
+    62→  /** Focus a specific section. */
+    63→  focus: (section?: EditorSection) => void
+    64→}
+    65→
+    66→export interface SectionedRichEditorProps {
+    67→  /** HTML content for the header section. */
+    68→  header: string
+    69→  /** HTML content for the body section (required). */
+    70→  body: string
+    71→  /** HTML content for the footer section. */
+    72→  footer: string
+    73→  /** Called whenever any section's HTML changes. */
+    74→  onChange: (section: EditorSection, html: string) => void
+    75→  /** Initial section to show. Defaults to "body". */
+    76→  initialSection?: EditorSection
+    77→  /** Min height (px) for the editing surface. Default 260. */
+    78→  minHeight?: number
+    79→  /** Compact mode (smaller toolbar, used in tight dialogs). */
+    80→  compact?: boolean
+    81→  /** Optional className for the outer wrapper. */
+    82→  className?: string
+    83→  /** Placeholders per section. */
+    84→  placeholders?: Partial<Record<EditorSection, string>>
+    85→}
+    86→
+    87→// =====================================================================
+    88→// Utilities
+    89→// =====================================================================
+    90→
+    91→/** Extract all unique {{slug}} tokens from an HTML string. */
+    92→export function extractVariables(html: string): string[] {
+    93→  if (!html) return []
+    94→  const set = new Set<string>()
+    95→  const re = /\{\{(\w+)\}\}/g
+    96→  let m: RegExpExecArray | null
+    97→  while ((m = re.exec(html)) !== null) set.add(m[1])
+    98→  return Array.from(set)
+    99→}
+   100→
+   101→// =====================================================================
+   102→// Toolbar button (top-level so it doesn't trigger the
+   103→// react-hooks/static-components rule)
+   104→// =====================================================================
+   105→
+   106→interface ToolbarBtnProps {
+   107→  icon: React.ComponentType<{ className?: string }>
+   108→  label: string
+   109→  onClick: () => void
+   110→  active?: boolean
+   111→  disabled?: boolean
+   112→  compact?: boolean
+   113→}
+   114→
+   115→function ToolbarBtn({ icon: Icon, label, onClick, active, disabled, compact }: ToolbarBtnProps) {
+   116→  return (
+   117→    <Tooltip>
+   118→      <TooltipTrigger asChild>
+   119→        <button
+   120→          type="button"
+   121→          tabIndex={-1}
+   122→          onMouseDown={(e) => { e.preventDefault() }} // keep editor focused
+   123→          onClick={onClick}
+   124→          disabled={disabled}
+   125→          aria-label={label}
+   126→          className={cn(
+   127→            "grid place-items-center rounded-md transition-colors",
+   128→            compact ? "h-7 w-7" : "h-8 w-8",
+   129→            "text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300",
+   130→            active && "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+   131→            disabled && "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground",
+   132→          )}
+   133→        >
+   134→          <Icon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+   135→        </button>
+   136→      </TooltipTrigger>
+   137→      <TooltipContent side="bottom" className="text-xs">{label}</TooltipContent>
+   138→    </Tooltip>
+   139→  )
+   140→}
+   141→
+   142→// =====================================================================
+   143→// Single-section WYSIWYG editor (contentEditable)
+   144→// =====================================================================
+   145→
+   146→interface RichTextEditorProps {
+   147→  value: string
+   148→  onChange: (html: string) => void
+   149→  onFocus?: () => void
+   150→  placeholder?: string
+   151→  minHeight?: number
+   152→  compact?: boolean
+   153→  /** Receives an "insert" function the parent can call to inject slugs. */
+   154→  registerInsert?: (fn: (text: string) => void) => void
+   155→}
+   156→
+   157→function RichTextEditor({
+   158→  value, onChange, onFocus, placeholder, minHeight = 260, compact, registerInsert,
+   159→}: RichTextEditorProps) {
+   160→  const ref = React.useRef<HTMLDivElement | null>(null)
+   161→  const savedRange = React.useRef<Range | null>(null)
+   162→  const isMounted = React.useRef(false)
+   163→
+   164→  // ---- Source (HTML) mode toggle ----
+   165→  // Declared early so the value-sync effect below can depend on it.
+   166→  const [sourceMode, setSourceMode] = React.useState(false)
+   167→
+   168→  // ---- External value sync ----
+   169→  // Only overwrite innerHTML when the incoming value differs from what's
+   170→  // already in the DOM. This prevents the caret from jumping to the start
+   171→  // every time the parent re-renders.
+   172→  //
+   173→  // When we toggle from Source view back to WYSIWYG view, the
+   174→  // contentEditable <div> is freshly mounted (it was unmounted while the
+   175→  // <textarea> was shown). We need to re-initialize its innerHTML from
+   176→  // the current `value` prop, so reset the mount flag whenever we enter
+   177→  // source mode — the next WYSIWYG render will then take the "first
+   178→  // mount" path below.
+   179→  React.useEffect(() => {
+   180→    if (sourceMode) {
+   181→      isMounted.current = false
+   182→    }
+   183→  }, [sourceMode])
+   184→
+   185→  React.useEffect(() => {
+   186→    const el = ref.current
+   187→    if (!el) return
+   188→    if (!isMounted.current) {
+   189→      el.innerHTML = value || ""
+   190→      isMounted.current = true
+   191→      return
+   192→    }
+   193→    if (el.innerHTML !== value) {
+   194→      el.innerHTML = value || ""
+   195→    }
+   196→  }, [value, sourceMode])
+   197→
+   198→  // ---- Selection persistence ----
+   199→  const saveSelection = React.useCallback(() => {
+   200→    const sel = typeof window !== "undefined" ? window.getSelection() : null
+   201→    if (sel && sel.rangeCount > 0) {
+   202→      const range = sel.getRangeAt(0)
+   203→      if (ref.current && ref.current.contains(range.commonAncestorContainer)) {
+   204→        savedRange.current = range.cloneRange()
+   205→      }
+   206→    }
+   207→  }, [])
+   208→
+   209→  const restoreSelection = React.useCallback(() => {
+   210→    const el = ref.current
+   211→    if (!el) return
+   212→    el.focus()
+   213→    const sel = typeof window !== "undefined" ? window.getSelection() : null
+   214→    if (!sel) return
+   215→    if (savedRange.current) {
+   216→      sel.removeAllRanges()
+   217→      sel.addRange(savedRange.current)
+   218→    } else {
+   219→      // Move caret to end
+   220→      const range = document.createRange()
+   221→      range.selectNodeContents(el)
+   222→      range.collapse(false)
+   223→      sel.removeAllRanges()
+   224→      sel.addRange(range)
+   225→    }
+   226→  }, [])
+   227→
+   228→  // ---- Command execution ----
+   229→  const exec = React.useCallback((command: string, val?: string) => {
+   230→    restoreSelection()
+   231→    try {
+   232→      document.execCommand(command, false, val)
+   233→    } catch {
+   234→      /* ignore — some commands are browser-specific */
+   235→    }
+   236→    if (ref.current) onChange(ref.current.innerHTML)
+   237→    saveSelection()
+   238→  }, [onChange, restoreSelection, saveSelection])
+   239→
+   240→  // ---- Slug insertion ----
+   241→  const insertText = React.useCallback((text: string) => {
+   242→    restoreSelection()
+   243→    // Prefer insertText (preserves undo stack); fall back to insertHTML for
+   244→    // browsers that don't support insertText at the caret.
+   245→    let ok = false
+   246→    try {
+   247→      ok = document.execCommand("insertText", false, text)
+   248→    } catch {
+   249→      ok = false
+   250→    }
+   251→    if (!ok && ref.current) {
+   252→      // Fallback: manual range insertion
+   253→      const sel = window.getSelection()
+   254→      if (sel && sel.rangeCount > 0) {
+   255→        const range = sel.getRangeAt(0)
+   256→        range.deleteContents()
+   257→        range.insertNode(document.createTextNode(text))
+   258→        range.collapse(false)
+   259→        sel.removeAllRanges()
+   260→        sel.addRange(range)
+   261→      }
+   262→    }
+   263→    if (ref.current) onChange(ref.current.innerHTML)
+   264→    saveSelection()
+   265→  }, [onChange, restoreSelection, saveSelection])
+   266→
+   267→  // Register the insert function with the parent so it can call us when a
+   268→  // variable chip is clicked.
+   269→  React.useEffect(() => {
+   270→    if (registerInsert) registerInsert(insertText)
+   271→  }, [registerInsert, insertText])
+   272→
+   273→  // ---- Event handlers ----
+   274→  const handleInput = React.useCallback(() => {
+   275→    if (ref.current) onChange(ref.current.innerHTML)
+   276→  }, [onChange])
+   277→
+   278→  const handleBlur = React.useCallback(() => {
+   279→    saveSelection()
+   280→  }, [saveSelection])
+   281→
+   282→  const handleMouseUp = React.useCallback(() => {
+   283→    saveSelection()
+   284→  }, [saveSelection])
+   285→
+   286→  const handleKeyUp = React.useCallback(() => {
+   287→    saveSelection()
+   288→  }, [saveSelection])
+   289→
+   290→  // ---- Toolbar buttons ----
+   291→  // (ToolbarBtn is a top-level component — see below — to satisfy the
+   292→  //  react-hooks/static-components rule.)
+   293→
+   294→  // (sourceMode is declared at the top of the component so the value-sync
+   295→  //  effect can depend on it. Fullscreen state lives here.)
+   296→  const [fullscreen, setFullscreen] = React.useState(false)
+   297→
+   298→  // ---- Block format dropdown ----
+   299→  const blockFormats: { label: string; value: string; icon: React.ComponentType<{ className?: string }> }[] = [
+   300→    { label: "Paragraph",      value: "P",          icon: Pilcrow },
+   301→    { label: "Heading 1",      value: "H1",         icon: Heading1 },
+   302→    { label: "Heading 2",      value: "H2",         icon: Heading2 },
+   303→    { label: "Heading 3",      value: "H3",         icon: Heading3 },
+   304→    { label: "Blockquote",     value: "BLOCKQUOTE", icon: Quote },
+   305→    { label: "Code block",     value: "PRE",        icon: Code2 },
+   306→  ]
+   307→  const [activeBlock, setActiveBlock] = React.useState("P")
+   308→
+   309→  const updateActiveBlock = React.useCallback(() => {
+   310→    try {
+   311→      const bq = document.queryCommandValue("formatBlock") as string
+   312→      if (typeof bq === "string" && bq) {
+   313→        const upper = bq.replace(/[<>]/g, "").toUpperCase()
+   314→        if (["P", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "PRE"].includes(upper)) {
+   315→          setActiveBlock(upper)
+   316→        }
+   317→      }
+   318→    } catch { /* ignore */ }
+   319→  }, [])
+   320→
+   321→  // ---- Color pickers ----
+   322→  const textColors = [
+   323→    "#0f172a", "#475569", "#dc2626", "#ea580c", "#d97706",
+   324→    "#16a34a", "#0d9488", "#0891b2", "#7c3aed", "#db2777",
+   325→    "#ffffff",
+   326→  ]
+   327→  const [showTextColor, setShowTextColor] = React.useState(false)
+   328→  const [showHighlight, setShowHighlight] = React.useState(false)
+   329→
+   330→  // ---- Link insertion ----
+   331→  const [linkUrl, setLinkUrl] = React.useState("")
+   332→  const [linkOpen, setLinkOpen] = React.useState(false)
+   333→
+   334→  const applyLink = React.useCallback(() => {
+   335→    if (!linkUrl.trim()) return
+   336→    exec("createLink", linkUrl.trim())
+   337→    setLinkOpen(false)
+   338→    setLinkUrl("")
+   339→  }, [exec, linkUrl])
+   340→
+   341→  // ---- Image insertion ----
+   342→  const [imgUrl, setImgUrl] = React.useState("")
+   343→  const [imgOpen, setImgOpen] = React.useState(false)
+   344→  const applyImage = React.useCallback(() => {
+   345→    if (!imgUrl.trim()) return
+   346→    exec("insertImage", imgUrl.trim())
+   347→    setImgOpen(false)
+   348→    setImgUrl("")
+   349→  }, [exec, imgUrl])
+   350→
+   351→  return (
+   352→    <div className={cn(
+   353→      "flex flex-col h-full min-h-0 rounded-lg border border-border/60 bg-background overflow-hidden",
+   354→      fullscreen && "fixed inset-4 z-[100] rounded-xl shadow-2xl",
+   355→    )}>
+   356→      <TooltipProvider delayDuration={300}>
+   357→      {/* ----------------- Toolbar ----------------- */}
+   358→      <div className="flex flex-wrap items-center gap-0.5 px-1.5 py-1 border-b border-border/60 bg-muted/30">
+   359→        <ToolbarBtn compact={compact} icon={Undo2}  label="Undo"  onClick={() => exec("undo")} />
+   360→        <ToolbarBtn compact={compact} icon={Redo2}  label="Redo"  onClick={() => exec("redo")} />
+   361→
+   362→        <Sep />
+   363→
+   364→        {/* Block format dropdown */}
+   365→        <DropdownMenu>
+   366→          <DropdownMenuTrigger asChild>
+   367→            <button
+   368→              type="button"
+   369→              tabIndex={-1}
+   370→              onMouseDown={(e) => e.preventDefault()}
+   371→              className={cn(
+   372→                "inline-flex items-center gap-1 rounded-md px-2 text-xs font-medium border border-transparent",
+   373→                compact ? "h-7" : "h-8",
+   374→                "text-foreground hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300",
+   375→              )}
+   376→            >
+   377→              {blockFormats.find((b) => b.value === activeBlock)?.label ?? "Paragraph"}
+   378→              <ChevronDown className="h-3 w-3 opacity-60" />
+   379→            </button>
+   380→          </DropdownMenuTrigger>
+   381→          <DropdownMenuContent align="start" className="w-44">
+   382→            {blockFormats.map((b) => {
+   383→              const I = b.icon
+   384→              return (
+   385→                <DropdownMenuItem
+   386→                  key={b.value}
+   387→                  onMouseDown={(e) => e.preventDefault()}
+   388→                  onSelect={() => { exec("formatBlock", b.value); setActiveBlock(b.value) }}
+   389→                  className="gap-2 cursor-pointer"
+   390→                >
+   391→                  <I className="h-3.5 w-3.5" /> {b.label}
+   392→                </DropdownMenuItem>
+   393→              )
+   394→            })}
+   395→          </DropdownMenuContent>
+   396→        </DropdownMenu>
+   397→
+   398→        <Sep />
+   399→
+   400→        {/* Inline formatting */}
+   401→        <ToolbarBtn compact={compact} icon={Bold}          label="Bold (Ctrl+B)"          onClick={() => exec("bold")} />
+   402→        <ToolbarBtn compact={compact} icon={Italic}        label="Italic (Ctrl+I)"        onClick={() => exec("italic")} />
+   403→        <ToolbarBtn compact={compact} icon={Underline}     label="Underline (Ctrl+U)"     onClick={() => exec("underline")} />
+   404→        <ToolbarBtn compact={compact} icon={Strikethrough} label="Strikethrough"          onClick={() => exec("strikeThrough")} />
+   405→
+   406→        <Sep />
+   407→
+   408→        {/* Lists */}
+   409→        <ToolbarBtn compact={compact} icon={List}         label="Bullet list"  onClick={() => exec("insertUnorderedList")} />
+   410→        <ToolbarBtn compact={compact} icon={ListOrdered}  label="Numbered list" onClick={() => exec("insertOrderedList")} />
+   411→
+   412→        <Sep />
+   413→
+   414→        {/* Alignment */}
+   415→        <ToolbarBtn compact={compact} icon={AlignLeft}    label="Align left"    onClick={() => exec("justifyLeft")} />
+   416→        <ToolbarBtn compact={compact} icon={AlignCenter}  label="Align center"  onClick={() => exec("justifyCenter")} />
+   417→        <ToolbarBtn compact={compact} icon={AlignRight}   label="Align right"   onClick={() => exec("justifyRight")} />
+   418→        <ToolbarBtn compact={compact} icon={AlignJustify} label="Justify"       onClick={() => exec("justifyFull")} />
+   419→
+   420→        <Sep />
+   421→
+   422→        {/* Color */}
+   423→        <div className="relative">
+   424→          <ToolbarBtn
+   425→            compact={compact}
+   426→            icon={Baseline}
+   427→            label="Text color"
+   428→            onClick={() => { setShowHighlight(false); setShowTextColor((v) => !v) }}
+   429→          />
+   430→          {showTextColor && (
+   431→            <div className="absolute top-full left-0 mt-1 z-50 p-2 rounded-lg border border-border bg-background shadow-lg grid grid-cols-6 gap-1">
+   432→              {textColors.map((c) => (
+   433→                <button
+   434→                  key={c}
+   435→                  type="button"
+   436→                  tabIndex={-1}
+   437→                  onMouseDown={(e) => e.preventDefault()}
+   438→                  onClick={() => { exec("foreColor", c); setShowTextColor(false) }}
+   439→                  className="h-5 w-5 rounded-md border border-border/60"
+   440→                  style={{ background: c }}
+   441→                  title={c}
+   442→                />
+   443→              ))}
+   444→            </div>
+   445→          )}
+   446→        </div>
+   447→        <div className="relative">
+   448→          <ToolbarBtn
+   449→            compact={compact}
+   450→            icon={Highlighter}
+   451→            label="Highlight"
+   452→            onClick={() => { setShowTextColor(false); setShowHighlight((v) => !v) }}
+   453→          />
+   454→          {showHighlight && (
+   455→            <div className="absolute top-full left-0 mt-1 z-50 p-2 rounded-lg border border-border bg-background shadow-lg grid grid-cols-6 gap-1">
+   456→              {textColors.map((c) => (
+   457→                <button
+   458→                  key={c}
+   459→                  type="button"
+   460→                  tabIndex={-1}
+   461→                  onMouseDown={(e) => e.preventDefault()}
+   462→                  onClick={() => { exec("hiliteColor", c); setShowHighlight(false) }}
+   463→                  className="h-5 w-5 rounded-md border border-border/60"
+   464→                  style={{ background: c }}
+   465→                  title={c}
+   466→                />
+   467→              ))}
+   468→            </div>
+   469→          )}
+   470→        </div>
+   471→
+   472→        <Sep />
+   473→
+   474→        {/* Insert */}
+   475→        <ToolbarBtn
+   476→          compact={compact}
+   477→          icon={Link2}
+   478→          label="Insert link"
+   479→          onClick={() => { restoreSelection(); setLinkOpen((v) => !v); setImgOpen(false) }}
+   480→        />
+   481→        <ToolbarBtn
+   482→          compact={compact}
+   483→          icon={ImageIcon}
+   484→          label="Insert image"
+   485→          onClick={() => { restoreSelection(); setImgOpen((v) => !v); setLinkOpen(false) }}
+   486→        />
+   487→        <ToolbarBtn compact={compact} icon={Minus} label="Horizontal rule" onClick={() => exec("insertHorizontalRule")} />
+   488→
+   489→        <Sep />
+   490→
+   491→        <ToolbarBtn compact={compact} icon={RemoveFormatting} label="Clear formatting" onClick={() => exec("removeFormat")} />
+   492→
+   493→        {/* Right-aligned tools */}
+   494→        <div className="ml-auto flex items-center gap-0.5">
+   495→          <ToolbarBtn
+   496→            compact={compact}
+   497→            icon={sourceMode ? Eye : Code}
+   498→            label={sourceMode ? "WYSIWYG view" : "HTML source view"}
+   499→            active={sourceMode}
+   500→            onClick={() => setSourceMode((v) => !v)}
+   501→          />
+   502→          <ToolbarBtn
+   503→            compact={compact}
+   504→            icon={fullscreen ? Minimize2 : Maximize2}
+   505→            label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+   506→            onClick={() => setFullscreen((v) => !v)}
+   507→          />
+   508→        </div>
+   509→      </div>
+   510→
+   511→      {/* ----------------- Inline link/image inputs ----------------- */}
+   512→      {(linkOpen || imgOpen) && (
+   513→        <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-emerald-500/5">
+   514→          {linkOpen && (
+   515→            <>
+   516→              <Link2 className="h-3.5 w-3.5 text-emerald-600" />
+   517→              <Input
+   518→                autoFocus
+   519→                value={linkUrl}
+   520→                onChange={(e) => setLinkUrl(e.target.value)}
+   521→                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyLink() } }}
+   522→                placeholder="https://example.com"
+   523→                className="h-7 text-xs flex-1 max-w-xs"
+   524→              />
+   525→              <Button type="button" size="sm" className="h-7 text-xs" onClick={applyLink}>Insert</Button>
+   526→            </>
+   527→          )}
+   528→          {imgOpen && (
+   529→            <>
+   530→              <ImageIcon className="h-3.5 w-3.5 text-emerald-600" />
+   531→              <Input
+   532→                autoFocus
+   533→                value={imgUrl}
+   534→                onChange={(e) => setImgUrl(e.target.value)}
+   535→                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyImage() } }}
+   536→                placeholder="https://example.com/logo.png"
+   537→                className="h-7 text-xs flex-1 max-w-xs"
+   538→              />
+   539→              <Button type="button" size="sm" className="h-7 text-xs" onClick={applyImage}>Insert</Button>
+   540→            </>
+   541→          )}
+   542→          <button
+   543→            type="button"
+   544→            onClick={() => { setLinkOpen(false); setImgOpen(false) }}
+   545→            className="ml-auto text-xs text-muted-foreground hover:text-foreground px-2"
+   546→          >
+   547→            Close
+   548→          </button>
+   549→        </div>
+   550→      )}
+   551→
+   552→      {/* ----------------- Editing surface ----------------- */}
+   553→      {sourceMode ? (
+   554→        <textarea
+   555→          value={value}
+   556→          onChange={(e) => onChange(e.target.value)}
+   557→          spellCheck={false}
+   558→          className="flex-1 w-full p-4 font-mono text-xs leading-relaxed bg-background resize-none outline-none"
+   559→          style={{ minHeight }}
+   560→          placeholder="<p>Raw HTML…</p>"
+   561→        />
+   562→      ) : (
+   563→        <div
+   564→          ref={ref}
+   565→          contentEditable
+   566→          suppressContentEditableWarning
+   567→          onInput={handleInput}
+   568→          onBlur={handleBlur}
+   569→          onMouseUp={() => { handleMouseUp(); updateActiveBlock() }}
+   570→          onKeyUp={() => { handleKeyUp(); updateActiveBlock() }}
+   571→          onFocus={onFocus}
+   572→          spellCheck
+   573→          data-placeholder={placeholder}
+   574→          className={cn(
+   575→            "flex-1 w-full p-4 prose prose-sm max-w-none overflow-y-auto outline-none",
+   576→            "focus:outline-none",
+   577→            // Style editable content
+   578→            "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
+   579→            "[&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-3 [&_h1]:mb-2",
+   580→            "[&_h2]:text-xl [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-2",
+   581→            "[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1",
+   582→            "[&_p]:my-1.5 [&_p]:leading-relaxed",
+   583→            "[&_blockquote]:border-l-4 [&_blockquote]:border-emerald-400 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-muted-foreground",
+   584→            "[&_pre]:bg-muted [&_pre]:p-3 [&_pre]:rounded-md [&_pre]:text-xs [&_pre]:font-mono [&_pre]:overflow-x-auto",
+   585→            "[&_a]:text-emerald-600 [&_a]:underline dark:[&_a]:text-emerald-400",
+   586→            "[&_img]:max-w-full [&_img]:h-auto",
+   587→            "[&_hr]:my-3 [&_hr]:border-border/60",
+   588→            "empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:italic",
+   589→          )}
+   590→          style={{ minHeight }}
+   591→        />
+   592→      )}
+   593→
+   594→      {/* ----------------- Footer status bar ----------------- */}
+   595→      <div className="flex items-center justify-between px-3 py-1 border-t border-border/60 bg-muted/20 text-[10px] text-muted-foreground">
+   596→        <span className="flex items-center gap-1.5">
+   597→          <TypeIcon className="h-3 w-3" />
+   598→          {sourceMode ? "HTML source" : "WYSIWYG editor"}
+   599→        </span>
+   600→        <span>
+   601→          {sourceMode
+   602→            ? "Edits update the raw HTML"
+   603→            : "Tip: click a {{slug}} on the right to insert at the cursor"}
+   604→        </span>
+   605→      </div>
+   606→      </TooltipProvider>
+   607→    </div>
+   608→  )
+   609→}
+   610→
+   611→function Sep() {
+   612→  return <Separator orientation="vertical" className="h-5 mx-1 bg-border/60" />
+   613→}
+   614→
+   615→// =====================================================================
+   616→// Sectioned editor (Header / Body / Footer tabs)
+   617→// =====================================================================
+   618→
+   619→/**
+   620→ * Three-tab WYSIWYG editor for Header / Body / Footer HTML content.
+   621→ * Exposes an imperative `insertSlug(slug)` API so the parent can route
+   622→ * {{variable}} clicks into whichever section was last focused.
+   623→ */
+   624→export const SectionedRichEditor = React.forwardRef<RichEditorHandle, SectionedRichEditorProps>(
+   625→  function SectionedRichEditor(props, ref) {
+   626→    const {
+   627→      header, body, footer, onChange, initialSection = "body",
+   628→      minHeight = 260, compact, className, placeholders,
+   629→    } = props
+   630→
+   631→    const [active, setActive] = React.useState<EditorSection>(initialSection)
+   632→    const insertFns = React.useRef<Record<EditorSection, ((text: string) => void) | null>>({
+   633→      header: null, body: null, footer: null,
+   634→    })
+   635→    const lastFocused = React.useRef<EditorSection>(initialSection)
+   636→
+   637→    React.useImperativeHandle(ref, () => ({
+   638→      insertSlug: (slug: string) => {
+   639→        const token = `{{${slug}}}`
+   640→        const section = lastFocused.current || active
+   641→        const fn = insertFns.current[section]
+   642→        if (fn) {
+   643→          fn(token)
+   644→        } else {
+   645→          // Fallback: append to the active section's HTML
+   646→          const current = section === "header" ? header : section === "footer" ? footer : body
+   647→          onChange(section, current + token)
+   648→        }
+   649→      },
+   650→      focus: (section) => {
+   651→        if (section) {
+   652→          setActive(section)
+   653→          lastFocused.current = section
+   654→        }
+   655→      },
+   656→    }), [active, body, footer, header, onChange])
+   657→
+   658→    const tabs: { id: EditorSection; label: string; required?: boolean; icon: React.ComponentType<{ className?: string }> }[] = [
+   659→      { id: "header", label: "Header", icon: PanelTopIcon },
+   660→      { id: "body",   label: "Body",   required: true, icon: PanelBodyIcon },
+   661→      { id: "footer", label: "Footer", icon: PanelBottomIcon },
+   662→    ]
+   663→
+   664→    const current = active === "header" ? header : active === "body" ? body : footer
+   665→    const currentPlaceholder =
+   666→      active === "header"
+   667→        ? placeholders?.header ?? "<p style='text-align:center'><img src='{{CompanyLogo}}' alt='logo' height='40' /></p>"
+   668→        : active === "footer"
+   669→          ? placeholders?.footer ?? "<p style='color:#888; font-size:12px;'>© {{CompanyName}}. All rights reserved.</p>"
+   670→          : placeholders?.body ?? "<p>Hi {{CandidateName}},</p><p>Welcome to {{CompanyName}}! …</p>"
+   671→
+   672→    return (
+   673→      <div className={cn("flex flex-col h-full min-h-0 gap-2", className)}>
+   674→        {/* Section tabs */}
+   675→        <div className="flex items-center gap-1.5">
+   676→          {tabs.map((t) => {
+   677→            const I = t.icon
+   678→            const isActive = active === t.id
+   679→            const hasContent = (t.id === "header" ? header : t.id === "footer" ? footer : body).trim().length > 0
+   680→            return (
+   681→              <button
+   682→                key={t.id}
+   683→                type="button"
+   684→                onClick={() => { setActive(t.id); lastFocused.current = t.id }}
+   685→                className={cn(
+   686→                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors",
+   687→                  isActive
+   688→                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+   689→                    : "bg-background text-muted-foreground hover:bg-muted/60 border-border/60",
+   690→                )}
+   691→              >
+   692→                <I className="h-3.5 w-3.5" />
+   693→                {t.label}
+   694→                {t.required && <span className="text-rose-500">*</span>}
+   695→                {hasContent && (
+   696→                  <span className={cn(
+   697→                    "h-1.5 w-1.5 rounded-full",
+   698→                    isActive ? "bg-emerald-500" : "bg-muted-foreground/40",
+   699→                  )} />
+   700→                )}
+   701→              </button>
+   702→            )
+   703→          })}
+   704→          <span className="ml-auto text-[10px] text-muted-foreground/70 uppercase tracking-wide">
+   705→            WYSIWYG · HTML stored
+   706→          </span>
+   707→        </div>
+   708→
+   709→        {/* Active editor */}
+   710→        <div className="flex-1 min-h-0">
+   711→          <RichTextEditor
+   712→            key={active}
+   713→            value={current}
+   714→            onChange={(html) => onChange(active, html)}
+   715→            onFocus={() => { lastFocused.current = active }}
+   716→            placeholder={currentPlaceholder}
+   717→            minHeight={minHeight}
+   718→            compact={compact}
+   719→            registerInsert={(fn) => { insertFns.current[active] = fn }}
+   720→          />
+   721→        </div>
+   722→
+   723→        {/* Helper text */}
+   724→        <p className="text-[10px] text-muted-foreground/70 px-1">
+   725→          {active === "body" && "The body is the main content. Required."}
+   726→          {active === "header" && "Header appears at the top of every page (e.g. logo, letterhead)."}
+   727→          {active === "footer" && "Footer appears at the bottom of every page (e.g. page numbers, signatures)."}
+   728→        </p>
+   729→      </div>
+   730→    )
+   731→  },
+   732→)
+   733→
+   734→// Tiny inline panel icons (avoid extra lucide imports)
+   735→function PanelTopIcon({ className }: { className?: string }) {
+   736→  return (
+   737→    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+   738→      <rect x="3" y="3" width="18" height="18" rx="2" />
+   739→      <line x1="3" y1="9" x2="21" y2="9" />
+   740→    </svg>
+   741→  )
+   742→}
+   743→function PanelBodyIcon({ className }: { className?: string }) {
+   744→  return (
+   745→    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+   746→      <rect x="3" y="3" width="18" height="18" rx="2" />
+   747→      <line x1="7" y1="9" x2="17" y2="9" />
+   748→      <line x1="7" y1="13" x2="17" y2="13" />
+   749→      <line x1="7" y1="17" x2="13" y2="17" />
+   750→    </svg>
+   751→  )
+   752→}
+   753→function PanelBottomIcon({ className }: { className?: string }) {
+   754→  return (
+   755→    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+   756→      <rect x="3" y="3" width="18" height="18" rx="2" />
+   757→      <line x1="3" y1="15" x2="21" y2="15" />
+   758→    </svg>
+   759→  )
+   760→}
+   761→
+   762→// =====================================================================
+   763→// Tooltip provider wrapper (so consumers don't need to add one)
+   764→// =====================================================================
+   765→export function RichEditorTooltipProvider({ children }: { children: React.ReactNode }) {
+   766→  return <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+   767→}
+   768→

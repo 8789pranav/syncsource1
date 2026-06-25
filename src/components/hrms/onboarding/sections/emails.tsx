@@ -27,8 +27,8 @@ import {
   ShieldCheck, CalendarClock, PartyPopper, PlayCircle, Award, UserMinus,
   Plus, Search, Pencil, Copy, Star, Eye, Trash2, MoreHorizontal,
   Loader2, Inbox, Code2, Sparkles, ChevronDown, X, AtSign, Users,
-  Type, Palette, Languages, Hash,
-  Clock, User, Building2, ArrowRight, Layers, Tag, Briefcase,
+  Type, Languages, Hash,
+  Clock, Layers, Tag,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -71,6 +71,10 @@ import {
   type RichEditorHandle,
   type EditorSection,
 } from "@/components/hrms/onboarding/rich-editor"
+import {
+  SlugPalette, SlugUsageSummary,
+  extractVariables, substituteVariables,
+} from "@/components/hrms/onboarding/slug-catalog"
 
 // ============================================================================
 //  Types
@@ -185,103 +189,11 @@ const RECIPIENT_META: Record<string, RecipientMeta> = RECIPIENT_TYPES.reduce(
 )
 
 // ============================================================================
-//  Constants — email variables (grouped for the picker)
+//  Slugs / Variables — provided by the shared slug-catalog module
+//  (single source of truth used by BOTH emails & documents). The
+//  extractVariables() and substituteVariables() helpers are imported
+//  above; the <SlugPalette> panel is rendered in the editor's right rail.
 // ============================================================================
-
-interface VariableGroup {
-  label: string
-  icon: React.ComponentType<{ className?: string }>
-  accent: string
-  items: { slug: string; label: string }[]
-}
-
-const VARIABLE_GROUPS: VariableGroup[] = [
-  {
-    label: "Candidate",
-    icon: User,
-    accent: "text-emerald-600 dark:text-emerald-400",
-    items: [
-      { slug: "CandidateName", label: "Candidate Name" },
-      { slug: "CandidateEmail", label: "Candidate Email" },
-      { slug: "CandidateMobile", label: "Candidate Mobile" },
-    ],
-  },
-  {
-    label: "Job",
-    icon: Briefcase,
-    accent: "text-teal-600 dark:text-teal-400",
-    items: [
-      { slug: "EntityName", label: "Entity Name" },
-      { slug: "CompanyName", label: "Company Name" },
-      { slug: "Department", label: "Department" },
-      { slug: "Designation", label: "Designation" },
-      { slug: "Location", label: "Location" },
-      { slug: "JoiningDate", label: "Joining Date" },
-      { slug: "ReportingManager", label: "Reporting Manager" },
-      { slug: "HROwner", label: "HR Owner" },
-    ],
-  },
-  {
-    label: "Workflow",
-    icon: Layers,
-    accent: "text-violet-600 dark:text-violet-400",
-    items: [
-      { slug: "WorkflowName", label: "Workflow Name" },
-      { slug: "CurrentStage", label: "Current Stage" },
-      { slug: "FormName", label: "Form Name" },
-      { slug: "DocumentName", label: "Document Name" },
-      { slug: "TaskName", label: "Task Name" },
-      { slug: "DueDate", label: "Due Date" },
-    ],
-  },
-  {
-    label: "Links",
-    icon: ArrowRight,
-    accent: "text-cyan-600 dark:text-cyan-400",
-    items: [
-      { slug: "PortalLink", label: "Portal Link" },
-      { slug: "OfferLetterLink", label: "Offer Letter Link" },
-      { slug: "ApprovalLink", label: "Approval Link" },
-      { slug: "RejectReason", label: "Reject Reason" },
-    ],
-  },
-  {
-    label: "Company",
-    icon: Building2,
-    accent: "text-amber-600 dark:text-amber-400",
-    items: [
-      { slug: "CompanyLogo", label: "Company Logo" },
-    ],
-  },
-]
-
-const ALL_VARIABLES = VARIABLE_GROUPS.flatMap((g) => g.items.map((i) => i.slug))
-
-// Sample values for the live preview substitution
-const SAMPLE_VALUES: Record<string, string> = {
-  CandidateName: "Priya Sharma",
-  CandidateEmail: "priya.sharma@example.com",
-  CandidateMobile: "+91 98765 43210",
-  EntityName: "ACME Technologies Pvt Ltd",
-  CompanyName: "ACME Corp",
-  Department: "Engineering",
-  Designation: "Senior Software Engineer",
-  Location: "Bengaluru, India",
-  JoiningDate: "15 Mar 2025",
-  ReportingManager: "Rahul Verma",
-  HROwner: "Anjali Mehta",
-  WorkflowName: "Standard Onboarding",
-  CurrentStage: "Document Verification",
-  FormName: "Candidate Information Form",
-  DocumentName: "PAN Card",
-  TaskName: "IT Asset Allocation",
-  DueDate: "20 Mar 2025",
-  PortalLink: "https://onboarding.acme.com/portal/abc123",
-  OfferLetterLink: "https://onboarding.acme.com/offer/abc123",
-  ApprovalLink: "https://onboarding.acme.com/approve/abc123",
-  RejectReason: "Document is expired",
-  CompanyLogo: "[ACME Corp Logo]",
-}
 
 // ============================================================================
 //  Constants — select options
@@ -347,24 +259,8 @@ function parseRecipients(raw?: string | null): RecipientGroup {
   }
 }
 
-/** Extract {{Variable}} tokens from a string. */
-function extractVariables(html: string): string[] {
-  const set = new Set<string>()
-  const re = /\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/g
-  let m: RegExpExecArray | null
-  while ((m = re.exec(html)) !== null) {
-    set.add(m[1])
-  }
-  return Array.from(set)
-}
-
-/** Substitute {{Variable}} tokens with sample data. Unknown tokens are left intact. */
-function substituteVariables(html: string): string {
-  if (!html) return ""
-  return html.replace(/\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/g, (_, key: string) => {
-    return SAMPLE_VALUES[key] ?? `{{${key}}}`
-  })
-}
+// extractVariables() and substituteVariables() are imported from
+// the shared slug-catalog module (single source of truth).
 
 function emptyForm(): EmailFormState {
   return {
@@ -1130,6 +1026,12 @@ function EditorDialog({
     [form.headerHtml, form.bodyHtml, form.footerHtml],
   )
 
+  // ----- Slugs currently used across subject + all sections (for the palette + summary) -----
+  const usedVariables = useMemo(
+    () => extractVariables(`${form.subject}\n${form.headerHtml || ""}\n${form.bodyHtml || ""}\n${form.footerHtml || ""}`),
+    [form.subject, form.headerHtml, form.bodyHtml, form.footerHtml],
+  )
+
   const isEdit = !!form.id
 
   return (
@@ -1173,7 +1075,7 @@ function EditorDialog({
 
         {/* Body — scrollable */}
         <ScrollArea className="flex-1 max-h-[calc(90vh-128px)]">
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-0">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-0">
             {/* ----- Left: form + recipients + HTML editor ----- */}
             <div className="p-5 space-y-5 min-w-0">
 
@@ -1294,6 +1196,7 @@ function EditorDialog({
                   className="h-9"
                 />
               </Field>
+              <SlugUsageSummary used={usedVariables} />
 
               <Separator />
 
@@ -1369,9 +1272,15 @@ function EditorDialog({
               </section>
             </div>
 
-            {/* ----- Right: variable picker (xl+ only) ----- */}
-            <aside className="hidden xl:block border-l border-border/60 bg-muted/30">
-              <VariablePicker onInsert={insertVariable} />
+            {/* ----- Right: shared slug library (always visible) ----- */}
+            <aside className="border-l border-border/60 bg-background min-w-0">
+              <SlugPalette
+                onInsert={insertVariable}
+                usedVariables={usedVariables}
+                context="email"
+                title="Slug Library"
+                className="h-full"
+              />
             </aside>
           </div>
 
@@ -1546,54 +1455,6 @@ function RecipientRow({
         </DropdownMenu>
       </div>
     </div>
-  )
-}
-
-// ============================================================================
-//  Variable picker sidebar
-// ============================================================================
-
-function VariablePicker({ onInsert }: { onInsert: (slug: string) => void }) {
-  return (
-    <ScrollArea className="h-full max-h-[calc(90vh-180px)]">
-      <div className="p-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <Palette className="h-4 w-4 text-fuchsia-500" />
-          <h3 className="text-sm font-semibold">Variables</h3>
-        </div>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Click any variable to insert it at your cursor in the subject or active HTML field.
-        </p>
-
-        {VARIABLE_GROUPS.map((group) => {
-          const GroupIcon = group.icon
-          return (
-            <div key={group.label} className="space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <GroupIcon className={cn("h-3.5 w-3.5", group.accent)} />
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {group.label}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {group.items.map((v) => (
-                  <button
-                    key={v.slug}
-                    onClick={() => onInsert(v.slug)}
-                    title={v.label}
-                    className="group inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-border/60 bg-background hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-colors"
-                  >
-                    <code className="text-[10px] font-mono text-foreground/70 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
-                      {`{{${v.slug}}}`}
-                    </code>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </ScrollArea>
   )
 }
 

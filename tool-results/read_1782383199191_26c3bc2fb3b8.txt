@@ -1,0 +1,1799 @@
+     1→"use client"
+     2→
+     3→// ============================================================================
+     4→//  EmailsSection — Onboarding Email Templates (spec #9)
+     5→//  Admins create reusable email content for every onboarding event.
+     6→//  The workflow engine decides *when* each template fires.
+     7→//
+     8→//  Layout:
+     9→//   • PageHeader with Mail icon
+    10→//   • 4 mini stat cards (Total / Active / Default / Drafts)
+    11→//   • Two-column layout: event-type sidebar (21 categories) + templates table
+    12→//   • Editor dialog (max-w-6xl) — form fields, recipient builder, HTML editor
+    13→//     with variable picker + live preview
+    14→//   • Preview dialog — full email preview with sample data
+    15→//
+    16→//  Palette: emerald / teal / cyan / amber / violet / rose / lime / orange /
+    17→//  slate / fuchsia / pink only. NO indigo, NO blue.
+    18→// ============================================================================
+    19→
+    20→import * as React from "react"
+    21→import { useMemo, useState, useRef, useCallback } from "react"
+    22→import { motion, AnimatePresence } from "framer-motion"
+    23→import { toast } from "sonner"
+    24→import {
+    25→  Mail, Bell, FileText, FileCheck, FileQuestion, Upload,
+    26→  FileCheck2, FileX, Send, CheckCircle2, XCircle, ListTodo, AlertTriangle,
+    27→  ShieldCheck, CalendarClock, PartyPopper, PlayCircle, Award, UserMinus,
+    28→  Plus, Search, Pencil, Copy, Star, Eye, Trash2, MoreHorizontal,
+    29→  Loader2, Inbox, Code2, Sparkles, ChevronDown, X, AtSign, Users,
+    30→  Type, Palette, Languages, Hash,
+    31→  Clock, User, Building2, ArrowRight, Layers, Tag, Briefcase,
+    32→} from "lucide-react"
+    33→
+    34→import { cn } from "@/lib/utils"
+    35→import {
+    36→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+    37→} from "@/components/ui/dialog"
+    38→import {
+    39→  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+    40→  AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel,
+    41→} from "@/components/ui/alert-dialog"
+    42→import { Button } from "@/components/ui/button"
+    43→import { Input } from "@/components/ui/input"
+    44→import { Label } from "@/components/ui/label"
+    45→import { Badge } from "@/components/ui/badge"
+    46→import { Switch } from "@/components/ui/switch"
+    47→import { Card, CardContent } from "@/components/ui/card"
+    48→import { Separator } from "@/components/ui/separator"
+    49→import { Skeleton } from "@/components/ui/skeleton"
+    50→import { ScrollArea } from "@/components/ui/scroll-area"
+    51→import {
+    52→  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+    53→} from "@/components/ui/select"
+    54→import {
+    55→  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+    56→  DropdownMenuSeparator, DropdownMenuLabel,
+    57→} from "@/components/ui/dropdown-menu"
+    58→import {
+    59→  Tooltip, TooltipContent, TooltipTrigger, TooltipProvider,
+    60→} from "@/components/ui/tooltip"
+    61→
+    62→import {
+    63→  PageHeader, StatCard, EmptyState,
+    64→} from "@/components/hrms/ui"
+    65→
+    66→import {
+    67→  useFetch, apiPost, apiPatch, apiDelete, safeToast, safeParseJson, timeAgo,
+    68→} from "@/components/hrms/onboarding/shared"
+    69→import {
+    70→  SectionedRichEditor,
+    71→  type RichEditorHandle,
+    72→  type EditorSection,
+    73→} from "@/components/hrms/onboarding/rich-editor"
+    74→
+    75→// ============================================================================
+    76→//  Types
+    77→// ============================================================================
+    78→
+    79→export interface EmailTemplate {
+    80→  id: string
+    81→  name: string
+    82→  code: string
+    83→  eventType: string
+    84→  scopeType: string
+    85→  entityId?: string | null
+    86→  workflowId?: string | null
+    87→  language: string
+    88→  subject: string
+    89→  headerHtml?: string | null
+    90→  bodyHtml: string
+    91→  footerHtml?: string | null
+    92→  isDefault: boolean
+    93→  status: string
+    94→  version: number
+    95→  createdBy?: string | null
+    96→  recipients?: string | null // JSON: { to: Recipient[], cc: Recipient[], bcc: Recipient[] }
+    97→  fromEmail?: string | null
+    98→  replyToEmail?: string | null
+    99→  variablesUsed?: string | null
+   100→  effectiveFrom?: string | null
+   101→  effectiveTo?: string | null
+   102→  createdAt: string
+   103→  updatedAt: string
+   104→}
+   105→
+   106→interface Recipient {
+   107→  type: string
+   108→  value?: string
+   109→}
+   110→
+   111→interface RecipientGroup {
+   112→  to: Recipient[]
+   113→  cc: Recipient[]
+   114→  bcc: Recipient[]
+   115→}
+   116→
+   117→// ============================================================================
+   118→//  Constants — 21 event categories (20 from spec + "Onboarding Started")
+   119→// ============================================================================
+   120→
+   121→interface EventMeta {
+   122→  value: string
+   123→  icon: React.ComponentType<{ className?: string }>
+   124→  hint: string
+   125→}
+   126→
+   127→const EVENT_CATEGORIES: EventMeta[] = [
+   128→  { value: "Candidate Invite", icon: Mail, hint: "Sent when a candidate is added to the portal" },
+   129→  { value: "Invite Reminder", icon: Bell, hint: "Follow-up if the invite goes unanswered" },
+   130→  { value: "Candidate Form Pending", icon: FileText, hint: "Reminder to complete the onboarding form" },
+   131→  { value: "Candidate Form Submitted", icon: FileCheck, hint: "Acknowledgement after form submission" },
+   132→  { value: "Document Pending", icon: FileQuestion, hint: "Request to upload a pending document" },
+   133→  { value: "Document Uploaded", icon: Upload, hint: "Acknowledgement after a document is uploaded" },
+   134→  { value: "Document Approved", icon: FileCheck2, hint: "Notification that a document was approved" },
+   135→  { value: "Document Rejected", icon: FileX, hint: "Notification that a document was rejected" },
+   136→  { value: "Offer Letter Sent", icon: Send, hint: "Confirmation that the offer letter was sent" },
+   137→  { value: "Offer Accepted", icon: CheckCircle2, hint: "Candidate accepted the offer" },
+   138→  { value: "Offer Declined", icon: XCircle, hint: "Candidate declined the offer" },
+   139→  { value: "Task Assigned", icon: ListTodo, hint: "A new task was assigned to the owner" },
+   140→  { value: "Task Reminder", icon: Bell, hint: "Reminder for an upcoming task due date" },
+   141→  { value: "Task Overdue", icon: AlertTriangle, hint: "A task is past its due date" },
+   142→  { value: "Approval Required", icon: ShieldCheck, hint: "An approval step is awaiting action" },
+   143→  { value: "Approval Completed", icon: CheckCircle2, hint: "An approval was completed" },
+   144→  { value: "Joining Reminder", icon: CalendarClock, hint: "Reminder before the joining date" },
+   145→  { value: "Welcome Email", icon: PartyPopper, hint: "Welcome message on day 1" },
+   146→  { value: "Onboarding Started", icon: PlayCircle, hint: "Candidate has entered the onboarding pipeline" },
+   147→  { value: "Onboarding Completed", icon: Award, hint: "Onboarding pipeline is complete" },
+   148→  { value: "Candidate Dropped", icon: UserMinus, hint: "Candidate withdrew or was dropped" },
+   149→]
+   150→
+   151→// ============================================================================
+   152→//  Constants — 12 recipient types with assigned colors (NO indigo / blue)
+   153→// ============================================================================
+   154→
+   155→interface RecipientMeta {
+   156→  type: string
+   157→  label: string
+   158→  // tailwind chip classes
+   159→  chip: string
+   160→  dot: string
+   161→  needsValue: boolean
+   162→  valueLabel?: string
+   163→  valuePlaceholder?: string
+   164→  valueType?: "email" | "text"
+   165→}
+   166→
+   167→const RECIPIENT_TYPES: RecipientMeta[] = [
+   168→  { type: "candidate", label: "Candidate", chip: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300", dot: "bg-emerald-500", needsValue: false },
+   169→  { type: "hr_owner", label: "HR Owner", chip: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300", dot: "bg-teal-500", needsValue: false },
+   170→  { type: "recruiter", label: "Recruiter", chip: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300", dot: "bg-cyan-500", needsValue: false },
+   171→  { type: "reporting_manager", label: "Reporting Manager", chip: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300", dot: "bg-amber-500", needsValue: false },
+   172→  { type: "department_head", label: "Department Head", chip: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300", dot: "bg-violet-500", needsValue: false },
+   173→  { type: "it_admin", label: "IT Admin", chip: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300", dot: "bg-rose-500", needsValue: false },
+   174→  { type: "admin_team", label: "Admin Team", chip: "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300", dot: "bg-slate-500", needsValue: false },
+   175→  { type: "payroll_admin", label: "Payroll Admin", chip: "bg-lime-100 text-lime-700 dark:bg-lime-500/15 dark:text-lime-300", dot: "bg-lime-500", needsValue: false },
+   176→  { type: "finance_admin", label: "Finance Admin", chip: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300", dot: "bg-orange-500", needsValue: false },
+   177→  { type: "specific_role", label: "Specific Role", chip: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-300", dot: "bg-fuchsia-500", needsValue: true, valueLabel: "Role name", valuePlaceholder: "e.g. IT Support Lead", valueType: "text" },
+   178→  { type: "specific_employee", label: "Specific Employee", chip: "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-300", dot: "bg-pink-500", needsValue: true, valueLabel: "Employee name / ID", valuePlaceholder: "e.g. Aarav Sharma (EMP-0001)", valueType: "text" },
+   179→  { type: "specific_email", label: "Specific Email", chip: "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300", dot: "bg-slate-400", needsValue: true, valueLabel: "Email address", valuePlaceholder: "name@company.com", valueType: "email" },
+   180→]
+   181→
+   182→const RECIPIENT_META: Record<string, RecipientMeta> = RECIPIENT_TYPES.reduce(
+   183→  (acc, r) => { acc[r.type] = r; return acc },
+   184→  {} as Record<string, RecipientMeta>,
+   185→)
+   186→
+   187→// ============================================================================
+   188→//  Constants — email variables (grouped for the picker)
+   189→// ============================================================================
+   190→
+   191→interface VariableGroup {
+   192→  label: string
+   193→  icon: React.ComponentType<{ className?: string }>
+   194→  accent: string
+   195→  items: { slug: string; label: string }[]
+   196→}
+   197→
+   198→const VARIABLE_GROUPS: VariableGroup[] = [
+   199→  {
+   200→    label: "Candidate",
+   201→    icon: User,
+   202→    accent: "text-emerald-600 dark:text-emerald-400",
+   203→    items: [
+   204→      { slug: "CandidateName", label: "Candidate Name" },
+   205→      { slug: "CandidateEmail", label: "Candidate Email" },
+   206→      { slug: "CandidateMobile", label: "Candidate Mobile" },
+   207→    ],
+   208→  },
+   209→  {
+   210→    label: "Job",
+   211→    icon: Briefcase,
+   212→    accent: "text-teal-600 dark:text-teal-400",
+   213→    items: [
+   214→      { slug: "EntityName", label: "Entity Name" },
+   215→      { slug: "CompanyName", label: "Company Name" },
+   216→      { slug: "Department", label: "Department" },
+   217→      { slug: "Designation", label: "Designation" },
+   218→      { slug: "Location", label: "Location" },
+   219→      { slug: "JoiningDate", label: "Joining Date" },
+   220→      { slug: "ReportingManager", label: "Reporting Manager" },
+   221→      { slug: "HROwner", label: "HR Owner" },
+   222→    ],
+   223→  },
+   224→  {
+   225→    label: "Workflow",
+   226→    icon: Layers,
+   227→    accent: "text-violet-600 dark:text-violet-400",
+   228→    items: [
+   229→      { slug: "WorkflowName", label: "Workflow Name" },
+   230→      { slug: "CurrentStage", label: "Current Stage" },
+   231→      { slug: "FormName", label: "Form Name" },
+   232→      { slug: "DocumentName", label: "Document Name" },
+   233→      { slug: "TaskName", label: "Task Name" },
+   234→      { slug: "DueDate", label: "Due Date" },
+   235→    ],
+   236→  },
+   237→  {
+   238→    label: "Links",
+   239→    icon: ArrowRight,
+   240→    accent: "text-cyan-600 dark:text-cyan-400",
+   241→    items: [
+   242→      { slug: "PortalLink", label: "Portal Link" },
+   243→      { slug: "OfferLetterLink", label: "Offer Letter Link" },
+   244→      { slug: "ApprovalLink", label: "Approval Link" },
+   245→      { slug: "RejectReason", label: "Reject Reason" },
+   246→    ],
+   247→  },
+   248→  {
+   249→    label: "Company",
+   250→    icon: Building2,
+   251→    accent: "text-amber-600 dark:text-amber-400",
+   252→    items: [
+   253→      { slug: "CompanyLogo", label: "Company Logo" },
+   254→    ],
+   255→  },
+   256→]
+   257→
+   258→const ALL_VARIABLES = VARIABLE_GROUPS.flatMap((g) => g.items.map((i) => i.slug))
+   259→
+   260→// Sample values for the live preview substitution
+   261→const SAMPLE_VALUES: Record<string, string> = {
+   262→  CandidateName: "Priya Sharma",
+   263→  CandidateEmail: "priya.sharma@example.com",
+   264→  CandidateMobile: "+91 98765 43210",
+   265→  EntityName: "ACME Technologies Pvt Ltd",
+   266→  CompanyName: "ACME Corp",
+   267→  Department: "Engineering",
+   268→  Designation: "Senior Software Engineer",
+   269→  Location: "Bengaluru, India",
+   270→  JoiningDate: "15 Mar 2025",
+   271→  ReportingManager: "Rahul Verma",
+   272→  HROwner: "Anjali Mehta",
+   273→  WorkflowName: "Standard Onboarding",
+   274→  CurrentStage: "Document Verification",
+   275→  FormName: "Candidate Information Form",
+   276→  DocumentName: "PAN Card",
+   277→  TaskName: "IT Asset Allocation",
+   278→  DueDate: "20 Mar 2025",
+   279→  PortalLink: "https://onboarding.acme.com/portal/abc123",
+   280→  OfferLetterLink: "https://onboarding.acme.com/offer/abc123",
+   281→  ApprovalLink: "https://onboarding.acme.com/approve/abc123",
+   282→  RejectReason: "Document is expired",
+   283→  CompanyLogo: "[ACME Corp Logo]",
+   284→}
+   285→
+   286→// ============================================================================
+   287→//  Constants — select options
+   288→// ============================================================================
+   289→
+   290→const SCOPE_TYPES = [
+   291→  { value: "tenant", label: "Tenant (Global)" },
+   292→  { value: "entity", label: "Entity" },
+   293→  { value: "workflow", label: "Workflow" },
+   294→  { value: "department", label: "Department" },
+   295→]
+   296→
+   297→const LANGUAGES = [
+   298→  { value: "en", label: "English" },
+   299→  { value: "hi", label: "Hindi" },
+   300→  { value: "ta", label: "Tamil" },
+   301→  { value: "te", label: "Telugu" },
+   302→  { value: "kn", label: "Kannada" },
+   303→  { value: "mr", label: "Marathi" },
+   304→  { value: "bn", label: "Bengali" },
+   305→]
+   306→
+   307→const STATUS_OPTIONS = [
+   308→  { value: "Active", label: "Active" },
+   309→  { value: "Draft", label: "Draft" },
+   310→  { value: "Inactive", label: "Inactive" },
+   311→]
+   312→
+   313→const STATUS_BADGE_CLASS: Record<string, string> = {
+   314→  Active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+   315→  Draft: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300",
+   316→  Inactive: "bg-muted text-muted-foreground",
+   317→}
+   318→
+   319→const SCOPE_BADGE_CLASS: Record<string, string> = {
+   320→  tenant: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
+   321→  entity: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300",
+   322→  workflow: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+   323→  department: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+   324→}
+   325→
+   326→// ============================================================================
+   327→//  Helpers
+   328→// ============================================================================
+   329→
+   330→/** Render the icon for an event type. Component, safe to use directly in JSX. */
+   331→function EventIconView({ eventType, className }: { eventType: string; className?: string }) {
+   332→  const Icon = EVENT_CATEGORIES.find((e) => e.value === eventType)?.icon || Mail
+   333→  return <Icon className={className} />
+   334→}
+   335→
+   336→function emptyRecipients(): RecipientGroup {
+   337→  return { to: [], cc: [], bcc: [] }
+   338→}
+   339→
+   340→function parseRecipients(raw?: string | null): RecipientGroup {
+   341→  if (!raw) return emptyRecipients()
+   342→  const parsed = safeParseJson<Partial<RecipientGroup>>(raw, {})
+   343→  return {
+   344→    to: Array.isArray(parsed.to) ? parsed.to : [],
+   345→    cc: Array.isArray(parsed.cc) ? parsed.cc : [],
+   346→    bcc: Array.isArray(parsed.bcc) ? parsed.bcc : [],
+   347→  }
+   348→}
+   349→
+   350→/** Extract {{Variable}} tokens from a string. */
+   351→function extractVariables(html: string): string[] {
+   352→  const set = new Set<string>()
+   353→  const re = /\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/g
+   354→  let m: RegExpExecArray | null
+   355→  while ((m = re.exec(html)) !== null) {
+   356→    set.add(m[1])
+   357→  }
+   358→  return Array.from(set)
+   359→}
+   360→
+   361→/** Substitute {{Variable}} tokens with sample data. Unknown tokens are left intact. */
+   362→function substituteVariables(html: string): string {
+   363→  if (!html) return ""
+   364→  return html.replace(/\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/g, (_, key: string) => {
+   365→    return SAMPLE_VALUES[key] ?? `{{${key}}}`
+   366→  })
+   367→}
+   368→
+   369→function emptyForm(): EmailFormState {
+   370→  return {
+   371→    id: null,
+   372→    name: "",
+   373→    code: "",
+   374→    eventType: "Candidate Invite",
+   375→    scopeType: "tenant",
+   376→    entityId: "",
+   377→    workflowId: "",
+   378→    language: "en",
+   379→    subject: "",
+   380→    headerHtml: "",
+   381→    bodyHtml: "",
+   382→    footerHtml: "",
+   383→    isDefault: false,
+   384→    status: "Active",
+   385→    version: 1,
+   386→    fromEmail: "",
+   387→    replyToEmail: "",
+   388→    recipients: emptyRecipients(),
+   389→  }
+   390→}
+   391→
+   392→function templateToForm(t: EmailTemplate): EmailFormState {
+   393→  return {
+   394→    id: t.id,
+   395→    name: t.name,
+   396→    code: t.code,
+   397→    eventType: t.eventType,
+   398→    scopeType: t.scopeType || "tenant",
+   399→    entityId: t.entityId || "",
+   400→    workflowId: t.workflowId || "",
+   401→    language: t.language || "en",
+   402→    subject: t.subject || "",
+   403→    headerHtml: t.headerHtml || "",
+   404→    bodyHtml: t.bodyHtml || "",
+   405→    footerHtml: t.footerHtml || "",
+   406→    isDefault: !!t.isDefault,
+   407→    status: t.status || "Active",
+   408→    version: t.version || 1,
+   409→    fromEmail: t.fromEmail || "",
+   410→    replyToEmail: t.replyToEmail || "",
+   411→    recipients: parseRecipients(t.recipients),
+   412→  }
+   413→}
+   414→
+   415→interface EmailFormState {
+   416→  id: string | null
+   417→  name: string
+   418→  code: string
+   419→  eventType: string
+   420→  scopeType: string
+   421→  entityId: string
+   422→  workflowId: string
+   423→  language: string
+   424→  subject: string
+   425→  headerHtml: string
+   426→  bodyHtml: string
+   427→  footerHtml: string
+   428→  isDefault: boolean
+   429→  status: string
+   430→  version: number
+   431→  fromEmail: string
+   432→  replyToEmail: string
+   433→  recipients: RecipientGroup
+   434→}
+   435→
+   436→// ============================================================================
+   437→//  Main component
+   438→// ============================================================================
+   439→
+   440→export function EmailsSection() {
+   441→  // ----- Data -----
+   442→  const listFetch = useFetch<{ items: EmailTemplate[] }>("/api/onboarding-emails")
+   443→  const items = listFetch.data?.items ?? []
+   444→
+   445→  // ----- Filters -----
+   446→  const [activeEvent, setActiveEvent] = useState<string>("__all__")
+   447→  const [search, setSearch] = useState("")
+   448→
+   449→  // ----- Dialogs -----
+   450→  const [editorOpen, setEditorOpen] = useState(false)
+   451→  const [form, setForm] = useState<EmailFormState>(emptyForm())
+   452→  const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null)
+   453→  const [deleteTarget, setDeleteTarget] = useState<EmailTemplate | null>(null)
+   454→  const [saving, setSaving] = useState(false)
+   455→
+   456→  // ----- Derived stats -----
+   457→  const stats = useMemo(() => {
+   458→    const total = items.length
+   459→    const active = items.filter((t) => t.status === "Active").length
+   460→    const defaults = items.filter((t) => t.isDefault).length
+   461→    const drafts = items.filter((t) => t.status === "Draft").length
+   462→    return { total, active, defaults, drafts }
+   463→  }, [items])
+   464→
+   465→  // ----- Per-event counts -----
+   466→  const eventCounts = useMemo(() => {
+   467→    const map: Record<string, number> = {}
+   468→    for (const t of items) {
+   469→      map[t.eventType] = (map[t.eventType] || 0) + 1
+   470→    }
+   471→    return map
+   472→  }, [items])
+   473→
+   474→  // ----- Filtered list -----
+   475→  const filtered = useMemo(() => {
+   476→    const q = search.trim().toLowerCase()
+   477→    return items.filter((t) => {
+   478→      if (activeEvent !== "__all__" && t.eventType !== activeEvent) return false
+   479→      if (!q) return true
+   480→      return (
+   481→        t.name?.toLowerCase().includes(q) ||
+   482→        t.code?.toLowerCase().includes(q) ||
+   483→        t.subject?.toLowerCase().includes(q) ||
+   484→        t.eventType?.toLowerCase().includes(q)
+   485→      )
+   486→    })
+   487→  }, [items, activeEvent, search])
+   488→
+   489→  // ----- Handlers -----
+   490→  const openNew = useCallback(() => {
+   491→    setForm({
+   492→      ...emptyForm(),
+   493→      eventType: activeEvent !== "__all__" ? activeEvent : "Candidate Invite",
+   494→    })
+   495→    setEditorOpen(true)
+   496→  }, [activeEvent])
+   497→
+   498→  const openEdit = useCallback((t: EmailTemplate) => {
+   499→    setForm(templateToForm(t))
+   500→    setEditorOpen(true)
+   501→  }, [])
+   502→
+   503→  const openClone = useCallback((t: EmailTemplate) => {
+   504→    const f = templateToForm(t)
+   505→    setForm({
+   506→      ...f,
+   507→      id: null,
+   508→      name: `${t.name} (Copy)`,
+   509→      code: `${t.code}_COPY`,
+   510→      isDefault: false,
+   511→      version: 1,
+   512→    })
+   513→    setEditorOpen(true)
+   514→  }, [])
+   515→
+   516→  const setDefault = useCallback(async (t: EmailTemplate) => {
+   517→    const p = apiPatch(`/api/onboarding-emails/${t.id}`, { isDefault: true })
+   518→    await safeToast(p, `“${t.name}” is now the default for ${t.eventType}`, "Failed to set default")
+   519→    listFetch.reload()
+   520→  }, [listFetch])
+   521→
+   522→  const confirmDelete = useCallback(async () => {
+   523→    if (!deleteTarget) return
+   524→    const p = apiDelete(`/api/onboarding-emails/${deleteTarget.id}`)
+   525→    await safeToast(p, `“${deleteTarget.name}” deleted`, "Failed to delete")
+   526→    setDeleteTarget(null)
+   527→    listFetch.reload()
+   528→  }, [deleteTarget, listFetch])
+   529→
+   530→  const submitForm = useCallback(async () => {
+   531→    if (!form.name.trim()) { toast.error("Template name is required"); return }
+   532→    if (!form.code.trim()) { toast.error("Template code is required"); return }
+   533→    if (!form.subject.trim()) { toast.error("Subject is required"); return }
+   534→    if (!form.bodyHtml.trim()) { toast.error("Email body is required"); return }
+   535→
+   536→    const payload: Record<string, unknown> = {
+   537→      name: form.name.trim(),
+   538→      code: form.code.trim(),
+   539→      eventType: form.eventType,
+   540→      scopeType: form.scopeType,
+   541→      entityId: form.entityId || null,
+   542→      workflowId: form.workflowId || null,
+   543→      language: form.language,
+   544→      subject: form.subject,
+   545→      headerHtml: form.headerHtml || null,
+   546→      bodyHtml: form.bodyHtml,
+   547→      footerHtml: form.footerHtml || null,
+   548→      isDefault: form.isDefault,
+   549→      status: form.status,
+   550→      version: form.version,
+   551→      fromEmail: form.fromEmail || null,
+   552→      replyToEmail: form.replyToEmail || null,
+   553→      recipients: JSON.stringify(form.recipients),
+   554→      variablesUsed: extractVariables(`${form.subject}\n${form.headerHtml}\n${form.bodyHtml}\n${form.footerHtml}`).join(","),
+   555→    }
+   556→
+   557→    setSaving(true)
+   558→    try {
+   559→      const isEdit = !!form.id
+   560→      const p = isEdit
+   561→        ? apiPatch(`/api/onboarding-emails/${form.id}`, payload)
+   562→        : apiPost("/api/onboarding-emails", payload)
+   563→      await safeToast(
+   564→        p,
+   565→        isEdit ? "Email template updated" : "Email template created",
+   566→        isEdit ? "Failed to update" : "Failed to create",
+   567→      )
+   568→      setEditorOpen(false)
+   569→      listFetch.reload()
+   570→    } finally {
+   571→      setSaving(false)
+   572→    }
+   573→  }, [form, listFetch])
+   574→
+   575→  // ----- Render -----
+   576→  return (
+   577→    <TooltipProvider>
+   578→      <div className="flex flex-col gap-5">
+   579→        <PageHeader
+   580→          title="Email Templates"
+   581→          description="Reusable email content for every onboarding event. Workflows decide when each template fires."
+   582→          icon={Mail}
+   583→          actions={
+   584→            <Button size="sm" onClick={openNew} className="gap-1.5">
+   585→              <Plus className="h-4 w-4" /> New Email Template
+   586→            </Button>
+   587→          }
+   588→        />
+   589→
+   590→        {/* Stats */}
+   591→        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+   592→          <StatCard label="Total Templates" value={stats.total} icon={Mail} accent="emerald" />
+   593→          <StatCard label="Active" value={stats.active} icon={CheckCircle2} accent="cyan" />
+   594→          <StatCard label="Default" value={stats.defaults} icon={Star} accent="amber" />
+   595→          <StatCard label="Drafts" value={stats.drafts} icon={FileText} accent="coral" />
+   596→        </div>
+   597→
+   598→        {/* Two-column layout */}
+   599→        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+   600→          {/* Sidebar — event categories */}
+   601→          <EventSidebar
+   602→            activeEvent={activeEvent}
+   603→            onSelect={setActiveEvent}
+   604→            counts={eventCounts}
+   605→            totalCount={items.length}
+   606→          />
+   607→
+   608→          {/* Templates table */}
+   609→          <Card className="bg-card border border-border/60 rounded-xl shadow-soft">
+   610→            <CardContent className="p-4">
+   611→              {/* Toolbar */}
+   612→              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-3">
+   613→                <div className="relative w-full sm:max-w-xs">
+   614→                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   615→                  <Input
+   616→                    value={search}
+   617→                    onChange={(e) => setSearch(e.target.value)}
+   618→                    placeholder="Search by name, code, subject…"
+   619→                    className="pl-9 h-9 bg-background"
+   620→                  />
+   621→                </div>
+   622→                <div className="flex items-center gap-2">
+   623→                  {activeEvent !== "__all__" && (
+   624→                    <Badge variant="outline" className="gap-1.5 py-1 pl-2.5 pr-2">
+   625→                      <span className="text-muted-foreground">Filtered:</span>
+   626→                      <span className="font-medium">{activeEvent}</span>
+   627→                      <button
+   628→                        onClick={() => setActiveEvent("__all__")}
+   629→                        className="ml-1 rounded-full hover:bg-muted p-0.5"
+   630→                        aria-label="Clear filter"
+   631→                      >
+   632→                        <X className="h-3 w-3" />
+   633→                      </button>
+   634→                    </Badge>
+   635→                  )}
+   636→                  <Button size="sm" onClick={openNew} className="gap-1.5">
+   637→                    <Plus className="h-4 w-4" /> New Template
+   638→                  </Button>
+   639→                </div>
+   640→              </div>
+   641→
+   642→              {/* Table or empty / loading */}
+   643→              {listFetch.loading ? (
+   644→                <div className="rounded-xl border border-border/60 overflow-hidden">
+   645→                  <div className="p-3 space-y-2">
+   646→                    {Array.from({ length: 5 }).map((_, i) => (
+   647→                      <Skeleton key={i} className="h-10 w-full" />
+   648→                    ))}
+   649→                  </div>
+   650→                </div>
+   651→              ) : filtered.length === 0 ? (
+   652→                <div className="rounded-xl border border-border/60">
+   653→                  <EmptyState
+   654→                    icon={Inbox}
+   655→                    title={items.length === 0 ? "No email templates yet" : "No templates match your filter"}
+   656→                    description={
+   657→                      items.length === 0
+   658→                        ? "Create your first email template to start sending onboarding communications."
+   659→                        : "Try clearing the search or selecting a different event type."
+   660→                    }
+   661→                    action={
+   662→                      <Button size="sm" onClick={openNew} className="gap-1.5">
+   663→                        <Plus className="h-4 w-4" /> New Template
+   664→                      </Button>
+   665→                    }
+   666→                  />
+   667→                </div>
+   668→              ) : (
+   669→                <TemplatesTable
+   670→                  items={filtered}
+   671→                  onEdit={openEdit}
+   672→                  onClone={openClone}
+   673→                  onSetDefault={setDefault}
+   674→                  onPreview={(t) => setPreviewTemplate(t)}
+   675→                  onDelete={(t) => setDeleteTarget(t)}
+   676→                />
+   677→              )}
+   678→            </CardContent>
+   679→          </Card>
+   680→        </div>
+   681→
+   682→        {/* Editor dialog */}
+   683→        <EditorDialog
+   684→          open={editorOpen}
+   685→          onOpenChange={setEditorOpen}
+   686→          form={form}
+   687→          setForm={setForm}
+   688→          onSubmit={submitForm}
+   689→          saving={saving}
+   690→        />
+   691→
+   692→        {/* Preview dialog */}
+   693→        <PreviewDialog
+   694→          template={previewTemplate}
+   695→          onOpenChange={(o) => { if (!o) setPreviewTemplate(null) }}
+   696→        />
+   697→
+   698→        {/* Delete confirmation */}
+   699→        <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null) }}>
+   700→          <AlertDialogContent>
+   701→            <AlertDialogHeader>
+   702→              <AlertDialogTitle>Delete email template?</AlertDialogTitle>
+   703→              <AlertDialogDescription>
+   704→                This will permanently delete <span className="font-medium text-foreground">{deleteTarget?.name}</span> ({deleteTarget?.code}).
+   705→                Workflows using this template will fall back to the next default. This cannot be undone.
+   706→              </AlertDialogDescription>
+   707→            </AlertDialogHeader>
+   708→            <AlertDialogFooter>
+   709→              <AlertDialogCancel>Cancel</AlertDialogCancel>
+   710→              <AlertDialogAction
+   711→                onClick={confirmDelete}
+   712→                className="bg-rose-600 hover:bg-rose-700 text-white"
+   713→              >
+   714→                Delete
+   715→              </AlertDialogAction>
+   716→            </AlertDialogFooter>
+   717→          </AlertDialogContent>
+   718→        </AlertDialog>
+   719→      </div>
+   720→    </TooltipProvider>
+   721→  )
+   722→}
+   723→
+   724→// ============================================================================
+   725→//  Event sidebar
+   726→// ============================================================================
+   727→
+   728→function EventSidebar({
+   729→  activeEvent, onSelect, counts, totalCount,
+   730→}: {
+   731→  activeEvent: string
+   732→  onSelect: (v: string) => void
+   733→  counts: Record<string, number>
+   734→  totalCount: number
+   735→}) {
+   736→  return (
+   737→    <Card className="bg-card border border-border/60 rounded-xl shadow-soft h-fit lg:sticky lg:top-2">
+   738→      <CardContent className="p-3">
+   739→        <div className="flex items-center justify-between px-2 pb-2 pt-1">
+   740→          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+   741→            Event Types
+   742→          </span>
+   743→          <Badge variant="outline" className="text-[10px] h-5 px-1.5 tabular-nums">
+   744→            {EVENT_CATEGORIES.length}
+   745→          </Badge>
+   746→        </div>
+   747→
+   748→        <ScrollArea className="max-h-[70vh] pr-1">
+   749→          <div className="flex flex-col gap-0.5">
+   750→            <SidebarItem
+   751→              label="All Templates"
+   752→              icon={Layers}
+   753→              count={totalCount}
+   754→              active={activeEvent === "__all__"}
+   755→              onClick={() => onSelect("__all__")}
+   756→              accent="emerald"
+   757→            />
+   758→            <div className="my-1.5 h-px bg-border/60" />
+   759→            {EVENT_CATEGORIES.map((e) => {
+   760→              const Icon = e.icon
+   761→              const count = counts[e.value] || 0
+   762→              const active = activeEvent === e.value
+   763→              return (
+   764→                <button
+   765→                  key={e.value}
+   766→                  onClick={() => onSelect(e.value)}
+   767→                  className={cn(
+   768→                    "group flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-colors text-left",
+   769→                    active
+   770→                      ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+   771→                      : "text-foreground/80 hover:bg-muted/60 hover:text-foreground",
+   772→                  )}
+   773→                >
+   774→                  <Icon className={cn(
+   775→                    "h-4 w-4 shrink-0",
+   776→                    active ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground group-hover:text-foreground",
+   777→                  )} />
+   778→                  <span className="flex-1 truncate">{e.value}</span>
+   779→                  {count > 0 ? (
+   780→                    <Badge variant="outline" className={cn(
+   781→                      "h-5 px-1.5 text-[10px] tabular-nums",
+   782→                      active
+   783→                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+   784→                        : "text-muted-foreground",
+   785→                    )}>
+   786→                      {count}
+   787→                    </Badge>
+   788→                  ) : null}
+   789→                </button>
+   790→              )
+   791→            })}
+   792→          </div>
+   793→        </ScrollArea>
+   794→      </CardContent>
+   795→    </Card>
+   796→  )
+   797→}
+   798→
+   799→function SidebarItem({
+   800→  label, icon: Icon, count, active, onClick, accent = "emerald",
+   801→}: {
+   802→  label: string
+   803→  icon: React.ComponentType<{ className?: string }>
+   804→  count: number
+   805→  active: boolean
+   806→  onClick: () => void
+   807→  accent?: "emerald" | "teal" | "cyan"
+   808→}) {
+   809→  const accentText: Record<string, string> = {
+   810→    emerald: "text-emerald-600 dark:text-emerald-400",
+   811→    teal: "text-teal-600 dark:text-teal-400",
+   812→    cyan: "text-cyan-600 dark:text-cyan-400",
+   813→  }
+   814→  const accentBg: Record<string, string> = {
+   815→    emerald: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+   816→    teal: "bg-teal-500/10 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
+   817→    cyan: "bg-cyan-500/10 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300",
+   818→  }
+   819→  return (
+   820→    <button
+   821→      onClick={onClick}
+   822→      className={cn(
+   823→        "group flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-colors text-left font-medium",
+   824→        active ? accentBg[accent] : "text-foreground/80 hover:bg-muted/60 hover:text-foreground",
+   825→      )}
+   826→    >
+   827→      <Icon className={cn("h-4 w-4 shrink-0", active ? accentText[accent] : "text-muted-foreground group-hover:text-foreground")} />
+   828→      <span className="flex-1 truncate">{label}</span>
+   829→      <Badge variant="outline" className={cn(
+   830→        "h-5 px-1.5 text-[10px] tabular-nums",
+   831→        active ? "border-current/30 bg-current/10" : "text-muted-foreground",
+   832→      )}>
+   833→        {count}
+   834→      </Badge>
+   835→    </button>
+   836→  )
+   837→}
+   838→
+   839→// ============================================================================
+   840→//  Templates table
+   841→// ============================================================================
+   842→
+   843→function TemplatesTable({
+   844→  items, onEdit, onClone, onSetDefault, onPreview, onDelete,
+   845→}: {
+   846→  items: EmailTemplate[]
+   847→  onEdit: (t: EmailTemplate) => void
+   848→  onClone: (t: EmailTemplate) => void
+   849→  onSetDefault: (t: EmailTemplate) => void
+   850→  onPreview: (t: EmailTemplate) => void
+   851→  onDelete: (t: EmailTemplate) => void
+   852→}) {
+   853→  return (
+   854→    <div className="rounded-xl border border-border/60 overflow-hidden bg-card">
+   855→      <div className="overflow-x-auto">
+   856→        <table className="w-full text-sm">
+   857→          <thead className="bg-muted/40">
+   858→            <tr className="border-b border-border/60">
+   859→              <Th className="min-w-[200px]">Template Name</Th>
+   860→              <Th>Code</Th>
+   861→              <Th>Event Type</Th>
+   862→              <Th>Scope</Th>
+   863→              <Th>Lang</Th>
+   864→              <Th className="text-center">Default</Th>
+   865→              <Th>Status</Th>
+   866→              <Th>Updated</Th>
+   867→              <Th className="text-right">Actions</Th>
+   868→            </tr>
+   869→          </thead>
+   870→          <tbody>
+   871→            {items.map((t) => {
+   872→              return (
+   873→                <tr
+   874→                  key={t.id}
+   875→                  className="border-b border-border/40 last:border-0 hover:bg-muted/30 transition-colors"
+   876→                >
+   877→                  {/* Name */}
+   878→                  <td className="px-3 py-2.5 align-middle">
+   879→                    <div className="flex items-center gap-2.5">
+   880→                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+   881→                        <EventIconView eventType={t.eventType} className="h-4 w-4" />
+   882→                      </div>
+   883→                      <div className="min-w-0">
+   884→                        <div className="font-medium text-foreground truncate">{t.name}</div>
+   885→                        <div className="text-xs text-muted-foreground truncate max-w-[280px]">{t.subject}</div>
+   886→                      </div>
+   887→                    </div>
+   888→                  </td>
+   889→
+   890→                  {/* Code */}
+   891→                  <td className="px-3 py-2.5 align-middle">
+   892→                    <code className="text-xs font-mono px-1.5 py-0.5 rounded bg-muted text-foreground/80">
+   893→                      {t.code}
+   894→                    </code>
+   895→                  </td>
+   896→
+   897→                  {/* Event Type */}
+   898→                  <td className="px-3 py-2.5 align-middle">
+   899→                    <Badge variant="outline" className="gap-1.5 font-medium">
+   900→                      <EventIconView eventType={t.eventType} className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+   901→                      <span className="text-xs">{t.eventType}</span>
+   902→                    </Badge>
+   903→                  </td>
+   904→
+   905→                  {/* Scope */}
+   906→                  <td className="px-3 py-2.5 align-middle">
+   907→                    <span className={cn(
+   908→                      "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium capitalize",
+   909→                      SCOPE_BADGE_CLASS[t.scopeType] || SCOPE_BADGE_CLASS.tenant,
+   910→                    )}>
+   911→                      {t.scopeType}
+   912→                    </span>
+   913→                  </td>
+   914→
+   915→                  {/* Language */}
+   916→                  <td className="px-3 py-2.5 align-middle">
+   917→                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground uppercase">
+   918→                      <Languages className="h-3.5 w-3.5" />
+   919→                      {t.language || "en"}
+   920→                    </span>
+   921→                  </td>
+   922→
+   923→                  {/* Default */}
+   924→                  <td className="px-3 py-2.5 align-middle text-center">
+   925→                    {t.isDefault ? (
+   926→                      <Star className="h-4 w-4 inline fill-amber-400 text-amber-500" />
+   927→                    ) : (
+   928→                      <Star className="h-4 w-4 inline text-muted-foreground/30" />
+   929→                    )}
+   930→                  </td>
+   931→
+   932→                  {/* Status */}
+   933→                  <td className="px-3 py-2.5 align-middle">
+   934→                    <span className={cn(
+   935→                      "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium",
+   936→                      STATUS_BADGE_CLASS[t.status] || STATUS_BADGE_CLASS.Inactive,
+   937→                    )}>
+   938→                      {t.status}
+   939→                    </span>
+   940→                  </td>
+   941→
+   942→                  {/* Updated */}
+   943→                  <td className="px-3 py-2.5 align-middle">
+   944→                    <span className="text-xs text-muted-foreground">{timeAgo(t.updatedAt)}</span>
+   945→                  </td>
+   946→
+   947→                  {/* Actions */}
+   948→                  <td className="px-3 py-2.5 align-middle text-right">
+   949→                    <div className="flex items-center justify-end gap-1">
+   950→                      <Tooltip>
+   951→                        <TooltipTrigger asChild>
+   952→                          <Button
+   953→                            variant="ghost"
+   954→                            size="icon"
+   955→                            className="h-7 w-7"
+   956→                            onClick={() => onPreview(t)}
+   957→                          >
+   958→                            <Eye className="h-3.5 w-3.5" />
+   959→                          </Button>
+   960→                        </TooltipTrigger>
+   961→                        <TooltipContent>Preview</TooltipContent>
+   962→                      </Tooltip>
+   963→                      <DropdownMenu>
+   964→                        <DropdownMenuTrigger asChild>
+   965→                          <Button variant="ghost" size="icon" className="h-7 w-7">
+   966→                            <MoreHorizontal className="h-3.5 w-3.5" />
+   967→                          </Button>
+   968→                        </DropdownMenuTrigger>
+   969→                        <DropdownMenuContent align="end" className="w-44">
+   970→                          <DropdownMenuLabel className="text-xs text-muted-foreground">Actions</DropdownMenuLabel>
+   971→                          <DropdownMenuItem onClick={() => onEdit(t)}>
+   972→                            <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+   973→                          </DropdownMenuItem>
+   974→                          <DropdownMenuItem onClick={() => onClone(t)}>
+   975→                            <Copy className="h-3.5 w-3.5 mr-2" /> Clone
+   976→                          </DropdownMenuItem>
+   977→                          <DropdownMenuItem
+   978→                            onClick={() => onSetDefault(t)}
+   979→                            disabled={t.isDefault}
+   980→                          >
+   981→                            <Star className="h-3.5 w-3.5 mr-2" />
+   982→                            {t.isDefault ? "Already default" : "Set as default"}
+   983→                          </DropdownMenuItem>
+   984→                          <DropdownMenuItem onClick={() => onPreview(t)}>
+   985→                            <Eye className="h-3.5 w-3.5 mr-2" /> Preview
+   986→                          </DropdownMenuItem>
+   987→                          <DropdownMenuSeparator />
+   988→                          <DropdownMenuItem
+   989→                            onClick={() => onDelete(t)}
+   990→                            className="text-rose-600 dark:text-rose-400 focus:text-rose-700 focus:bg-rose-500/10"
+   991→                          >
+   992→                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+   993→                          </DropdownMenuItem>
+   994→                        </DropdownMenuContent>
+   995→                      </DropdownMenu>
+   996→                    </div>
+   997→                  </td>
+   998→                </tr>
+   999→              )
+  1000→            })}
+  1001→          </tbody>
+  1002→        </table>
+  1003→      </div>
+  1004→    </div>
+  1005→  )
+  1006→}
+  1007→
+  1008→function Th({ children, className }: { children: React.ReactNode; className?: string }) {
+  1009→  return (
+  1010→    <th className={cn(
+  1011→      "px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+  1012→      className,
+  1013→    )}>
+  1014→      {children}
+  1015→    </th>
+  1016→  )
+  1017→}
+  1018→
+  1019→// ============================================================================
+  1020→//  Editor dialog — form fields, recipient builder, HTML editor, variable picker
+  1021→// ============================================================================
+  1022→
+  1023→function EditorDialog({
+  1024→  open, onOpenChange, form, setForm, onSubmit, saving,
+  1025→}: {
+  1026→  open: boolean
+  1027→  onOpenChange: (o: boolean) => void
+  1028→  form: EmailFormState
+  1029→  setForm: React.Dispatch<React.SetStateAction<EmailFormState>>
+  1030→  onSubmit: () => void
+  1031→  saving: boolean
+  1032→}) {
+  1033→  const [showPreview, setShowPreview] = useState(true)
+  1034→  const [subjectFocused, setSubjectFocused] = useState(false)
+  1035→
+  1036→  // Ref to the shared WYSIWYG editor — exposes insertSlug(slug) so the
+  1037→  // variable picker can inject {{slugs}} at the cursor of whichever
+  1038→  // section (Header/Body/Footer) was last focused.
+  1039→  const editorRef = useRef<RichEditorHandle | null>(null)
+  1040→  // Ref to the subject <Input> — variables can also be inserted there.
+  1041→  const subjectRef = useRef<HTMLInputElement | null>(null)
+  1042→  // Saved selection in the subject input (so chip clicks preserve cursor)
+  1043→  const subjectSel = useRef<{ start: number; end: number } | null>(null)
+  1044→
+  1045→  const field = useCallback(<K extends keyof EmailFormState>(key: K, value: EmailFormState[K]) => {
+  1046→    setForm((f) => ({ ...f, [key]: value }))
+  1047→  }, [setForm])
+  1048→
+  1049→  // Track subject focus so variable clicks know to insert into the subject
+  1050→  const onSubjectFocus = useCallback(() => {
+  1051→    setSubjectFocused(true)
+  1052→  }, [])
+  1053→  const onSubjectBlur = useCallback(() => {
+  1054→    const el = subjectRef.current
+  1055→    if (el) subjectSel.current = { start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 }
+  1056→    // Delay to allow chip click to read subjectFocused=true
+  1057→    setTimeout(() => setSubjectFocused(false), 150)
+  1058→  }, [])
+  1059→
+  1060→  // Insert a {{Variable}} token — at subject cursor if subject is focused,
+  1061→  // otherwise at the cursor of the focused WYSIWYG section.
+  1062→  const insertVariable = useCallback((slug: string) => {
+  1063→    const token = `{{${slug}}}`
+  1064→
+  1065→    // If subject was most recently focused, insert into the subject line
+  1066→    if (subjectFocused && subjectRef.current) {
+  1067→      const el = subjectRef.current
+  1068→      const sel = subjectSel.current ?? { start: el.selectionStart ?? el.value.length, end: el.selectionEnd ?? el.value.length }
+  1069→      const next = el.value.slice(0, sel.start) + token + el.value.slice(sel.end)
+  1070→      field("subject", next)
+  1071→      const pos = sel.start + token.length
+  1072→      subjectSel.current = { start: pos, end: pos }
+  1073→      requestAnimationFrame(() => {
+  1074→        el.focus()
+  1075→        el.setSelectionRange(pos, pos)
+  1076→      })
+  1077→      return
+  1078→    }
+  1079→
+  1080→    // Otherwise route into the WYSIWYG editor (header/body/footer)
+  1081→    editorRef.current?.insertSlug(slug)
+  1082→  }, [subjectFocused, field])
+  1083→
+  1084→  // ---- Section change handler for the WYSIWYG editor ----
+  1085→  const handleSectionChange = useCallback((section: EditorSection, html: string) => {
+  1086→    if (section === "header") field("headerHtml", html)
+  1087→    else if (section === "body") field("bodyHtml", html)
+  1088→    else field("footerHtml", html)
+  1089→  }, [field])
+  1090→
+  1091→  // ----- Recipients manipulation -----
+  1092→  const addRecipient = useCallback((bucket: "to" | "cc" | "bcc", type: string) => {
+  1093→    setForm((f) => {
+  1094→      const meta = RECIPIENT_META[type]
+  1095→      const newR: Recipient = { type, value: meta?.needsValue ? "" : undefined }
+  1096→      return {
+  1097→        ...f,
+  1098→        recipients: {
+  1099→          ...f.recipients,
+  1100→          [bucket]: [...f.recipients[bucket], newR],
+  1101→        },
+  1102→      }
+  1103→    })
+  1104→  }, [setForm])
+  1105→
+  1106→  const removeRecipient = useCallback((bucket: "to" | "cc" | "bcc", idx: number) => {
+  1107→    setForm((f) => ({
+  1108→      ...f,
+  1109→      recipients: {
+  1110→        ...f.recipients,
+  1111→        [bucket]: f.recipients[bucket].filter((_, i) => i !== idx),
+  1112→      },
+  1113→    }))
+  1114→  }, [setForm])
+  1115→
+  1116→  const updateRecipientValue = useCallback((bucket: "to" | "cc" | "bcc", idx: number, value: string) => {
+  1117→    setForm((f) => ({
+  1118→      ...f,
+  1119→      recipients: {
+  1120→        ...f.recipients,
+  1121→        [bucket]: f.recipients[bucket].map((r, i) => (i === idx ? { ...r, value } : r)),
+  1122→      },
+  1123→    }))
+  1124→  }, [setForm])
+  1125→
+  1126→  // ----- Live preview substitution -----
+  1127→  const previewSubject = useMemo(() => substituteVariables(form.subject), [form.subject])
+  1128→  const previewHtml = useMemo(
+  1129→    () => substituteVariables(`${form.headerHtml || ""}\n${form.bodyHtml || ""}\n${form.footerHtml || ""}`),
+  1130→    [form.headerHtml, form.bodyHtml, form.footerHtml],
+  1131→  )
+  1132→
+  1133→  const isEdit = !!form.id
+  1134→
+  1135→  return (
+  1136→    <Dialog open={open} onOpenChange={onOpenChange}>
+  1137→      <DialogContent
+  1138→        className="sm:max-w-6xl max-w-[calc(100%-2rem)] w-[calc(100%-2rem)] max-h-[90vh] p-0 gap-0 overflow-hidden"
+  1139→        showCloseButton
+  1140→      >
+  1141→        {/* Animated header */}
+  1142→        <motion.div
+  1143→          initial={{ opacity: 0, y: -8 }}
+  1144→          animate={{ opacity: 1, y: 0 }}
+  1145→          transition={{ duration: 0.18 }}
+  1146→          className="px-5 py-3.5 border-b border-border/60 flex items-center justify-between gap-3"
+  1147→        >
+  1148→          <div className="flex items-center gap-3 min-w-0">
+  1149→            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+  1150→              <Mail className="h-4 w-4" />
+  1151→            </div>
+  1152→            <div className="min-w-0">
+  1153→              <DialogTitle className="text-base font-semibold truncate">
+  1154→                {isEdit ? "Edit Email Template" : "New Email Template"}
+  1155→              </DialogTitle>
+  1156→              <DialogDescription className="text-xs">
+  1157→                {isEdit ? `${form.code} · v${form.version}` : "Define content, recipients, and variables"}
+  1158→              </DialogDescription>
+  1159→            </div>
+  1160→          </div>
+  1161→          <div className="flex items-center gap-1.5">
+  1162→            <Button
+  1163→              variant="outline"
+  1164→              size="sm"
+  1165→              className="gap-1.5"
+  1166→              onClick={() => setShowPreview((s) => !s)}
+  1167→            >
+  1168→              <Eye className="h-3.5 w-3.5" />
+  1169→              <span className="hidden sm:inline">{showPreview ? "Hide Preview" : "Show Preview"}</span>
+  1170→            </Button>
+  1171→          </div>
+  1172→        </motion.div>
+  1173→
+  1174→        {/* Body — scrollable */}
+  1175→        <ScrollArea className="flex-1 max-h-[calc(90vh-128px)]">
+  1176→          <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-0">
+  1177→            {/* ----- Left: form + recipients + HTML editor ----- */}
+  1178→            <div className="p-5 space-y-5 min-w-0">
+  1179→
+  1180→              {/* Top form fields */}
+  1181→              <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+  1182→                <Field label="Template Name" required icon={Type}>
+  1183→                  <Input
+  1184→                    value={form.name}
+  1185→                    onChange={(e) => field("name", e.target.value)}
+  1186→                    placeholder="e.g. Candidate Invite — Default"
+  1187→                    className="h-9"
+  1188→                  />
+  1189→                </Field>
+  1190→                <Field label="Template Code" required icon={Hash}>
+  1191→                  <Input
+  1192→                    value={form.code}
+  1193→                    onChange={(e) => field("code", e.target.value.toUpperCase().replace(/\s+/g, "_"))}
+  1194→                    placeholder="EMAIL_INVITE"
+  1195→                    className="h-9 font-mono text-sm"
+  1196→                  />
+  1197→                </Field>
+  1198→                <Field label="Event Type" required icon={Bell}>
+  1199→                  <Select value={form.eventType} onValueChange={(v) => field("eventType", v)}>
+  1200→                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+  1201→                    <SelectContent className="max-h-72">
+  1202→                      {EVENT_CATEGORIES.map((e) => {
+  1203→                        const Icon = e.icon
+  1204→                        return (
+  1205→                          <SelectItem key={e.value} value={e.value}>
+  1206→                            <span className="flex items-center gap-2">
+  1207→                              <Icon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+  1208→                              {e.value}
+  1209→                            </span>
+  1210→                          </SelectItem>
+  1211→                        )
+  1212→                      })}
+  1213→                    </SelectContent>
+  1214→                  </Select>
+  1215→                </Field>
+  1216→
+  1217→                <Field label="Scope Type" icon={Layers}>
+  1218→                  <Select value={form.scopeType} onValueChange={(v) => field("scopeType", v)}>
+  1219→                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+  1220→                    <SelectContent>
+  1221→                      {SCOPE_TYPES.map((s) => (
+  1222→                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+  1223→                      ))}
+  1224→                    </SelectContent>
+  1225→                  </Select>
+  1226→                </Field>
+  1227→
+  1228→                <Field label="Language" icon={Languages}>
+  1229→                  <Select value={form.language} onValueChange={(v) => field("language", v)}>
+  1230→                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+  1231→                    <SelectContent>
+  1232→                      {LANGUAGES.map((l) => (
+  1233→                        <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+  1234→                      ))}
+  1235→                    </SelectContent>
+  1236→                  </Select>
+  1237→                </Field>
+  1238→
+  1239→                <Field label="Status" icon={Tag}>
+  1240→                  <Select value={form.status} onValueChange={(v) => field("status", v)}>
+  1241→                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+  1242→                    <SelectContent>
+  1243→                      {STATUS_OPTIONS.map((s) => (
+  1244→                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+  1245→                      ))}
+  1246→                    </SelectContent>
+  1247→                  </Select>
+  1248→                </Field>
+  1249→
+  1250→                <Field label="From Email (override)" icon={AtSign}>
+  1251→                  <Input
+  1252→                    type="email"
+  1253→                    value={form.fromEmail}
+  1254→                    onChange={(e) => field("fromEmail", e.target.value)}
+  1255→                    placeholder="hr@company.com"
+  1256→                    className="h-9"
+  1257→                  />
+  1258→                </Field>
+  1259→                <Field label="Reply-To Email (override)" icon={AtSign}>
+  1260→                  <Input
+  1261→                    type="email"
+  1262→                    value={form.replyToEmail}
+  1263→                    onChange={(e) => field("replyToEmail", e.target.value)}
+  1264→                    placeholder="no-reply@company.com"
+  1265→                    className="h-9"
+  1266→                  />
+  1267→                </Field>
+  1268→
+  1269→                {/* Default switch */}
+  1270→                <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
+  1271→                  <div className="flex items-center gap-2">
+  1272→                    <Star className="h-4 w-4 text-amber-500" />
+  1273→                    <div>
+  1274→                      <Label className="text-xs font-medium">Default Template</Label>
+  1275→                      <p className="text-[10px] text-muted-foreground">For this event type</p>
+  1276→                    </div>
+  1277→                  </div>
+  1278→                  <Switch
+  1279→                    checked={form.isDefault}
+  1280→                    onCheckedChange={(v) => field("isDefault", v)}
+  1281→                  />
+  1282→                </div>
+  1283→              </section>
+  1284→
+  1285→              {/* Subject */}
+  1286→              <Field label="Subject" required icon={Type}>
+  1287→                <Input
+  1288→                  ref={subjectRef}
+  1289→                  value={form.subject}
+  1290→                  onChange={(e) => field("subject", e.target.value)}
+  1291→                  onFocus={onSubjectFocus}
+  1292→                  onBlur={onSubjectBlur}
+  1293→                  placeholder="Welcome to {{CompanyName}} — complete your onboarding"
+  1294→                  className="h-9"
+  1295→                />
+  1296→              </Field>
+  1297→
+  1298→              <Separator />
+  1299→
+  1300→              {/* Recipient builder */}
+  1301→              <section className="space-y-3">
+  1302→                <div className="flex items-center gap-2">
+  1303→                  <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+  1304→                  <h3 className="text-sm font-semibold">Recipients</h3>
+  1305→                  <span className="text-xs text-muted-foreground">
+  1306→                    — default To / CC / BCC for every send using this template
+  1307→                  </span>
+  1308→                </div>
+  1309→                <div className="space-y-2">
+  1310→                  <RecipientRow
+  1311→                    label="To"
+  1312→                    bucket="to"
+  1313→                    recipients={form.recipients.to}
+  1314→                    onAdd={addRecipient}
+  1315→                    onRemove={removeRecipient}
+  1316→                    onUpdate={updateRecipientValue}
+  1317→                  />
+  1318→                  <RecipientRow
+  1319→                    label="CC"
+  1320→                    bucket="cc"
+  1321→                    recipients={form.recipients.cc}
+  1322→                    onAdd={addRecipient}
+  1323→                    onRemove={removeRecipient}
+  1324→                    onUpdate={updateRecipientValue}
+  1325→                  />
+  1326→                  <RecipientRow
+  1327→                    label="BCC"
+  1328→                    bucket="bcc"
+  1329→                    recipients={form.recipients.bcc}
+  1330→                    onAdd={addRecipient}
+  1331→                    onRemove={removeRecipient}
+  1332→                    onUpdate={updateRecipientValue}
+  1333→                  />
+  1334→                </div>
+  1335→              </section>
+  1336→
+  1337→              <Separator />
+  1338→
+  1339→              {/* WYSIWYG editor — Header / Body / Footer tabs */}
+  1340→              <section className="space-y-2">
+  1341→                <div className="flex items-center justify-between gap-2">
+  1342→                  <div className="flex items-center gap-2">
+  1343→                    <Code2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+  1344→                    <h3 className="text-sm font-semibold">Email Content</h3>
+  1345→                    <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-0 text-[10px]">
+  1346→                      WYSIWYG
+  1347→                    </Badge>
+  1348→                  </div>
+  1349→                  <span className="text-xs text-muted-foreground">
+  1350→                    Tip: click variables on the right to insert into the focused field
+  1351→                  </span>
+  1352→                </div>
+  1353→
+  1354→                <SectionedRichEditor
+  1355→                  ref={editorRef}
+  1356→                  header={form.headerHtml}
+  1357→                  body={form.bodyHtml}
+  1358→                  footer={form.footerHtml}
+  1359→                  onChange={handleSectionChange}
+  1360→                  initialSection="body"
+  1361→                  minHeight={300}
+  1362→                  compact
+  1363→                  placeholders={{
+  1364→                    header: "<div style='text-align:center; padding:16px;'><img src='{{CompanyLogo}}' alt='logo' height='40' /></div>",
+  1365→                    body: "<p>Hi {{CandidateName}},</p><p>Welcome to {{CompanyName}}! …</p>",
+  1366→                    footer: "<p style='color:#888; font-size:12px;'>© {{CompanyName}}. This is an automated email.</p>",
+  1367→                  }}
+  1368→                />
+  1369→              </section>
+  1370→            </div>
+  1371→
+  1372→            {/* ----- Right: variable picker (xl+ only) ----- */}
+  1373→            <aside className="hidden xl:block border-l border-border/60 bg-muted/30">
+  1374→              <VariablePicker onInsert={insertVariable} />
+  1375→            </aside>
+  1376→          </div>
+  1377→
+  1378→          {/* Live preview (toggleable, full width below) */}
+  1379→          <AnimatePresence initial={false}>
+  1380→            {showPreview && (
+  1381→              <motion.div
+  1382→                initial={{ height: 0, opacity: 0 }}
+  1383→                animate={{ height: "auto", opacity: 1 }}
+  1384→                exit={{ height: 0, opacity: 0 }}
+  1385→                transition={{ duration: 0.2 }}
+  1386→                className="overflow-hidden border-t border-border/60"
+  1387→              >
+  1388→                <div className="p-5 bg-muted/20">
+  1389→                  <div className="flex items-center gap-2 mb-3">
+  1390→                    <Sparkles className="h-4 w-4 text-fuchsia-500" />
+  1391→                    <h3 className="text-sm font-semibold">Live Preview</h3>
+  1392→                    <span className="text-xs text-muted-foreground">
+  1393→                      — rendered with sample data (Priya Sharma · ACME Corp)
+  1394→                    </span>
+  1395→                  </div>
+  1396→                  <EmailPreview
+  1397→                    subject={previewSubject}
+  1398→                    html={previewHtml}
+  1399→                    fromEmail={form.fromEmail || "hr@acme.com"}
+  1400→                    recipients={form.recipients}
+  1401→                  />
+  1402→                </div>
+  1403→              </motion.div>
+  1404→            )}
+  1405→          </AnimatePresence>
+  1406→        </ScrollArea>
+  1407→
+  1408→        {/* Footer */}
+  1409→        <div className="px-5 py-3 border-t border-border/60 flex items-center justify-between gap-2 bg-background">
+  1410→          <div className="text-xs text-muted-foreground">
+  1411→            {form.recipients.to.length > 0 || form.recipients.cc.length > 0 || form.recipients.bcc.length > 0 ? (
+  1412→              <span className="inline-flex items-center gap-1.5">
+  1413→                <Users className="h-3.5 w-3.5" />
+  1414→                {form.recipients.to.length} To · {form.recipients.cc.length} CC · {form.recipients.bcc.length} BCC
+  1415→              </span>
+  1416→            ) : (
+  1417→              <span className="text-amber-600 dark:text-amber-400">No recipients configured</span>
+  1418→            )}
+  1419→          </div>
+  1420→          <div className="flex items-center gap-2">
+  1421→            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+  1422→            <Button size="sm" onClick={onSubmit} disabled={saving} className="gap-1.5">
+  1423→              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+  1424→              {isEdit ? "Save Changes" : "Create Template"}
+  1425→            </Button>
+  1426→          </div>
+  1427→        </div>
+  1428→      </DialogContent>
+  1429→    </Dialog>
+  1430→  )
+  1431→}
+  1432→
+  1433→// ============================================================================
+  1434→//  Field wrapper
+  1435→// ============================================================================
+  1436→
+  1437→function Field({
+  1438→  label, required, icon: Icon, children,
+  1439→}: {
+  1440→  label: string
+  1441→  required?: boolean
+  1442→  icon?: React.ComponentType<{ className?: string }>
+  1443→  children: React.ReactNode
+  1444→}) {
+  1445→  return (
+  1446→    <div className="space-y-1.5">
+  1447→      <Label className="text-xs font-medium flex items-center gap-1.5">
+  1448→        {Icon && <Icon className="h-3 w-3 text-muted-foreground" />}
+  1449→        {label}
+  1450→        {required && <span className="text-rose-500">*</span>}
+  1451→      </Label>
+  1452→      {children}
+  1453→    </div>
+  1454→  )
+  1455→}
+  1456→
+  1457→// ============================================================================
+  1458→//  Recipient row (To / CC / BCC)
+  1459→// ============================================================================
+  1460→
+  1461→function RecipientRow({
+  1462→  label, bucket, recipients, onAdd, onRemove, onUpdate,
+  1463→}: {
+  1464→  label: string
+  1465→  bucket: "to" | "cc" | "bcc"
+  1466→  recipients: Recipient[]
+  1467→  onAdd: (bucket: "to" | "cc" | "bcc", type: string) => void
+  1468→  onRemove: (bucket: "to" | "cc" | "bcc", idx: number) => void
+  1469→  onUpdate: (bucket: "to" | "cc" | "bcc", idx: number, value: string) => void
+  1470→}) {
+  1471→  const labelClass =
+  1472→    bucket === "to" ? "text-emerald-700 dark:text-emerald-300 bg-emerald-500/10"
+  1473→    : bucket === "cc" ? "text-teal-700 dark:text-teal-300 bg-teal-500/10"
+  1474→    : "text-amber-700 dark:text-amber-300 bg-amber-500/10"
+  1475→
+  1476→  return (
+  1477→    <div className="rounded-lg border border-border/60 p-2.5 bg-background">
+  1478→      <div className="flex items-center gap-2 flex-wrap">
+  1479→        <span className={cn(
+  1480→          "inline-flex items-center justify-center text-xs font-semibold px-2 py-0.5 rounded-md min-w-[44px]",
+  1481→          labelClass,
+  1482→        )}>
+  1483→          {label}
+  1484→        </span>
+  1485→
+  1486→        {recipients.length === 0 ? (
+  1487→          <span className="text-xs text-muted-foreground italic py-1">No recipients yet — use + to add</span>
+  1488→        ) : null}
+  1489→
+  1490→        {/* Recipient chips */}
+  1491→        {recipients.map((r, idx) => {
+  1492→          const meta = RECIPIENT_META[r.type]
+  1493→          return (
+  1494→            <div key={`${r.type}-${idx}`} className="inline-flex items-center gap-1.5">
+  1495→              <span className={cn(
+  1496→                "inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium",
+  1497→                meta?.chip || "bg-muted text-muted-foreground",
+  1498→              )}>
+  1499→                <span className={cn("h-1.5 w-1.5 rounded-full", meta?.dot || "bg-muted-foreground")} />
+  1500→                {meta?.label || r.type}
+  1501→                <button
+  1502→                  onClick={() => onRemove(bucket, idx)}
+  1503→                  className="ml-0.5 rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
+  1504→                  aria-label={`Remove ${meta?.label || r.type}`}
+  1505→                >
+  1506→                  <X className="h-3 w-3" />
+  1507→                </button>
+  1508→              </span>
+  1509→              {meta?.needsValue && (
+  1510→                <Input
+  1511→                  type={meta.valueType === "email" ? "email" : "text"}
+  1512→                  value={r.value || ""}
+  1513→                  onChange={(e) => onUpdate(bucket, idx, e.target.value)}
+  1514→                  placeholder={meta.valuePlaceholder}
+  1515→                  className="h-7 w-52 text-xs"
+  1516→                />
+  1517→              )}
+  1518→            </div>
+  1519→          )
+  1520→        })}
+  1521→
+  1522→        {/* Add recipient dropdown */}
+  1523→        <DropdownMenu>
+  1524→          <DropdownMenuTrigger asChild>
+  1525→            <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
+  1526→              <Plus className="h-3 w-3" /> Add
+  1527→              <ChevronDown className="h-3 w-3" />
+  1528→            </Button>
+  1529→          </DropdownMenuTrigger>
+  1530→          <DropdownMenuContent align="start" className="w-52">
+  1531→            <DropdownMenuLabel className="text-xs text-muted-foreground">Recipient type</DropdownMenuLabel>
+  1532→            {RECIPIENT_TYPES.map((r) => (
+  1533→              <DropdownMenuItem
+  1534→                key={r.type}
+  1535→                onClick={() => onAdd(bucket, r.type)}
+  1536→                disabled={recipients.some((x) => x.type === r.type && !r.needsValue)}
+  1537→              >
+  1538→                <span className={cn("h-1.5 w-1.5 rounded-full mr-2", r.dot)} />
+  1539→                <span className="flex-1">{r.label}</span>
+  1540→                {recipients.some((x) => x.type === r.type && !r.needsValue) && (
+  1541→                  <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+  1542→                )}
+  1543→              </DropdownMenuItem>
+  1544→            ))}
+  1545→          </DropdownMenuContent>
+  1546→        </DropdownMenu>
+  1547→      </div>
+  1548→    </div>
+  1549→  )
+  1550→}
+  1551→
+  1552→// ============================================================================
+  1553→//  Variable picker sidebar
+  1554→// ============================================================================
+  1555→
+  1556→function VariablePicker({ onInsert }: { onInsert: (slug: string) => void }) {
+  1557→  return (
+  1558→    <ScrollArea className="h-full max-h-[calc(90vh-180px)]">
+  1559→      <div className="p-4 space-y-4">
+  1560→        <div className="flex items-center gap-2">
+  1561→          <Palette className="h-4 w-4 text-fuchsia-500" />
+  1562→          <h3 className="text-sm font-semibold">Variables</h3>
+  1563→        </div>
+  1564→        <p className="text-xs text-muted-foreground leading-relaxed">
+  1565→          Click any variable to insert it at your cursor in the subject or active HTML field.
+  1566→        </p>
+  1567→
+  1568→        {VARIABLE_GROUPS.map((group) => {
+  1569→          const GroupIcon = group.icon
+  1570→          return (
+  1571→            <div key={group.label} className="space-y-1.5">
+  1572→              <div className="flex items-center gap-1.5">
+  1573→                <GroupIcon className={cn("h-3.5 w-3.5", group.accent)} />
+  1574→                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+  1575→                  {group.label}
+  1576→                </span>
+  1577→              </div>
+  1578→              <div className="flex flex-wrap gap-1">
+  1579→                {group.items.map((v) => (
+  1580→                  <button
+  1581→                    key={v.slug}
+  1582→                    onClick={() => onInsert(v.slug)}
+  1583→                    title={v.label}
+  1584→                    className="group inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-border/60 bg-background hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-colors"
+  1585→                  >
+  1586→                    <code className="text-[10px] font-mono text-foreground/70 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+  1587→                      {`{{${v.slug}}}`}
+  1588→                    </code>
+  1589→                  </button>
+  1590→                ))}
+  1591→              </div>
+  1592→            </div>
+  1593→          )
+  1594→        })}
+  1595→      </div>
+  1596→    </ScrollArea>
+  1597→  )
+  1598→}
+  1599→
+  1600→// ============================================================================
+  1601→//  Email preview (mini email client card)
+  1602→// ============================================================================
+  1603→
+  1604→function EmailPreview({
+  1605→  subject, html, fromEmail, recipients,
+  1606→}: {
+  1607→  subject: string
+  1608→  html: string
+  1609→  fromEmail: string
+  1610→  recipients: RecipientGroup
+  1611→}) {
+  1612→  const toLabels = recipients.to.map((r) => RECIPIENT_META[r.type]?.label || r.type).join(", ") || "Candidate"
+  1613→  return (
+  1614→    <div className="rounded-xl border border-border/60 bg-background overflow-hidden shadow-soft max-w-3xl">
+  1615→      {/* Email client top bar */}
+  1616→      <div className="px-4 py-2 bg-muted/60 border-b border-border/60 flex items-center gap-2">
+  1617→        <div className="flex gap-1.5">
+  1618→          <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
+  1619→          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+  1620→          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+  1621→        </div>
+  1622→        <span className="text-xs text-muted-foreground ml-2">Email Preview</span>
+  1623→      </div>
+  1624→      {/* Subject + meta */}
+  1625→      <div className="px-4 py-3 border-b border-border/60">
+  1626→        <div className="text-sm font-semibold text-foreground">{subject || "(no subject)"}</div>
+  1627→        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+  1628→          <span className="inline-flex items-center gap-1">
+  1629→            <span className="font-medium text-foreground/70">From:</span>
+  1630→            <span>{fromEmail || "hr@acme.com"}</span>
+  1631→          </span>
+  1632→          <span className="inline-flex items-center gap-1">
+  1633→            <span className="font-medium text-foreground/70">To:</span>
+  1634→            <span>{toLabels}</span>
+  1635→          </span>
+  1636→          <span className="inline-flex items-center gap-1">
+  1637→            <Clock className="h-3 w-3" />
+  1638→            <span>just now</span>
+  1639→          </span>
+  1640→        </div>
+  1641→      </div>
+  1642→      {/* Body */}
+  1643→      <div
+  1644→        className="px-5 py-4 text-sm leading-relaxed text-foreground/90"
+  1645→        dangerouslySetInnerHTML={{ __html: html || "<p class='text-muted-foreground italic'>(empty body)</p>" }}
+  1646→      />
+  1647→    </div>
+  1648→  )
+  1649→}
+  1650→
+  1651→// ============================================================================
+  1652→//  Standalone preview dialog (opens from row action)
+  1653→// ============================================================================
+  1654→
+  1655→function PreviewDialog({
+  1656→  template, onOpenChange,
+  1657→}: {
+  1658→  template: EmailTemplate | null
+  1659→  onOpenChange: (o: boolean) => void
+  1660→}) {
+  1661→  const subject = template ? substituteVariables(template.subject) : ""
+  1662→  const html = template
+  1663→    ? substituteVariables(`${template.headerHtml || ""}\n${template.bodyHtml || ""}\n${template.footerHtml || ""}`)
+  1664→    : ""
+  1665→  const recipients = template ? parseRecipients(template.recipients) : emptyRecipients()
+  1666→
+  1667→  return (
+  1668→    <Dialog open={!!template} onOpenChange={onOpenChange}>
+  1669→      <DialogContent className="max-w-4xl w-[calc(100%-2rem)] max-h-[90vh] p-0 gap-0 overflow-hidden">
+  1670→        <motion.div
+  1671→          initial={{ opacity: 0, y: -8 }}
+  1672→          animate={{ opacity: 1, y: 0 }}
+  1673→          transition={{ duration: 0.18 }}
+  1674→          className="px-5 py-3.5 border-b border-border/60 flex items-center gap-3"
+  1675→        >
+  1676→          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+  1677→            {template ? (
+  1678→              <EventIconView eventType={template.eventType} className="h-4 w-4" />
+  1679→            ) : (
+  1680→              <Mail className="h-4 w-4" />
+  1681→            )}
+  1682→          </div>
+  1683→          <div className="min-w-0 flex-1">
+  1684→            <DialogTitle className="text-base font-semibold truncate">{template?.name}</DialogTitle>
+  1685→            <DialogDescription className="text-xs">
+  1686→              {template?.code} · {template?.eventType} · {template?.language?.toUpperCase()}
+  1687→            </DialogDescription>
+  1688→          </div>
+  1689→          <div className="flex items-center gap-1.5">
+  1690→            {template?.isDefault && (
+  1691→              <Badge className="gap-1 bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+  1692→                <Star className="h-3 w-3 fill-current" /> Default
+  1693→              </Badge>
+  1694→            )}
+  1695→            {template?.status && (
+  1696→              <Badge variant="outline" className={STATUS_BADGE_CLASS[template.status]}>
+  1697→                {template.status}
+  1698→              </Badge>
+  1699→            )}
+  1700→          </div>
+  1701→        </motion.div>
+  1702→
+  1703→        <ScrollArea className="flex-1 max-h-[calc(90vh-80px)]">
+  1704→          <div className="p-5 space-y-4">
+  1705→            {/* Meta */}
+  1706→            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+  1707→              <Meta label="Scope" value={template?.scopeType || "—"} />
+  1708→              <Meta label="Version" value={`v${template?.version || 1}`} />
+  1709→              <Meta label="From" value={template?.fromEmail || "Default HR inbox"} />
+  1710→              <Meta label="Reply-To" value={template?.replyToEmail || "Default"} />
+  1711→            </div>
+  1712→
+  1713→            {/* Recipients summary */}
+  1714→            <div className="rounded-lg border border-border/60 p-3 bg-muted/30">
+  1715→              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Recipients</div>
+  1716→              <div className="flex flex-wrap items-center gap-1.5">
+  1717→                {recipients.to.length === 0 && recipients.cc.length === 0 && recipients.bcc.length === 0 ? (
+  1718→                  <span className="text-xs text-muted-foreground italic">No recipients configured</span>
+  1719→                ) : null}
+  1720→                {recipients.to.map((r, i) => (
+  1721→                  <RecipientChip key={`to-${i}`} type={r.type} value={r.value} bucket="To" />
+  1722→                ))}
+  1723→                {recipients.cc.map((r, i) => (
+  1724→                  <RecipientChip key={`cc-${i}`} type={r.type} value={r.value} bucket="CC" />
+  1725→                ))}
+  1726→                {recipients.bcc.map((r, i) => (
+  1727→                  <RecipientChip key={`bcc-${i}`} type={r.type} value={r.value} bucket="BCC" />
+  1728→                ))}
+  1729→              </div>
+  1730→            </div>
+  1731→
+  1732→            {/* Preview */}
+  1733→            <EmailPreview
+  1734→              subject={subject}
+  1735→              html={html}
+  1736→              fromEmail={template?.fromEmail || "hr@acme.com"}
+  1737→              recipients={recipients}
+  1738→            />
+  1739→
+  1740→            {/* Variables used */}
+  1741→            {template?.variablesUsed && (
+  1742→              <div className="rounded-lg border border-border/60 p-3">
+  1743→                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+  1744→                  Variables Used
+  1745→                </div>
+  1746→                <div className="flex flex-wrap gap-1">
+  1747→                  {template.variablesUsed.split(",").filter(Boolean).map((v) => (
+  1748→                    <code key={v} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-foreground/70">
+  1749→                      {`{{${v}}}`}
+  1750→                    </code>
+  1751→                  ))}
+  1752→                </div>
+  1753→              </div>
+  1754→            )}
+  1755→          </div>
+  1756→        </ScrollArea>
+  1757→      </DialogContent>
+  1758→    </Dialog>
+  1759→  )
+  1760→}
+  1761→
+  1762→function Meta({ label, value }: { label: string; value: string }) {
+  1763→  return (
+  1764→    <div>
+  1765→      <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">{label}</div>
+  1766→      <div className="text-sm text-foreground/90 truncate">{value}</div>
+  1767→    </div>
+  1768→  )
+  1769→}
+  1770→
+  1771→function RecipientChip({
+  1772→  type, value, bucket,
+  1773→}: {
+  1774→  type: string
+  1775→  value?: string
+  1776→  bucket: string
+  1777→}) {
+  1778→  const meta = RECIPIENT_META[type]
+  1779→  const bucketClass =
+  1780→    bucket === "To" ? "text-emerald-700 dark:text-emerald-300"
+  1781→    : bucket === "CC" ? "text-teal-700 dark:text-teal-300"
+  1782→    : "text-amber-700 dark:text-amber-300"
+  1783→  return (
+  1784→    <span className="inline-flex items-center gap-1">
+  1785→      <span className={cn("text-[10px] font-semibold uppercase", bucketClass)}>{bucket[0]}:</span>
+  1786→      <span className={cn(
+  1787→        "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium",
+  1788→        meta?.chip || "bg-muted text-muted-foreground",
+  1789→      )}>
+  1790→        <span className={cn("h-1.5 w-1.5 rounded-full", meta?.dot || "bg-muted-foreground")} />
+  1791→        {meta?.label || type}
+  1792→        {value ? <span className="opacity-70">· {value}</span> : null}
+  1793→      </span>
+  1794→    </span>
+  1795→  )
+  1796→}
+  1797→
+  1798→export default EmailsSection
+  1799→

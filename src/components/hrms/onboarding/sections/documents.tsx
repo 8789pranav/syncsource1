@@ -17,7 +17,7 @@ import {
   Users, FileBox, Layers2,
   Search, Plus, Pencil, Copy, Trash2, Star, Power, History, Eye, MoreHorizontal,
   Save, X, Braces, ChevronDown,
-  Inbox, Loader2, Variable, PenLine, FileCode2, Tag, Sparkles, RotateCcw,
+  Inbox, Loader2, PenLine, FileCode2, Tag, Sparkles, RotateCcw,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -61,6 +61,10 @@ import {
   type RichEditorHandle,
   type EditorSection,
 } from "@/components/hrms/onboarding/rich-editor"
+import {
+  SlugPalette, SlugUsageSummary,
+  extractVariables, substituteVariables,
+} from "@/components/hrms/onboarding/slug-catalog"
 
 // =============================================================
 // Types
@@ -170,115 +174,10 @@ const SCOPE_LABEL: Record<string, string> = {
 }
 
 // =============================================================
-// Document Variables / Slugs
+// Slugs / Variables — provided by the shared slug-catalog module
+// (single source of truth used by BOTH documents & emails).
+// extractVariables() and substituteVariables() are imported above.
 // =============================================================
-
-interface VariableGroup {
-  name: string
-  icon: LucideIcon
-  variables: string[]
-}
-
-const VARIABLE_GROUPS: VariableGroup[] = [
-  {
-    name: "Candidate", icon: Users, variables: [
-      "CandidateName", "CandidateFirstName", "CandidateLastName", "CandidateEmail",
-      "CandidateMobile", "CandidateAddress",
-    ],
-  },
-  {
-    name: "Job", icon: Briefcase, variables: [
-      "Designation", "Department", "Grade", "Location", "Branch", "EntityName",
-      "CompanyName", "JoiningDate", "ReportingManager", "HRManager", "WorkMode", "EmploymentType",
-    ],
-  },
-  {
-    name: "Salary", icon: Landmark, variables: [
-      "CTC", "BasicSalary", "HRA", "SpecialAllowance", "Bonus", "GrossSalary",
-      "NetSalary", "SalaryCurrency",
-    ],
-  },
-  {
-    name: "Policies", icon: ClipboardCheck, variables: [
-      "ProbationPeriod", "NoticePeriod", "WorkingHours", "LeavePolicy", "AttendancePolicy",
-    ],
-  },
-  {
-    name: "Company", icon: FileCheck2, variables: [
-      "CompanyLogo", "CompanyAddress", "CompanyWebsite", "CompanyEmail", "CompanyPhone",
-      "AuthorizedSignatory", "SignatoryDesignation",
-    ],
-  },
-  {
-    name: "Dates", icon: FileCode2, variables: [
-      "CurrentDate", "OfferDate", "OfferExpiryDate", "LetterDate",
-    ],
-  },
-]
-
-const ALL_VARIABLES = VARIABLE_GROUPS.flatMap((g) => g.variables)
-
-// Sample substitution values used in preview
-const SAMPLE_VALUES: Record<string, string> = {
-  CandidateName: "Priya Sharma",
-  CandidateFirstName: "Priya",
-  CandidateLastName: "Sharma",
-  CandidateEmail: "priya.sharma@example.com",
-  CandidateMobile: "+91 98765 43210",
-  CandidateAddress: "42 MG Road, Bengaluru, KA 560001",
-  Designation: "Senior Software Engineer",
-  Department: "Engineering",
-  Grade: "L5",
-  Location: "Bengaluru",
-  Branch: "Corporate Office",
-  EntityName: "Acme Technologies Pvt Ltd",
-  CompanyName: "Acme Technologies",
-  JoiningDate: "15 Aug 2025",
-  ReportingManager: "Anand Verma",
-  HRManager: "Riya Kapoor",
-  WorkMode: "Hybrid",
-  EmploymentType: "Full-time",
-  CTC: "₹24,00,000",
-  BasicSalary: "₹12,00,000",
-  HRA: "₹4,80,000",
-  SpecialAllowance: "₹3,20,000",
-  Bonus: "₹2,00,000",
-  GrossSalary: "₹22,00,000",
-  NetSalary: "₹18,50,000",
-  SalaryCurrency: "INR",
-  ProbationPeriod: "6 months",
-  NoticePeriod: "60 days",
-  WorkingHours: "9 hours / day",
-  LeavePolicy: "Earned + Sick + Casual Leave",
-  AttendancePolicy: "Biometric + Flexible Hours",
-  CompanyLogo: "[LOGO]",
-  CompanyAddress: "123 Tech Park, Bengaluru, KA 560001",
-  CompanyWebsite: "www.acme-tech.com",
-  CompanyEmail: "hr@acme-tech.com",
-  CompanyPhone: "+91 80 1234 5678",
-  AuthorizedSignatory: "Anand Verma",
-  SignatoryDesignation: "VP, Human Resources",
-  CurrentDate: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
-  OfferDate: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
-  OfferExpiryDate: new Date(Date.now() + 7 * 86400000).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
-  LetterDate: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
-}
-
-function substituteVariables(html: string): string {
-  if (!html) return ""
-  return html.replace(/\{\{(\w+)\}\}/g, (_m, key: string) => SAMPLE_VALUES[key] ?? `{{${key}}}`)
-}
-
-function extractVariables(html: string): string[] {
-  if (!html) return []
-  const set = new Set<string>()
-  const re = /\{\{(\w+)\}\}/g
-  let m: RegExpExecArray | null
-  while ((m = re.exec(html)) !== null) {
-    set.add(m[1])
-  }
-  return Array.from(set)
-}
 
 // =============================================================
 // Helpers
@@ -408,100 +307,11 @@ function VariablesBadge({ count }: { count: number }) {
 }
 
 // =============================================================
-// Variable Picker (right panel of editor)
-// =============================================================
-
-interface VariablePickerProps {
-  /** Insert the slug at the cursor in the currently-focused textarea. */
-  onInsert: (slug: string) => void
-  usedVariables: string[]
-}
-
-function VariablePicker({ onInsert, usedVariables }: VariablePickerProps) {
-  const [search, setSearch] = useState("")
-
-  const filteredGroups = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return VARIABLE_GROUPS
-    return VARIABLE_GROUPS
-      .map((g) => ({
-        ...g,
-        variables: g.variables.filter((v) => v.toLowerCase().includes(q)),
-      }))
-      .filter((g) => g.variables.length > 0)
-  }, [search])
-
-  return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-2 px-1 pb-2">
-        <Variable className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-        <span className="text-sm font-semibold text-foreground">Variables</span>
-        <span className="text-xs text-muted-foreground ml-auto">Click to insert</span>
-      </div>
-      <div className="relative px-1 pb-2">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search slugs…"
-          className="pl-8 h-8 text-xs bg-background"
-        />
-      </div>
-      <ScrollArea className="flex-1 min-h-0 px-1 -mr-1">
-        <div className="space-y-3 pr-1">
-          {filteredGroups.length === 0 && (
-            <p className="text-xs text-muted-foreground italic text-center py-6">
-              No slugs match "{search}".
-            </p>
-          )}
-          {filteredGroups.map((g) => {
-            const GIcon = g.icon
-            return (
-              <div key={g.name}>
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <GIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {g.name}
-                  </span>
-                  <Separator className="flex-1 h-px bg-border/40" />
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {g.variables.map((v) => {
-                    const used = usedVariables.includes(v)
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => onInsert(v)}
-                        title={`Insert {{${v}}}`}
-                        className={cn(
-                          "group inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-mono text-[11px] border transition-colors",
-                          "hover:bg-emerald-500/10 hover:border-emerald-500/40 hover:text-emerald-700 dark:hover:text-emerald-300",
-                          used
-                            ? "border-cyan-500/30 bg-cyan-500/5 text-cyan-700 dark:text-cyan-300"
-                            : "border-border/60 bg-muted/40 text-foreground/80",
-                        )}
-                      >
-                        {used && <span className="h-1 w-1 rounded-full bg-cyan-500" />}
-                        {`{{${v}}}`}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </ScrollArea>
-    </div>
-  )
-}
-
-// =============================================================
 // HTML Editor panel — provided by the shared <SectionedRichEditor> in
 // ./rich-editor (real WYSIWYG contentEditable editor with formatting
-// toolbar + Header/Body/Footer tabs). The local EditorSection type is
-// re-exported from that module.
+// toolbar + Header/Body/Footer tabs). The slug library on the right
+// is the shared <SlugPalette> from ./slug-catalog (single source of
+// truth used by both documents and emails).
 // =============================================================
 
 // (no local declarations — kept for reference)
@@ -981,19 +791,7 @@ function TemplateEditorDialog({
                     />
                   </div>
 
-                  <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 px-3 py-2 mt-2">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Braces className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">
-                        Slugs detected
-                      </span>
-                    </div>
-                    <p className="text-xs text-foreground/80">
-                      {usedVariables.length === 0
-                        ? "No slugs yet — click a variable on the right to insert."
-                        : `${usedVariables.length} unique slug${usedVariables.length !== 1 ? "s" : ""} across Header/Body/Footer.`}
-                    </p>
-                  </div>
+                  <SlugUsageSummary used={usedVariables} className="mt-2" />
                 </div>
               </div>
 
@@ -1018,9 +816,14 @@ function TemplateEditorDialog({
                 </div>
               </div>
 
-              {/* RIGHT: variable picker (col-span-2) */}
-              <div className="lg:col-span-2 p-4 flex flex-col min-h-0 max-h-[68vh] bg-muted/20">
-                <VariablePicker onInsert={insertVariable} usedVariables={usedVariables} />
+              {/* RIGHT: shared slug library (col-span-2) */}
+              <div className="lg:col-span-2 min-w-0 flex flex-col min-h-0 max-h-[68vh] border-l border-border/60">
+                <SlugPalette
+                  onInsert={insertVariable}
+                  usedVariables={usedVariables}
+                  context="document"
+                  title="Slug Library"
+                />
               </div>
             </div>
           </div>

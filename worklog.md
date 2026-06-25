@@ -1167,3 +1167,42 @@ Stage Summary:
 - **Source view bug fixed**: toggling HTML source → WYSIWYG no longer loses content
 - **Dialog width fixed**: both dialogs now render at 1152px (sm:max-w-6xl) instead of the shadcn default 512px (sm:max-w-lg)
 - The Document Library and Email Templates editors are now real WYSIWYG word-processor-style editors with a full formatting toolbar, exactly as the user requested.
+
+---
+Task ID: ONBOARDING-SLUG-UNIFICATION
+Agent: main (Z.ai Code)
+Task: User reported that slugs/variables were "not added" in the document editor and that there was "no list of slugs", wanted slugs in BOTH document and email editors with better editors. Build a shared slug system across both template editors.
+
+Work Log:
+- Read existing rich-editor.tsx, documents.tsx, emails.tsx to understand current state.
+- Found ROOT CAUSE: emails.tsx VariablePicker was wrapped in `hidden xl:block` while the editor dialog is only `max-w-6xl` (1152px) — below the xl breakpoint (1280px) — so the email slug list was NEVER visible. documents.tsx had its own duplicate VARIABLE_GROUPS/SAMPLE_VALUES/VariablePicker.
+- Created `src/components/hrms/onboarding/slug-catalog.tsx` — single source of truth:
+  - 9 categories (Candidate, Job & Offer, Compensation, Policies & Terms, Company, Dates, Workflow & Task, Links & Portal, Email Specific) with ~60 slugs.
+  - Each slug carries: slug, label, description, sample value, appliesTo (document|email).
+  - Exports: SLUG_CATEGORIES, ALL_SLUGS, getSlugsFor(), SAMPLE_VALUES, extractVariables(), substituteVariables(), slugLabel().
+  - `<SlugPalette>` component: prominent click-to-insert panel with search, collapsible categories, "used" indicators, copy-to-clipboard per slug, "show sample values" toggle, hover tooltips showing label+description+sample, footer with totals.
+  - `<SlugUsageSummary>` component: compact "Slugs in use (N)" chip list for the editor's left metadata column, with empty-state guidance.
+- Refactored `documents.tsx`:
+  - Removed local VARIABLE_GROUPS, ALL_VARIABLES, SAMPLE_VALUES, substituteVariables, extractVariables, VariablePicker (duplicate code).
+  - Imported shared SlugPalette + SlugUsageSummary + extractVariables + substituteVariables.
+  - Replaced the "Slugs detected" text box with `<SlugUsageSummary>` (shows live used-slugs as removable chips).
+  - Replaced `<VariablePicker>` with `<SlugPalette context="document">` in the right rail (border-l, always visible on lg+).
+  - Removed unused `Variable` icon import.
+- Refactored `emails.tsx`:
+  - Removed local VARIABLE_GROUPS, ALL_VARIABLES, SAMPLE_VALUES, extractVariables, substituteVariables, VariablePicker (duplicate code).
+  - Imported shared slug-catalog exports.
+  - FIXED THE BUG: changed editor grid from `grid-cols-1 xl:grid-cols-[1fr_280px]` → `lg:grid-cols-[1fr_300px]` and changed the aside from `hidden xl:block` → always rendered, so the Slug Library is now visible at all desktop widths.
+  - Added `usedVariables` memo (subject + header + body + footer) and `<SlugUsageSummary>` under the subject field.
+  - Replaced `<VariablePicker>` with `<SlugPalette context="email">` (filters catalog to email-applicable slugs).
+  - Removed unused icon imports (Palette, ArrowRight, User, Briefcase, Building2).
+- Ran `bun run lint` → 0 errors (1 pre-existing unrelated warning in dynamic-form.tsx).
+- agent-browser QA (viewport 1440×900):
+  - Document editor: opened "New Template" → Slug Library visible on right (heading, search, "CANDIDATE 9 1 used" category, slug chips with copy buttons). Clicked editor body → pressed End → clicked {{CandidateFirstName}} chip → slug inserted at cursor. Left column shows "Slugs in use (12)" summary. No console errors.
+  - Email editor: opened "New Email Template" → Slug Library now visible (previously hidden). Focused subject field → clicked {{CandidateName}} chip → slug inserted into subject (value became {{CandidateName}}). CANDIDATE category filtered to 5 email-applicable slugs. No console errors.
+
+Stage Summary:
+- Single shared slug catalog (`slug-catalog.tsx`) is now the source of truth for both Document and Email template editors (and any future template type).
+- Both editors now show a prominent, searchable Slug Library on the right rail + a live "Slugs in use" summary on the left, with click-to-insert at cursor and copy-to-clipboard.
+- The email editor's invisible-slug-list bug (`hidden xl:block` vs `max-w-6xl` dialog) is fixed — palette is always visible.
+- Full WYSIWYG editor (rich-editor.tsx) remains: formatting toolbar (bold/italic/underline/strike/headings/lists/alignment/color/highlight/link/image/HR/clear-formatting/source-view/fullscreen) + Header/Body/Footer tabs + slug insertion via imperative ref.
+- Lint clean; dev server compiles cleanly; both editors verified interactive end-to-end via agent-browser.
