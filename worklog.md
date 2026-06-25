@@ -1938,3 +1938,42 @@ Stage Summary:
   - All 5 menu dashboards render correctly with stats, charts, tables.
   - Lint clean, TypeScript clean, no runtime errors.
 - Color theming per menu: Salary=teal/cyan, Compliance=emerald/teal, Arrear=amber/orange, FnF=rose/pink, Settings=slate.
+
+---
+Task ID: 4-sidebar-deeplink
+Agent: main
+Task: Add the 4 payroll main menus (Salary, Compliance, Arrear, Full & Final) directly to the main HRMS side menu bar so users can see and access them without entering the Payroll module first.
+
+Work Log:
+- Read /home/z/my-project/worklog.md to confirm payroll module fully built (5 menus, 59 sections) and current shell.tsx only had a single "Payroll" entry in main HRMS sidebar.
+- Read /home/z/my-project/src/components/hrms/shell.tsx — confirmed MODULES array structure, GROUPS array (Payroll & Finance group), NavItem component.
+- Read /home/z/my-project/src/store/hrms-store.ts — confirmed store already supports activeSubModule via setModule(m, sub) + setSubModule(sub).
+- Read /home/z/my-project/src/lib/types.ts — confirmed ModuleId type union; chose to keep all 4 new entries with id="payroll" + a new payrollMenu field (no ModuleId changes needed).
+- Modified shell.tsx:
+  • Added ShellModule type extending ModuleDef with icon + optional payrollMenu + optional isChild fields.
+  • Imported 2 new lucide icons: ArrowLeftRight, Receipt (Wallet & ShieldCheck already imported).
+  • Added 4 new MODULES entries under "Payroll" group: Salary (Wallet, payrollMenu="salary"), Compliance (ShieldCheck, payrollMenu="compliance"), Arrear (ArrowLeftRight, payrollMenu="arrear"), Full & Final (Receipt, payrollMenu="fnf"). All marked isChild=true.
+  • Rewrote NavItem to: (1) call setModule(m.id, m.payrollMenu ?? null) so clicking a child sets both activeModule and activeSubModule; (2) compute active state considering activeSubModule for child items (active only when both module + sub match); (3) render child items with pl-7 indent, smaller text (text-[13px]), smaller icon (h-[15px]), and a 2px vertical left-rail indicator; (4) apply per-child gradient accent when active (teal/emerald/amber/rose) matching the internal payroll menu colors.
+  • Updated key in sidebar map to `m.id + (m.payrollMenu ? \`-${m.payrollMenu}\` : "")` to avoid React duplicate-key warnings (5 items share id="payroll").
+- Modified /home/z/my-project/src/components/hrms/modules/payroll.tsx:
+  • Imported useHrmsStore.
+  • Replaced simple useState initializers with store-driven ones: initialMenu computed from activeSubModule if it matches a known payroll menu id, else "salary"; initial section = first child of the resolved menu.
+  • Added useEffect on [activeSubModule, activeMenu] so that when the global activeSubModule changes (e.g. user clicked Salary/Compliance/Arrear/FnF in the main HRMS sidebar), the payroll module switches its internal activeMenu and activeSection to the first child of that menu. This handles deep-linking both directions.
+  • Updated switchMenu() to also call setSubModule(menuId) so internal menu switches sync back to the global store, keeping the main HRMS sidebar's active highlight in sync.
+- Ran `bun run lint` → 0 errors (1 pre-existing warning in dynamic-form.tsx only).
+- Cleaned up an unused eslint-disable directive that was no longer needed once deps were complete.
+- Verified via agent-browser:
+  • Opened http://localhost:3000 → all 4 new items appear in the main HRMS sidebar under "Payroll & Finance" group, properly indented under the "Payroll" parent: Salary, Compliance, Arrear, Full & Final.
+  • Clicked "Compliance" → page correctly deep-linked to "Payroll — Compliance" with Compliance Dashboard rendered (donut chart, monthly liability bar chart, entity-wise bars, quick actions, upcoming deadlines all visible).
+  • Clicked "Arrear" → page deep-linked to "Payroll — Arrear" with Arrear Dashboard rendered.
+  • Clicked "Full & Final" → page deep-linked to "Payroll — Full & Final" with FnF Dashboard rendered.
+  • Clicked "Salary" → page deep-linked to "Payroll — Salary" with Salary Dashboard rendered.
+  • After fixing the React key warning, console log is clean (no duplicate-key errors, no runtime errors, no warnings).
+  • dev.log: no compile errors, no module-not-found errors.
+
+Stage Summary:
+- 4 payroll main menus (Salary, Compliance, Arrear, Full & Final) are now directly visible in the main HRMS sidebar under the "Payroll & Finance" group, alongside the parent "Payroll" entry.
+- Visual treatment: each child is indented (pl-7), has a 2px vertical left-rail indicator, smaller icon/text, and uses the same gradient accent as its internal payroll menu (teal/emerald/amber/rose) when active.
+- Deep-linking is bi-directional: clicking a main-sidebar child sets activeSubModule, which the payroll module's useEffect picks up to switch internal tabs; clicking an internal payroll tab updates activeSubModule so the main sidebar's active highlight stays in sync.
+- Settings is already a top-level item in the main HRMS sidebar (id="settings"), so the payroll "Settings" menu (entity configuration 9-step wizard) remains accessible inside the payroll module via the internal tab strip — total visible payroll access points: Payroll (parent) + Salary + Compliance + Arrear + Full & Final = 5, matching the user's original "5 main menus" spec.
+- Lint: clean. TypeScript: clean. Runtime: clean.

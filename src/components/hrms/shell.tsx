@@ -18,12 +18,14 @@ import {
   LayoutDashboard, Building2, Users, CalendarDays, CalendarRange, Clock,
   Package, FileEdit, Workflow, Megaphone, Settings, ScrollText, Sun, Moon,
   Bell, Search, Menu, ChevronLeft, Sparkles, ShieldCheck, HelpCircle, LogOut,
-  Wallet, Banknote, UserPlus, UserMinus,
+  Wallet, Banknote, UserPlus, UserMinus, ArrowLeftRight, Receipt,
 } from "lucide-react"
 import { useHrmsStore } from "@/store/hrms-store"
 import { ModuleId, ModuleDef } from "@/lib/types"
 
-const MODULES: (ModuleDef & { icon: any })[] = [
+type ShellModule = ModuleDef & { icon: any; payrollMenu?: string; isChild?: boolean }
+
+const MODULES: ShellModule[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Main", description: "Overview & analytics" },
   { id: "organization", label: "Organization", icon: Building2, group: "Config", description: "Entities, branches, departments" },
   { id: "employees", label: "Employees", icon: Users, group: "People", description: "Employee master" },
@@ -35,7 +37,12 @@ const MODULES: (ModuleDef & { icon: any })[] = [
   { id: "attendance", label: "Attendance", icon: CalendarRange, group: "Time", description: "Daily attendance" },
   { id: "holiday", label: "Holidays", icon: CalendarDays, group: "Time", description: "Holiday calendar" },
   { id: "asset", label: "Assets", icon: Package, group: "Config", description: "Asset master & assignment" },
+  // Payroll & Finance group — parent + 4 deep-link children for direct sidebar visibility
   { id: "payroll", label: "Payroll", icon: Banknote, group: "Payroll", description: "Salary, runs & payslips" },
+  { id: "payroll", label: "Salary", icon: Wallet, group: "Payroll", description: "Run monthly payroll, pay groups, structures & payslips", payrollMenu: "salary", isChild: true },
+  { id: "payroll", label: "Compliance", icon: ShieldCheck, group: "Payroll", description: "PF, ESI, PT, LWF, TDS, Form 16 & challans", payrollMenu: "compliance", isChild: true },
+  { id: "payroll", label: "Arrear", icon: ArrowLeftRight, group: "Payroll", description: "Salary arrears from revisions, LOP reversal & manual entries", payrollMenu: "arrear", isChild: true },
+  { id: "payroll", label: "Full & Final", icon: Receipt, group: "Payroll", description: "Exit settlement, leave encashment, notice & asset recovery", payrollMenu: "fnf", isChild: true },
   { id: "forms", label: "Form Builder", icon: FileEdit, group: "System", description: "Dynamic form schemas" },
   { id: "workflows", label: "Workflows", icon: Workflow, group: "System", description: "Approval workflows" },
   { id: "announcements", label: "Announcements", icon: Megaphone, group: "People", description: "Company announcements" },
@@ -66,24 +73,57 @@ function Logo() {
   )
 }
 
-function NavItem({ m }: { m: ModuleDef & { icon: any } }) {
-  const { activeModule, setModule, sidebarOpen } = useHrmsStore()
-  const active = activeModule === m.id
+function NavItem({ m }: { m: ShellModule }) {
+  const { activeModule, activeSubModule, setModule, sidebarOpen } = useHrmsStore()
+  // For payroll children: active only when both module and sub-menu match.
+  // For non-child items: active when module matches (and either no payrollMenu, or sub-module is null/undefined).
+  const isChildPayroll = !!m.payrollMenu
+  const active = isChildPayroll
+    ? activeModule === m.id && activeSubModule === m.payrollMenu
+    : activeModule === m.id && (!activeSubModule || activeSubModule === "" || !MODULES.some(x => x.payrollMenu === activeSubModule))
   const Icon = m.icon
+
+  // Accent colors per payroll child for visual identity (matches internal payroll menu colors)
+  const childAccent: Record<string, string> = {
+    salary: "from-teal-500 to-cyan-500",
+    compliance: "from-emerald-500 to-teal-500",
+    arrear: "from-amber-500 to-orange-500",
+    fnf: "from-rose-500 to-pink-500",
+  }
+  const accent = m.payrollMenu ? childAccent[m.payrollMenu] : ""
+
   return (
     <button
-      onClick={() => setModule(m.id)}
+      onClick={() => setModule(m.id as ModuleId, m.payrollMenu ?? null)}
       title={m.label}
       className={cn(
-        "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all",
+        "group relative flex w-full items-center gap-2 rounded-lg text-sm font-medium transition-all",
+        m.isChild
+          ? "pl-7 pr-2.5 py-1.5"
+          : "px-2.5 py-2",
         active
-          ? "bg-primary text-primary-foreground shadow-soft"
-          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          ? m.isChild
+            ? cn("bg-gradient-to-r text-white shadow-sm", accent)
+            : "bg-primary text-primary-foreground shadow-soft"
+          : m.isChild
+            ? "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
+            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         !sidebarOpen && "justify-center px-0",
       )}
     >
-      <Icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-primary-foreground" : "text-muted-foreground group-hover:text-sidebar-accent-foreground")} />
-      {sidebarOpen && <span className="truncate">{m.label}</span>}
+      {/* Left rail indicator for child items (when collapsed, hide since we center icon) */}
+      {m.isChild && sidebarOpen && (
+        <span
+          className={cn(
+            "absolute left-2 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full",
+            active ? "bg-white/70" : "bg-sidebar-border group-hover:bg-muted-foreground/40",
+          )}
+        />
+      )}
+      <Icon className={cn("h-[16px] w-[16px] shrink-0", active ? (m.isChild ? "text-white" : "text-primary-foreground") : "text-muted-foreground group-hover:text-sidebar-accent-foreground", m.isChild && "h-[15px] w-[15px]")} />
+      {sidebarOpen && (
+        <span className={cn("truncate", m.isChild && "text-[13px]")}>{m.label}</span>
+      )}
     </button>
   )
 }
@@ -113,7 +153,7 @@ function Sidebar() {
               <div key={g.id}>
                 {sidebarOpen && <p className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{g.label}</p>}
                 <div className="space-y-0.5">
-                  {items.map((m) => <NavItem key={m.id} m={m} />)}
+                  {items.map((m) => <NavItem key={m.id + (m.payrollMenu ? `-${m.payrollMenu}` : "")} m={m} />)}
                 </div>
               </div>
             )

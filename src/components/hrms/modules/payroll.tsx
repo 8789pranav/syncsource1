@@ -38,6 +38,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useHrmsStore } from "@/store/hrms-store"
 
 // ---------- Lazy-loaded sections ----------
 const loading = () => (
@@ -226,17 +227,41 @@ const MENUS: MainMenu[] = [
 // Main Module
 // ============================================================
 export function PayrollModule() {
-  const [activeMenu, setActiveMenu] = React.useState("salary")
-  const [activeSection, setActiveSection] = React.useState("salary-dashboard")
+  const { activeSubModule, setSubModule } = useHrmsStore()
+  // Sync local menu state with global store (activeSubModule) so the main HRMS
+  // sidebar's deep-link items (Salary/Compliance/Arrear/FnF) drive this view too.
+  const initialMenu = (() => {
+    if (activeSubModule && MENUS.some(m => m.id === activeSubModule)) return activeSubModule
+    return "salary"
+  })()
+  const [activeMenu, setActiveMenu] = React.useState(initialMenu)
+  const [activeSection, setActiveSection] = React.useState(() => {
+    const menu = MENUS.find(m => m.id === (activeSubModule && MENUS.some(x => x.id === activeSubModule) ? activeSubModule : "salary"))!
+    return menu.children[0].id
+  })
   const [mobileOpen, setMobileOpen] = React.useState(false)
 
-  // When main menu changes, auto-select first child
+  // When the global activeSubModule changes (e.g., user clicked Salary/Compliance/Arrear/FnF
+  // in the main HRMS sidebar), sync this module's menu accordingly.
+  React.useEffect(() => {
+    if (activeSubModule && activeSubModule !== activeMenu && MENUS.some(m => m.id === activeSubModule)) {
+      const menu = MENUS.find(m => m.id === activeSubModule)!
+      setActiveMenu(activeSubModule)
+      setActiveSection(menu.children[0].id)
+    }
+    // If sub-module was cleared (e.g., user clicked "Payroll" parent), keep current menu visible.
+  }, [activeSubModule, activeMenu])
+
+  // When main menu changes, auto-select first child and update global store so
+  // the main HRMS sidebar's deep-link highlights stay in sync.
   const switchMenu = (menuId: string) => {
     const menu = MENUS.find(m => m.id === menuId)
     if (menu && menu.children.length > 0) {
       setActiveMenu(menuId)
       setActiveSection(menu.children[0].id)
       setMobileOpen(false)
+      // Update global store so main sidebar highlights the correct child (or parent).
+      setSubModule(menuId)
     }
   }
 
