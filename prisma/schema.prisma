@@ -1749,3 +1749,200 @@ model OnboardingNote {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+// ============================================================
+// Onboarding Module — Library / Configuration / Logging models
+// (spec sections 3, 8, 9, 10, 13, 25)
+// ============================================================
+
+// ----- Document Library (spec #8) — 15 categories -----
+model OnboardingDocumentTemplate {
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  code            String
+  documentType    String   // Offer Letter | Appointment Letter | NDA | ... | Custom Document
+  scopeType       String   @default("tenant") // tenant | entity | branch | location | department | employee_type
+  entityId        String?
+  branchId        String?
+  locationId      String?
+  departmentId    String?
+  employeeType    String?
+  language        String   @default("en")
+  version         Int      @default(1)
+  isDefault       Boolean  @default(false)
+  status          String   @default("Active") // Active | Draft | Archived
+  createdBy       String?
+  // Template editor sections
+  headerHtml      String?
+  bodyHtml        String
+  footerHtml      String?
+  // Page settings (JSON: pageSize, orientation, margins, logo, signature, watermark)
+  pageSettings    String?
+  // Comma-separated list of variable slugs used (for validation/preview)
+  variablesUsed   String?
+  effectiveFrom   DateTime?
+  effectiveTo     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, documentType])
+}
+
+// ----- Email Templates (spec #9) — 21 event categories -----
+model OnboardingEmailTemplate {
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  code            String
+  eventType       String   // Candidate Invite | Invite Reminder | ... | Candidate Dropped
+  scopeType       String   @default("tenant")
+  entityId        String?
+  workflowId      String?
+  language        String   @default("en")
+  subject         String
+  headerHtml      String?
+  bodyHtml        String
+  footerHtml      String?
+  isDefault       Boolean  @default(false)
+  status          String   @default("Active")
+  version         Int      @default(1)
+  createdBy       String?
+  // Recipient settings (JSON: { to: [], cc: [], bcc: [] })
+  // Each entry: { type: "candidate"|"hr_owner"|"recruiter"|...|"specific_email", value: string }
+  recipients      String?
+  // Reply-to / from override
+  fromEmail       String?
+  replyToEmail    String?
+  variablesUsed   String?
+  effectiveFrom   DateTime?
+  effectiveTo     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, eventType])
+}
+
+// ----- Checklists (spec #10) — 9 categories -----
+model OnboardingChecklist {
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  code            String
+  description     String?
+  category        String   // Candidate | HR | Manager | IT | Admin | Payroll | Finance | Training | Compliance
+  scopeType       String   @default("tenant")
+  entityId        String?
+  departmentId    String?
+  employeeType    String?
+  isDefault       Boolean  @default(false)
+  status          String   @default("Active")
+  version         Int      @default(1)
+  tasks           OnboardingChecklistTask[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, category])
+}
+
+model OnboardingChecklistTask {
+  id              String   @id @default(cuid())
+  tenantId        String
+  checklistId     String
+  checklist       OnboardingChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  name            String
+  code            String
+  description     String?
+  ownerType       String   @default("hr_owner") // candidate | hr_owner | recruiter | reporting_manager | department_head | it_admin | admin_team | payroll_admin | finance_admin | training_owner | specific_employee | role_based
+  ownerId         String?
+  dueDateRule     String   @default("on_joining") // on_start | before_joining_X | on_joining | after_joining_X | after_previous_X | manual
+  dueDateOffset   Int      @default(0) // X days for the X-based rules
+  priority        String   @default("Medium") // Low | Medium | High | Critical
+  isMandatory     Boolean  @default(false)
+  isBlocking      Boolean  @default(false)
+  requiresAttachment Boolean @default(false)
+  requiresComment Boolean  @default(false)
+  requiresApproval Boolean @default(false)
+  autoCompleteCondition String?
+  reminderRule    String?  // JSON
+  escalationRule  String?  // JSON
+  stageMapping    String?  // stage code or id
+  status          String   @default("Active")
+  order           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([checklistId, code])
+}
+
+// ----- Logs (spec #25) — 11 log types -----
+model OnboardingLog {
+  id              String   @id @default(cuid())
+  tenantId        String
+  logType         String   // Candidate Activity | Workflow | Stage Movement | Document | Email | Checklist | Approval | Verification | Employee Conversion | System | Error
+  candidateId     String?
+  candidateName   String?
+  employeeCode    String?
+  entityId        String?
+  entityType      String?  // Entity / Company name (denormalized for fast display)
+  actionType      String
+  oldValue        String?
+  newValue        String?
+  performedBy     String?
+  performedByName String?
+  role            String?
+  ipAddress       String?
+  device          String?
+  status          String   @default("Success") // Success | Failed | Warning
+  remarks         String?
+  metadata        String?  // JSON for extra context
+  createdAt       DateTime @default(now())
+
+  @@index([tenantId, logType])
+  @@index([tenantId, candidateId])
+  @@index([tenantId, createdAt])
+}
+
+// ----- Settings (spec #13) — 15 sub-tabs, key-value store -----
+model OnboardingSetting {
+  id              String   @id @default(cuid())
+  tenantId        String
+  category        String   // general | candidate | kanban | workflow | document | template | checklist | email | verification | approval | candidate_portal | employee_conversion | import_export | audit
+  key             String
+  value           String?  // JSON-encoded value (string | number | boolean | object)
+  updatedAt       DateTime @updatedAt
+
+  @@unique([tenantId, category, key])
+}
+
+// ----- Entity Configuration (spec #14) — 7-level scope defaults per entity -----
+model OnboardingEntityConfig {
+  id              String   @id @default(cuid())
+  tenantId        String
+  entityId        String
+  useTenantDefault Boolean @default(true)
+  defaultWorkflowId      String?
+  defaultKanbanBoardId   String?
+  defaultCandidateFormId String?
+  defaultDocumentSet     String?  // JSON array of doc template ids
+  defaultChecklistSet    String?  // JSON array of checklist ids
+  defaultEmailGroup      String?  // JSON array of email template ids
+  defaultVerificationRule String?
+  defaultApprovalWorkflow String?
+  defaultCandidatePortalSetting String?
+  defaultEmployeeConversionRule String?
+  defaultHrOwner         String?
+  defaultRecruiter       String?
+  defaultReportingManagerRule String?
+  defaultSetupRule       String?
+  effectiveFrom   DateTime?
+  effectiveTo     DateTime?
+  status          String   @default("Active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([tenantId, entityId])
+}

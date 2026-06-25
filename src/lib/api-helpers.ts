@@ -30,6 +30,10 @@ export function bad(msg: string, status = 400) {
   return NextResponse.json({ error: msg }, { status })
 }
 
+export function notFound(msg = "Not found") {
+  return NextResponse.json({ error: msg }, { status: 404 })
+}
+
 export async function parseBody(req: Request): Promise<Record<string, any>> {
   try {
     const body = await req.json()

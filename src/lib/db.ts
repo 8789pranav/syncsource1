@@ -8,7 +8,7 @@ const globalForPrisma = globalThis as unknown as {
 // Always use a fresh client keyed under a new global symbol to bust stale caches
 // after schema extensions (the old `prisma` key may hold a client missing newer models).
 let client = globalForPrisma.__hrmsPrismaV3
-if (!client || typeof (client as any).payslip === 'undefined') {
+if (!client || typeof (client as any).onboardingSetting === 'undefined') {
   if (client) { try { client.$disconnect() } catch { /* ignore */ } }
   client = new PrismaClient({ log: ['error', 'warn'] })
   globalForPrisma.__hrmsPrismaV3 = client
