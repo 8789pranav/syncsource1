@@ -1,0 +1,302 @@
+   335→
+   336→// ---------- Payroll Inputs ----------
+   337→export const PAYROLL_INPUTS: PayrollInput[] = [
+   338→  { id: "pi-1", employeeId: "EMP-1001", employeeName: "Arjun Sharma", employeeCode: "EMP-1001", entity: "ACME India Pvt Ltd", department: "Engineering", inputType: "Overtime", amount: 4500, description: "Overtime — 15 hours @ ₹300/hr", referenceId: "OT-001", payGroupId: "pg-1", payrollMonth: monthStr(0), status: "Approved", source: "Manual", approvedBy: "Rohit Gupta", createdAt: daysAgo(3) },
+   339→  { id: "pi-2", employeeId: "EMP-1002", employeeName: "Priya Patel", employeeCode: "EMP-1002", entity: "ACME India Pvt Ltd", department: "Product", inputType: "Bonus", amount: 50000, description: "Quarterly performance bonus — Q1", referenceId: "BNS-Q1-002", payGroupId: "pg-1", payrollMonth: monthStr(0), status: "Approved", source: "Manual", approvedBy: "Rajesh Kumar", createdAt: daysAgo(5) },
+   340→  { id: "pi-3", employeeId: "EMP-1003", employeeName: "Rohit Gupta", employeeCode: "EMP-1003", entity: "ACME India Pvt Ltd", department: "Engineering", inputType: "Incentive", amount: 35000, description: "Project completion incentive — Atlas migration", payGroupId: "pg-1", payrollMonth: monthStr(0), status: "Pending", source: "Manual", createdAt: daysAgo(2) },
+   341→  { id: "pi-4", employeeId: "EMP-1004", employeeName: "Sneha Reddy", employeeCode: "EMP-1004", entity: "ACME India Pvt Ltd", department: "Design", inputType: "Reimbursement", amount: 8500, description: "Fuel reimbursement — April", referenceId: "EXP-2025-045", payGroupId: "pg-1", payrollMonth: monthStr(0), status: "Approved", source: "Expense", approvedBy: "Anita Desai", createdAt: daysAgo(4) },
+   342→  { id: "pi-5", employeeId: "EMP-1005", employeeName: "Vikram Singh", employeeCode: "EMP-1005", entity: "ACME India Pvt Ltd", department: "Sales", inputType: "Incentive", amount: 85000, description: "Sales incentive — Q1 target achievement (115%)", payGroupId: "pg-1", payrollMonth: monthStr(0), status: "Approved", source: "Manual", approvedBy: "Rajesh Kumar", createdAt: daysAgo(7) },
+   343→  { id: "pi-6", employeeId: "EMP-1006", employeeName: "Anita Desai", employeeCode: "EMP-1006", entity: "ACME India Pvt Ltd", department: "Human Resources", inputType: "LOP Reversal", amount: 5600, description: "LOP reversal — approved leave retroactively", payGroupId: "pg-1", payrollMonth: monthStr(0), status: "Approved", source: "Leave", approvedBy: "Rajesh Kumar", createdAt: daysAgo(2) },
+   344→  { id: "pi-7", employeeId: "EMP-1007", employeeName: "Karthik Iyer", employeeCode: "EMP-1007", entity: "ACME India Pvt Ltd", department: "Finance", inputType: "Loan", amount: 10000, description: "Loan EMI — Personal loan LI-2024-018", referenceId: "LI-2024-018", payGroupId: "pg-1", payrollMonth: monthStr(0), status: "Locked", source: "Loan", createdAt: daysAgo(8) },
+   345→  { id: "pi-8", employeeId: "EMP-1008", employeeName: "Deepa Nair", employeeCode: "EMP-1008", entity: "ACME India Pvt Ltd", department: "Marketing", inputType: "Attendance", amount: -3200, description: "LOP — 1 day (unpaid leave on 12th)", payGroupId: "pg-1", payrollMonth: monthStr(0), status: "Approved", source: "Attendance", approvedBy: "System", createdAt: daysAgo(10) },
+   346→  { id: "pi-9", employeeId: "EMP-1009", employeeName: "Rajesh Kumar", employeeCode: "EMP-1009", entity: "ACME India Pvt Ltd", department: "Operations", inputType: "Reimbursement", amount: 15000, description: "Travel reimbursement — Mumbai site visit", referenceId: "EXP-2025-052", payGroupId: "pg-1", payrollMonth: monthStr(0), status: "Pending", source: "Expense", createdAt: daysAgo(1) },
+   347→  { id: "pi-10", employeeId: "EMP-1010", employeeName: "Meera Joshi", employeeCode: "EMP-1010", entity: "ACME India Pvt Ltd", department: "Customer Success", inputType: "Manual Adjustment", amount: 2500, description: "Adjustment — underpaid last month", payGroupId: "pg-1", payrollMonth: monthStr(0), status: "Pending", source: "Manual", createdAt: daysAgo(1) },
+   348→  { id: "pi-11", employeeId: "EMP-1011", employeeName: "Sai Krishnan", employeeCode: "EMP-1011", entity: "ACME India Pvt Ltd", department: "Engineering", inputType: "Attendance", amount: -4500, description: "LOP — 2 days (unpaid leave)", payGroupId: "pg-2", payrollMonth: monthStr(0), status: "Approved", source: "Attendance", approvedBy: "System", createdAt: daysAgo(5) },
+   349→  { id: "pi-12", employeeId: "EMP-2001", employeeName: "Ahmed Al-Rashid", employeeCode: "EMP-2001", entity: "ACME UAE LLC", department: "Sales", inputType: "Incentive", amount: 20000, description: "Quarterly sales incentive — AED", payGroupId: "pg-3", payrollMonth: monthStr(0), status: "Approved", source: "Manual", approvedBy: "Rajesh Kumar", createdAt: daysAgo(4) },
+   350→]
+   351→
+   352→// ---------- Bank Payments ----------
+   353→export const BANK_PAYMENTS: BankPayment[] = [
+   354→  { id: "bp-1", payrollRunId: "pr-3", payrollRunName: PAYROLL_RUNS[2].name, entity: "ACME India Pvt Ltd", payGroupId: "pg-1", bankAccount: "5010012345678", bankName: "HDFC Bank", fileFormat: "HDFC Format", totalAmount: 23920000, employeeCount: 142, status: "Paid", generatedAt: daysAgo(28), sentAt: daysAgo(27), approvedAt: daysAgo(26), approvedBy: "Rajesh Kumar", paidAt: daysAgo(25), fileReference: "HDFC-BULK-20250526", utrNumber: "UTR" + (1000000 + 1), createdAt: daysAgo(29) },
+   355→  { id: "bp-2", payrollRunId: "pr-2", payrollRunName: PAYROLL_RUNS[1].name, entity: "ACME UAE LLC", payGroupId: "pg-3", bankAccount: "012345678901", bankName: "Emirates NBD", fileFormat: "UAE WPS / SIF", totalAmount: 8820000, employeeCount: 24, status: "Approved", generatedAt: daysAgo(3), sentAt: daysAgo(2), approvedAt: daysAgo(1), approvedBy: "Rajesh Kumar", fileReference: "WPS-SIF-20250601", createdAt: daysAgo(4) },
+   356→  { id: "bp-3", payrollRunId: "pr-1", payrollRunName: PAYROLL_RUNS[0].name, entity: "ACME India Pvt Ltd", payGroupId: "pg-1", bankAccount: "5010012345678", bankName: "HDFC Bank", fileFormat: "HDFC Format", totalAmount: 24300000, employeeCount: 142, status: "Pending", createdAt: daysAgo(1) },
+   357→  { id: "bp-4", payrollRunId: "pr-6", payrollRunName: PAYROLL_RUNS[5].name, entity: "ACME Singapore Pte Ltd", payGroupId: "pg-5", bankAccount: "00123456789", bankName: "DBS Bank", fileFormat: "Custom CSV", totalAmount: 1296000, employeeCount: 12, status: "File Generated", generatedAt: daysAgo(1), createdAt: daysAgo(2) },
+   358→  { id: "bp-5", payrollRunId: "pr-4", payrollRunName: PAYROLL_RUNS[3].name, entity: "ACME US Inc", payGroupId: "pg-4", bankAccount: "1234567890", bankName: "Chase Bank", fileFormat: "Custom CSV", totalAmount: 4050000, employeeCount: 36, status: "Pending", createdAt: daysAgo(1) },
+   359→]
+   360→
+   361→// ---------- Compliance Rules ----------
+   362→export const COMPLIANCE_RULES: ComplianceRule[] = [
+   363→  { id: "cr-1", name: "India Standard Compliance", code: "IND_STD", entity: "ACME India Pvt Ltd", country: "India", pfApplicable: true, esiApplicable: true, ptApplicable: true, lwfApplicable: true, tdsApplicable: true, gratuityApplicable: true, bonusApplicable: true, pfRate: 12, pensionRate: 8.33, esiRate: 3.25, esiWageCeiling: 21000, ptAmount: 200, lwfRate: 0.2, status: "Active", isDefault: true },
+   364→  { id: "cr-2", name: "UAE WPS Compliance", code: "UAE_WPS", entity: "ACME UAE LLC", country: "United Arab Emirates", pfApplicable: false, esiApplicable: false, ptApplicable: false, lwfApplicable: false, tdsApplicable: false, gratuityApplicable: true, bonusApplicable: false, pfRate: 0, pensionRate: 0, esiRate: 0, esiWageCeiling: 0, ptAmount: 0, lwfRate: 0, status: "Active", isDefault: true },
+   365→  { id: "cr-3", name: "US Federal Compliance", code: "US_FED", entity: "ACME US Inc", country: "United States", pfApplicable: false, esiApplicable: false, ptApplicable: false, lwfApplicable: false, tdsApplicable: true, gratuityApplicable: false, bonusApplicable: false, pfRate: 0, pensionRate: 0, esiRate: 0, esiWageCeiling: 0, ptAmount: 0, lwfRate: 0, status: "Active", isDefault: true },
+   366→  { id: "cr-4", name: "Singapore CPF Compliance", code: "SG_CPF", entity: "ACME Singapore Pte Ltd", country: "Singapore", pfApplicable: false, esiApplicable: false, ptApplicable: false, lwfApplicable: false, tdsApplicable: false, gratuityApplicable: false, bonusApplicable: false, pfRate: 0, pensionRate: 0, esiRate: 0, esiWageCeiling: 0, ptAmount: 0, lwfRate: 0, status: "Active", isDefault: true },
+   367→]
+   368→
+   369→// ---------- PF Records ----------
+   370→export const PF_RECORDS: PFRecord[] = EMP_SEED.slice(0, 10).map((e, i) => {
+   371→  const monthlyCtc = Math.round(e.ctc / 12)
+   372→  const basic = Math.round(monthlyCtc * 0.4)
+   373→  const pfEmp = Math.round(basic * 0.12)
+   374→  const pension = Math.round(basic * 0.0833)
+   375→  return {
+   376→    id: "pf-" + (i + 1), employeeId: e.id, employeeName: e.name, employeeCode: e.id,
+   377→    entity: e.entity, uan: "1012345678" + (10 + i),
+   378→    employeeContribution: pfEmp, employerContribution: pfEmp, pensionContribution: pension,
+   379→    totalContribution: pfEmp * 2 + pension, payrollMonth: monthStr(0),
+   380→    wageCapped: basic > 15000, status: i < 6 ? "Filed" : "Pending",
+   381→  }
+   382→})
+   383→
+   384→// ---------- ESI Records ----------
+   385→export const ESI_RECORDS: ESIRecord[] = EMP_SEED.slice(10, 14).map((e, i) => {
+   386→  const monthlyCtc = Math.round(e.ctc / 12)
+   387→  const gross = Math.round(monthlyCtc * 0.95)
+   388→  const emp = Math.round(gross * 0.0075)
+   389→  const emr = Math.round(gross * 0.0325)
+   390→  return {
+   391→    id: "esi-" + (i + 1), employeeId: e.id, employeeName: e.name, employeeCode: e.id,
+   392→    entity: e.entity, esicNumber: "ESIC" + (2000000 + i),
+   393→    employeeContribution: emp, employerContribution: emr, totalContribution: emp + emr,
+   394→    payrollMonth: monthStr(0), withinWageCeiling: gross <= 21000,
+   395→    status: i < 2 ? "Filed" : "Pending",
+   396→  }
+   397→})
+   398→
+   399→// ---------- PT Records ----------
+   400→export const PT_RECORDS: PTRecord[] = EMP_SEED.slice(0, 12).map((e, i) => ({
+   401→  id: "pt-" + (i + 1), employeeId: e.id, employeeName: e.name, employeeCode: e.id,
+   402→  entity: e.entity, state: "Karnataka",
+   403→  amount: i % 2 === 0 ? 200 : 300, payrollMonth: monthStr(0),
+   404→  slab: i % 2 === 0 ? "₹5,001–₹8,000" : "₹8,001+",
+   405→  status: i < 8 ? "Filed" : "Pending",
+   406→}))
+   407→
+   408→// ---------- LWF Records ----------
+   409→export const LWF_RECORDS: LWFRecord[] = EMP_SEED.slice(0, 10).map((e, i) => ({
+   410→  id: "lwf-" + (i + 1), employeeId: e.id, employeeName: e.name, employeeCode: e.id,
+   411→  entity: e.entity, state: "Karnataka",
+   412→  employeeContribution: 20, employerContribution: 40,
+   413→  payrollMonth: monthStr(0),
+   414→  status: i < 6 ? "Filed" : "Pending",
+   415→}))
+   416→
+   417→// ---------- TDS Records ----------
+   418→export const TDS_RECORDS: TDSRecord[] = EMP_SEED.slice(0, 12).map((e, i) => {
+   419→  const annualCtc = e.ctc
+   420→  const grossIncome = annualCtc
+   421→  const totalDeductions = 150000 + 50000 + 20000
+   422→  const taxableIncome = Math.max(0, grossIncome - totalDeductions)
+   423→  const taxLiability = Math.round(taxableIncome * 0.15 * 0.8)
+   424→  const tdsMonthly = Math.round(taxLiability / 12)
+   425→  return {
+   426→    id: "tds-" + (i + 1), employeeId: e.id, employeeName: e.name, employeeCode: e.id,
+   427→    entity: e.entity, pan: "ABCDE" + (1000 + i) + "F",
+   428→    regime: i % 2 === 0 ? "New" : "Old",
+   429→    grossIncome, totalDeductions, taxableIncome, taxLiability,
+   430→    tdsDeducted: tdsMonthly, payrollMonth: monthStr(0),
+   431→    ytdTds: tdsMonthly * (now.getMonth() + 1),
+   432→    status: i < 8 ? "Filed" : "Pending",
+   433→  }
+   434→})
+   435→
+   436→// ---------- Investment Declarations ----------
+   437→export const INVESTMENT_DECLARATIONS: InvestmentDeclaration[] = EMP_SEED.slice(0, 10).map((e, i) => ({
+   438→  id: "id-" + (i + 1), employeeId: e.id, employeeName: e.name, employeeCode: e.id,
+   439→  entity: e.entity, financialYear: "2025-26",
+   440→  regime: i % 2 === 0 ? "Old" : "New",
+   441→  section80C: i % 3 === 0 ? 150000 : i % 3 === 1 ? 100000 : 80000,
+   442→  section80D: i % 2 === 0 ? 25000 : 50000,
+   443→  section80CCD: i % 4 === 0 ? 50000 : 0,
+   444→  section24: i % 2 === 0 ? 200000 : 0,
+   445→  section80E: i % 5 === 0 ? 30000 : 0,
+   446→  section80G: i % 3 === 0 ? 10000 : 0,
+   447→  otherDeductions: i % 4 === 0 ? 15000 : 0,
+   448→  totalDeclared: i % 3 === 0 ? 480000 : i % 3 === 1 ? 375000 : 230000,
+   449→  totalProofSubmitted: i < 4 ? (i % 3 === 0 ? 480000 : i % 3 === 1 ? 375000 : 230000) : i < 7 ? 100000 : 0,
+   450→  status: i < 4 ? "Approved" : i < 7 ? "Verified" : i < 9 ? "Submitted" : "Draft",
+   451→  submittedAt: daysAgo(30 - i * 3),
+   452→  verifiedBy: i < 7 ? "Karthik Iyer" : undefined,
+   453→}))
+   454→
+   455→// ---------- Form 16 ----------
+   456→export const FORM_16: Form16[] = EMP_SEED.slice(0, 10).map((e, i) => ({
+   457→  id: "f16-" + (i + 1), employeeId: e.id, employeeName: e.name, employeeCode: e.id,
+   458→  entity: e.entity, pan: "ABCDE" + (1000 + i) + "F", financialYear: "2024-25",
+   459→  grossSalary: e.ctc, totalTds: Math.round(e.ctc * 0.08),
+   460→  partA: true, partB: i < 8,
+   461→  status: i < 5 ? "Issued" : i < 8 ? "Generated" : "Pending",
+   462→  generatedAt: daysAgo(30 - i * 2),
+   463→  issuedAt: i < 5 ? daysAgo(20 - i * 2) : undefined,
+   464→}))
+   465→
+   466→// ---------- Challans ----------
+   467→export const CHALLANS: Challan[] = [
+   468→  { id: "ch-1", challanType: "PF", entity: "ACME India Pvt Ltd", payrollMonth: monthStr(0), dueDate: daysAhead(8), amount: 3120000, employeeCount: 142, status: "Pending" },
+   469→  { id: "ch-2", challanType: "ESI", entity: "ACME India Pvt Ltd", payrollMonth: monthStr(0), dueDate: daysAhead(12), amount: 145000, employeeCount: 4, status: "Pending" },
+   470→  { id: "ch-3", challanType: "PT", entity: "ACME India Pvt Ltd", payrollMonth: monthStr(0), dueDate: daysAhead(15), amount: 28400, employeeCount: 142, status: "Pending" },
+   471→  { id: "ch-4", challanType: "LWF", entity: "ACME India Pvt Ltd", payrollMonth: monthStr(0), dueDate: daysAhead(15), amount: 6000, employeeCount: 142, status: "Pending" },
+   472→  { id: "ch-5", challanType: "TDS", entity: "ACME India Pvt Ltd", payrollMonth: monthStr(0), dueDate: daysAhead(7), amount: 1850000, employeeCount: 142, status: "Pending" },
+   473→  { id: "ch-6", challanType: "PF", entity: "ACME India Pvt Ltd", payrollMonth: monthStr(1), dueDate: daysAgo(22), amount: 3080000, employeeCount: 142, status: "Paid", challanNumber: "PF-2025-05-001", paidAt: daysAgo(20), referenceNumber: "UTR123456789" },
+   474→  { id: "ch-7", challanType: "ESI", entity: "ACME India Pvt Ltd", payrollMonth: monthStr(1), dueDate: daysAgo(18), amount: 142000, employeeCount: 4, status: "Paid", challanNumber: "ESI-2025-05-001", paidAt: daysAgo(15), referenceNumber: "UTR123456790" },
+   475→  { id: "ch-8", challanType: "TDS", entity: "ACME India Pvt Ltd", payrollMonth: monthStr(1), dueDate: daysAgo(25), amount: 1820000, employeeCount: 142, status: "Paid", challanNumber: "TDS-2025-05-001", paidAt: daysAgo(22), referenceNumber: "UTR123456791" },
+   476→  { id: "ch-9", challanType: "PT", entity: "ACME India Pvt Ltd", payrollMonth: monthStr(2), dueDate: daysAgo(55), amount: 28000, employeeCount: 142, status: "Overdue", challanNumber: undefined },
+   477→]
+   478→
+   479→// ---------- Arrears ----------
+   480→export const ARREAR_CASES: ArrearCase[] = [
+   481→  { id: "ar-1", employeeId: "EMP-1004", employeeName: "Sneha Reddy", employeeCode: "EMP-1004", entity: "ACME India Pvt Ltd", department: "Design", arrearType: "Salary Revision", effectiveFrom: daysAgo(45), effectiveTo: daysAgo(15), monthsAffected: 2, arrearAmount: 38000, recoveryAmount: 0, netArrear: 38000, description: "Arrear from salary revision — annual hike 11.76% effective from 1st of last month", referenceId: "sr-5", status: "Pending Approval", payoutMonth: monthStr(0), showSeparately: true, createdAt: daysAgo(2) },
+   482→  { id: "ar-2", employeeId: "EMP-1005", employeeName: "Vikram Singh", employeeCode: "EMP-1005", entity: "ACME India Pvt Ltd", department: "Sales", arrearType: "Salary Revision", effectiveFrom: daysAgo(35), effectiveTo: daysAgo(5), monthsAffected: 1, arrearAmount: 25000, recoveryAmount: 0, netArrear: 25000, description: "Market correction arrear — revised CTC effective from last month", referenceId: "sr-4", status: "Approved", payoutMonth: monthStr(0), showSeparately: true, approvedBy: "Rajesh Kumar", approvedAt: daysAgo(1), createdAt: daysAgo(5) },
+   483→  { id: "ar-3", employeeId: "EMP-1006", employeeName: "Anita Desai", employeeCode: "EMP-1006", entity: "ACME India Pvt Ltd", department: "Human Resources", arrearType: "Salary Revision", effectiveFrom: daysAgo(20), effectiveTo: daysAgo(0), monthsAffected: 1, arrearAmount: 16667, recoveryAmount: 0, netArrear: 16667, description: "Probation confirmation arrear", referenceId: "sr-6", status: "Paid", payoutMonth: monthStr(1), showSeparately: true, approvedBy: "Rajesh Kumar", approvedAt: daysAgo(15), paidAt: daysAgo(25), createdAt: daysAgo(20) },
+   484→  { id: "ar-4", employeeId: "EMP-1007", employeeName: "Karthik Iyer", employeeCode: "EMP-1007", entity: "ACME India Pvt Ltd", department: "Finance", arrearType: "LOP Reversal", effectiveFrom: daysAgo(40), effectiveTo: daysAgo(40), monthsAffected: 1, arrearAmount: 4000, recoveryAmount: 0, netArrear: 4000, description: "LOP reversal — approved leave retroactively applied to last month", status: "Approved", payoutMonth: monthStr(0), showSeparately: false, approvedBy: "Rajesh Kumar", approvedAt: daysAgo(1), createdAt: daysAgo(3) },
+   485→  { id: "ar-5", employeeId: "EMP-1001", employeeName: "Arjun Sharma", employeeCode: "EMP-1001", entity: "ACME India Pvt Ltd", department: "Engineering", arrearType: "Attendance Correction", effectiveFrom: daysAgo(25), effectiveTo: daysAgo(25), monthsAffected: 1, arrearAmount: 6000, recoveryAmount: 0, netArrear: 6000, description: "Attendance correction — swipe-in missing for 2 days, manually approved", status: "Pending Approval", payoutMonth: monthStr(0), showSeparately: false, createdAt: daysAgo(1) },
+   486→  { id: "ar-6", employeeId: "EMP-1003", employeeName: "Rohit Gupta", employeeCode: "EMP-1003", entity: "ACME India Pvt Ltd", department: "Engineering", arrearType: "Bonus", effectiveFrom: daysAgo(10), effectiveTo: daysAgo(10), monthsAffected: 1, arrearAmount: 75000, recoveryAmount: 0, netArrear: 75000, description: "Spot bonus — critical incident resolution (P0 outage)", status: "Approved", payoutMonth: monthStr(0), showSeparately: true, approvedBy: "Rajesh Kumar", approvedAt: daysAgo(1), createdAt: daysAgo(4) },
+   487→  { id: "ar-7", employeeId: "EMP-1008", employeeName: "Deepa Nair", employeeCode: "EMP-1008", entity: "ACME India Pvt Ltd", department: "Marketing", arrearType: "Manual", effectiveFrom: daysAgo(15), effectiveTo: daysAgo(15), monthsAffected: 1, arrearAmount: 12000, recoveryAmount: 0, netArrear: 12000, description: "Manual arrear — joining bonus payout (deferred from onboarding)", status: "Pending Approval", payoutMonth: monthStr(0), showSeparately: true, createdAt: daysAgo(2) },
+   488→  { id: "ar-8", employeeId: "EMP-1002", employeeName: "Priya Patel", employeeCode: "EMP-1002", entity: "ACME India Pvt Ltd", department: "Product", arrearType: "Salary Revision", effectiveFrom: daysAgo(10), effectiveTo: daysAgo(0), monthsAffected: 1, arrearAmount: 16667, recoveryAmount: 0, netArrear: 16667, description: "Annual hike arrear — 10% hike effective from 1st of this month", referenceId: "sr-3", status: "Approved", payoutMonth: monthStr(0), showSeparately: true, approvedBy: "Anita Desai", approvedAt: daysAgo(1), createdAt: daysAgo(3) },
+   489→  { id: "ar-9", employeeId: "EMP-1011", employeeName: "Sai Krishnan", employeeCode: "EMP-1011", entity: "ACME India Pvt Ltd", department: "Engineering", arrearType: "Manual", effectiveFrom: daysAgo(30), effectiveTo: daysAgo(30), monthsAffected: 1, arrearAmount: 0, recoveryAmount: 9000, netArrear: -9000, description: "Salary overpaid last month — recovery arrear (negative)", status: "Approved", payoutMonth: monthStr(0), showSeparately: false, approvedBy: "Anita Desai", approvedAt: daysAgo(2), createdAt: daysAgo(4) },
+   490→  { id: "ar-10", employeeId: "EMP-1009", employeeName: "Rajesh Kumar", employeeCode: "EMP-1009", entity: "ACME India Pvt Ltd", department: "Operations", arrearType: "Incentive", effectiveFrom: daysAgo(20), effectiveTo: daysAgo(20), monthsAffected: 1, arrearAmount: 45000, recoveryAmount: 0, netArrear: 45000, description: "Operational excellence incentive — Q1", status: "Paid", payoutMonth: monthStr(1), showSeparately: true, approvedBy: "Rajesh Kumar", approvedAt: daysAgo(15), paidAt: daysAgo(25), createdAt: daysAgo(18) },
+   491→]
+   492→
+   493→// ---------- Full & Final Cases ----------
+   494→export const FNF_CASES: FnFCase[] = [
+   495→  {
+   496→    id: "fnf-1", employeeId: "EMP-1190", employeeName: "Pooja Iyer", employeeCode: "EMP-1190",
+   497→    entity: "ACME India Pvt Ltd", department: "Customer Success", designation: "CS Executive",
+   498→    exitCaseId: "EXIT-2025-007", exitType: "Voluntary Resignation",
+   499→    lwd: daysAhead(51), doj: daysAgo(720), tenureYears: 2,
+   500→    status: "Calculation In Progress",
+   501→    earnings: [
+   502→      { name: "Pending Salary", code: "SAL", amount: 48000, source: "Auto", category: "Earning" },
+   503→      { name: "Leave Encashment", code: "LEAVE", amount: 32000, source: "Auto", category: "Earning" },
+   504→      { name: "Bonus Pro-rata", code: "BONUS", amount: 12000, source: "Auto", category: "Earning" },
+   505→      { name: "Gratuity", code: "GRAT", amount: 38400, source: "Auto", category: "Earning" },
+   506→      { name: "Reimbursement", code: "REIMB", amount: 8500, source: "Manual", category: "Earning" },
+   507→    ],
+   508→    deductions: [
+   509→      { name: "Notice Recovery", code: "NOTICE", amount: 48000, source: "Auto", category: "Deduction" },
+   510→      { name: "Loan Recovery", code: "LOAN", amount: 25000, source: "Auto", category: "Deduction" },
+   511→      { name: "Asset Recovery", code: "ASSET", amount: 8500, source: "Auto", category: "Deduction" },
+   512→      { name: "TDS", code: "TDS", amount: 12400, source: "Auto", category: "Deduction" },
+   513→    ],
+   514→    totalEarnings: 138900, totalDeductions: 93900, netPayable: 45000,
+   515→    calculatedAt: daysAgo(1), createdAt: daysAgo(5),
+   516→  },
+   517→  {
+   518→    id: "fnf-2", employeeId: "EMP-1185", employeeName: "Rahul Verma", employeeCode: "EMP-1185",
+   519→    entity: "ACME India Pvt Ltd", department: "Engineering", designation: "Software Engineer",
+   520→    exitCaseId: "EXIT-2025-005", exitType: "Voluntary Resignation",
+   521→    lwd: daysAgo(10), doj: daysAgo(1080), tenureYears: 3,
+   522→    status: "Paid",
+   523→    earnings: [
+   524→      { name: "Pending Salary", code: "SAL", amount: 75000, source: "Auto", category: "Earning" },
+   525→      { name: "Leave Encashment", code: "LEAVE", amount: 45000, source: "Auto", category: "Earning" },
+   526→      { name: "Gratuity", code: "GRAT", amount: 90000, source: "Auto", category: "Earning" },
+   527→      { name: "Bonus Pro-rata", code: "BONUS", amount: 20000, source: "Auto", category: "Earning" },
+   528→    ],
+   529→    deductions: [
+   530→      { name: "TDS", code: "TDS", amount: 28000, source: "Auto", category: "Deduction" },
+   531→      { name: "Asset Recovery", code: "ASSET", amount: 5000, source: "Auto", category: "Deduction" },
+   532→    ],
+   533→    totalEarnings: 230000, totalDeductions: 33000, netPayable: 197000,
+   534→    calculatedAt: daysAgo(25), approvedBy: "Rajesh Kumar", approvedAt: daysAgo(20),
+   535→    paidAt: daysAgo(12), paymentMode: "Bank Transfer", utrNumber: "UTR7654321",
+   536→    createdAt: daysAgo(30),
+   537→  },
+   538→  {
+   539→    id: "fnf-3", employeeId: "EMP-1180", employeeName: "Suresh Babu", employeeCode: "EMP-1180",
+   540→    entity: "ACME India Pvt Ltd", department: "Operations", designation: "Operations Analyst",
+   541→    exitCaseId: "EXIT-2025-003", exitType: "Involuntary Termination",
+   542→    lwd: daysAgo(45), doj: daysAgo(540), tenureYears: 1.5,
+   543→    status: "Approved",
+   544→    earnings: [
+   545→      { name: "Pending Salary", code: "SAL", amount: 55000, source: "Auto", category: "Earning" },
+   546→      { name: "Leave Encashment", code: "LEAVE", amount: 22000, source: "Auto", category: "Earning" },
+   547→      { name: "Gratuity", code: "GRAT", amount: 33000, source: "Auto", category: "Earning" },
+   548→    ],
+   549→    deductions: [
+   550→      { name: "TDS", code: "TDS", amount: 11000, source: "Auto", category: "Deduction" },
+   551→    ],
+   552→    totalEarnings: 110000, totalDeductions: 11000, netPayable: 99000,
+   553→    calculatedAt: daysAgo(50), approvedBy: "Rajesh Kumar", approvedAt: daysAgo(48),
+   554→    createdAt: daysAgo(55),
+   555→  },
+   556→  {
+   557→    id: "fnf-4", employeeId: "EMP-1175", employeeName: "Kavya Menon", employeeCode: "EMP-1175",
+   558→    entity: "ACME India Pvt Ltd", department: "Marketing", designation: "Marketing Analyst",
+   559→    exitCaseId: "EXIT-2025-001", exitType: "Voluntary Resignation",
+   560→    lwd: daysAhead(15), doj: daysAgo(360), tenureYears: 1,
+   561→    status: "Inputs Pending",
+   562→    earnings: [], deductions: [],
+   563→    totalEarnings: 0, totalDeductions: 0, netPayable: 0,
+   564→    createdAt: daysAgo(2),
+   565→  },
+   566→  {
+   567→    id: "fnf-5", employeeId: "EMP-1170", employeeName: "Amit Saxena", employeeCode: "EMP-1170",
+   568→    entity: "ACME India Pvt Ltd", department: "Sales", designation: "Sales Executive",
+   569→    exitCaseId: "EXIT-2024-045", exitType: "Voluntary Resignation",
+   570→    lwd: daysAgo(90), doj: daysAgo(1440), tenureYears: 4,
+   571→    status: "Paid",
+   572→    earnings: [
+   573→      { name: "Pending Salary", code: "SAL", amount: 65000, source: "Auto", category: "Earning" },
+   574→      { name: "Leave Encashment", code: "LEAVE", amount: 38000, source: "Auto", category: "Earning" },
+   575→      { name: "Gratuity", code: "GRAT", amount: 104000, source: "Auto", category: "Earning" },
+   576→      { name: "Incentive Pro-rata", code: "INCENT", amount: 35000, source: "Auto", category: "Earning" },
+   577→    ],
+   578→    deductions: [
+   579→      { name: "Notice Recovery", code: "NOTICE", amount: 65000, source: "Auto", category: "Deduction" },
+   580→      { name: "TDS", code: "TDS", amount: 22000, source: "Auto", category: "Deduction" },
+   581→      { name: "Loan Recovery", code: "LOAN", amount: 18000, source: "Auto", category: "Deduction" },
+   582→    ],
+   583→    totalEarnings: 242000, totalDeductions: 105000, netPayable: 137000,
+   584→    calculatedAt: daysAgo(100), approvedBy: "Rajesh Kumar", approvedAt: daysAgo(95),
+   585→    paidAt: daysAgo(88), paymentMode: "Bank Transfer", utrNumber: "UTR9876543",
+   586→    createdAt: daysAgo(110),
+   587→  },
+   588→  {
+   589→    id: "fnf-6", employeeId: "EMP-2005", employeeName: "Mohammed Ali", employeeCode: "EMP-2005",
+   590→    entity: "ACME UAE LLC", department: "Sales", designation: "Sales Executive",
+   591→    exitCaseId: "EXIT-2025-UAE-01", exitType: "End of Contract",
+   592→    lwd: daysAhead(30), doj: daysAgo(720), tenureYears: 2,
+   593→    status: "Pending Approval",
+   594→    earnings: [
+   595→      { name: "Pending Salary", code: "SAL", amount: 25000, source: "Auto", category: "Earning" },
+   596→      { name: "Leave Encashment", code: "LEAVE", amount: 15000, source: "Auto", category: "Earning" },
+   597→      { name: "Gratuity (UAE)", code: "GRAT", amount: 48000, source: "Auto", category: "Earning" },
+   598→    ],
+   599→    deductions: [],
+   600→    totalEarnings: 88000, totalDeductions: 0, netPayable: 88000,
+   601→    calculatedAt: daysAgo(3), createdAt: daysAgo(7),
+   602→  },
+   603→]
+   604→
+   605→// ---------- Entity Payroll Configurations (Settings → Entity Configuration) ----------
+   606→export const ENTITY_PAYROLL_CONFIGS: EntityPayrollConfig[] = [
+   607→  {
+   608→    id: "epc-1", entity: "ACME India Pvt Ltd", country: "India", state: "Karnataka", currency: "INR",
+   609→    useTenantDefault: false, overrideTenantDefault: true, status: "Active", priority: 1, version: 3,
+   610→    effectiveFrom: daysAgo(365), effectiveTo: undefined,
+   611→    // Step 2
+   612→    payrollFrequency: "Monthly", payrollMonthStartDay: 1, payrollMonthEndDay: 31,
+   613→    payDate: "Last Working Day", attendanceCutOff: "25th", leaveCutOff: "25th",
+   614→    reimbursementCutOff: "20th", taxDeclarationCutOff: "15th", loanDeductionCutOff: "Last Day",
+   615→    arrearCutOff: "Last Day", payrollLockDate: "Last Day", payslipPublishDate: "Pay Date",
+   616→    // Step 3
+   617→    defaultPayGroup: "India Monthly Payroll", defaultSalaryStructure: "India Full-Time Structure",
+   618→    defaultComponentSet: "India Payroll Components", defaultEmployeeSalaryRule: "Auto-assign on join",
+   619→    defaultSalaryRevisionRule: "Annual + Promotion", defaultPayrollInputRule: "Manual + Auto",
+   620→    defaultLopRule: "Per day = CTC/30", defaultOvertimeRule: "Hourly @ 1.5x",
+   621→    defaultBonusRule: "Quarterly", defaultReimbursementRule: "Monthly cap",
+   622→    // Step 4
+   623→    complianceRule: "India Standard Compliance", pfApplicable: true, esiApplicable: true,
+   624→    ptApplicable: true, lwfApplicable: true, tdsApplicable: true, gratuityApplicable: true,
+   625→    bonusApplicable: true, minimumWageRule: "Karnataka State", taxRegimeRule: "New default, Old optional",
+   626→    investmentDeclarationRule: "Annual + Proof", form16Template: "India Form 16 (Auto)",
+   627→    challanRule: "Monthly auto-generate",
+   628→    // Step 5
+   629→    defaultPayslipTemplate: "India Payslip Template", showEmployerContribution: true,
+   630→    showCtcComponents: true, showYtd: true, showLopDays: true, showLeaveBalance: true,
+   631→    hideZeroComponents: true, defaultBankAccount: "HDFC Salary Account - 5010012345678",
+   632→    bankFileFormat: "HDFC Format", paymentApprovalRequired: true, paymentMode: "NEFT",
+   633→    // Step 6
+   634→    defaultArrearRule: "Auto on revision", autoArrearOnRevision: true, autoArrearOnLopReversal: true,
+
+[showing lines 335-634 of 793; use offset=635 with limit to continue reading]

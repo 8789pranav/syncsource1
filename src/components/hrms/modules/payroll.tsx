@@ -1,954 +1,439 @@
 "use client"
 
 // ============================================================
-// PayrollModule — Phase 3 Payroll Management
+// PayrollModule — Enterprise Payroll (Phase 3 rebuild)
 // ------------------------------------------------------------
-// Three tabs:
-//   1. Salary Structures — define reusable CTC component templates
-//   2. Payroll Runs — create monthly runs, process, approve, pay
-//   3. Payslips — view individual payslips (filter by run/employee)
+// 5 main menus with nested sub-sections:
+//   1. Salary       — Dashboard, Payroll Run, Payroll Inputs, Pay Groups,
+//                     Payroll Components, Salary Structure, Employee Salary,
+//                     Salary Revision, Payslips, Bank/Payment, Reports
+//   2. Compliance   — Dashboard, Statutory Setup, PF/EPF, ESI, PT, LWF,
+//                     TDS/Income Tax, Investment Declaration, Form 16,
+//                     Challans/Payments, Reports
+//   3. Arrear       — Dashboard, Arrear Inputs, Arrear Calculation,
+//                     Salary Revision Arrear, LOP Reversal Arrear, Manual Arrear,
+//                     Arrear Approval, Arrear Payment, Reports
+//   4. Full & Final — Dashboard, FnF Cases, FnF Inputs, FnF Calculation,
+//                     Leave Encashment, Notice Recovery, Asset/Loan Recovery,
+//                     FnF Approval, FnF Payment, FnF Letters, Reports
+//   5. Settings     — General, Entity Configuration (flagship 9-step wizard),
+//                     Pay Group, Component, Structure, Calendar, Integration,
+//                     Compliance, Tax, Arrear, FnF, Payslip, Bank, Approval,
+//                     Email, Import/Export, Audit & Security
 // ============================================================
 
 import * as React from "react"
-import { motion } from "framer-motion"
-import { toast } from "sonner"
+import dynamic from "next/dynamic"
+import { motion, AnimatePresence } from "framer-motion"
 import {
-  Banknote, Wallet, FileText, Plus, Pencil, Trash2, Loader2, Play,
-  CheckCircle2, Eye, Download, Search, TrendingUp, Users, Clock,
-  ArrowRight, IndianRupee, FileSpreadsheet, ShieldCheck, Calendar,
+  Banknote, Wallet, Receipt, FileText, Settings as SettingsIcon,
+  LayoutDashboard, Play, ListChecks, Users, Layers, FileSpreadsheet,
+  UserSquare, TrendingUp, FileText as PayslipIcon, Landmark, BarChart3,
+  ShieldCheck, Building2, PiggyBank, HeartPulse, Briefcase, HandCoins,
+  FileCheck, CalendarClock, Coins, ArrowLeftRight, ClipboardCheck,
+  Inbox, Calculator, GitCompareArrows, Undo2, Hand, CheckCircle2, Mail,
+  SlidersHorizontal, Globe, Calendar, Plug, BadgePercent, FileSliders,
+  ScrollText, Upload, Lock, ChevronRight, Menu, X, Package,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog"
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table"
-import {
-  PageHeader, StatCard, SectionCard, EmptyState, StatusBadge,
-} from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
-// ---------- helpers ----------
-const fmtDate = (d?: string | Date | null) => {
-  if (!d) return "—"
-  const dt = typeof d === "string" ? new Date(d) : d
-  if (isNaN(dt.getTime())) return "—"
-  return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+// ---------- Lazy-loaded sections ----------
+const loading = () => (
+  <div className="flex h-[60vh] items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
+  </div>
+)
+
+// Salary
+const SalaryDashboard = dynamic(() => import("@/components/hrms/payroll/sections/salary-dashboard").then(m => m.SalaryDashboardSection), { loading, ssr: false })
+const PayrollRun = dynamic(() => import("@/components/hrms/payroll/sections/payroll-run").then(m => m.PayrollRunSection), { loading, ssr: false })
+const PayrollInputs = dynamic(() => import("@/components/hrms/payroll/sections/payroll-inputs").then(m => m.PayrollInputsSection), { loading, ssr: false })
+const PayGroups = dynamic(() => import("@/components/hrms/payroll/sections/pay-groups").then(m => m.PayGroupsSection), { loading, ssr: false })
+const PayrollComponents = dynamic(() => import("@/components/hrms/payroll/sections/payroll-components").then(m => m.PayrollComponentsSection), { loading, ssr: false })
+const SalaryStructure = dynamic(() => import("@/components/hrms/payroll/sections/salary-structure").then(m => m.SalaryStructureSection), { loading, ssr: false })
+const EmployeeSalary = dynamic(() => import("@/components/hrms/payroll/sections/employee-salary").then(m => m.EmployeeSalarySection), { loading, ssr: false })
+const SalaryRevision = dynamic(() => import("@/components/hrms/payroll/sections/salary-revision").then(m => m.SalaryRevisionSection), { loading, ssr: false })
+const Payslips = dynamic(() => import("@/components/hrms/payroll/sections/payslips").then(m => m.PayslipsSection), { loading, ssr: false })
+const BankPayment = dynamic(() => import("@/components/hrms/payroll/sections/bank-payment").then(m => m.BankPaymentSection), { loading, ssr: false })
+const SalaryReports = dynamic(() => import("@/components/hrms/payroll/sections/salary-reports").then(m => m.SalaryReportsSection), { loading, ssr: false })
+
+// Compliance
+const ComplianceDashboard = dynamic(() => import("@/components/hrms/payroll/sections/compliance-dashboard").then(m => m.ComplianceDashboardSection), { loading, ssr: false })
+const StatutorySetup = dynamic(() => import("@/components/hrms/payroll/sections/statutory-setup").then(m => m.StatutorySetupSection), { loading, ssr: false })
+const PFRecords = dynamic(() => import("@/components/hrms/payroll/sections/pf-records").then(m => m.PFRecordsSection), { loading, ssr: false })
+const ESIRecords = dynamic(() => import("@/components/hrms/payroll/sections/esi-records").then(m => m.ESIRecordsSection), { loading, ssr: false })
+const PTRecords = dynamic(() => import("@/components/hrms/payroll/sections/pt-records").then(m => m.PTRecordsSection), { loading, ssr: false })
+const LWFRecords = dynamic(() => import("@/components/hrms/payroll/sections/lwf-records").then(m => m.LWFRecordsSection), { loading, ssr: false })
+const TDSRecords = dynamic(() => import("@/components/hrms/payroll/sections/tds-records").then(m => m.TDSRecordsSection), { loading, ssr: false })
+const InvestmentDeclaration = dynamic(() => import("@/components/hrms/payroll/sections/investment-declaration").then(m => m.InvestmentDeclarationSection), { loading, ssr: false })
+const Form16 = dynamic(() => import("@/components/hrms/payroll/sections/form-16").then(m => m.Form16Section), { loading, ssr: false })
+const Challans = dynamic(() => import("@/components/hrms/payroll/sections/challans").then(m => m.ChallansSection), { loading, ssr: false })
+const ComplianceReports = dynamic(() => import("@/components/hrms/payroll/sections/compliance-reports").then(m => m.ComplianceReportsSection), { loading, ssr: false })
+
+// Arrear
+const ArrearDashboard = dynamic(() => import("@/components/hrms/payroll/sections/arrear-dashboard").then(m => m.ArrearDashboardSection), { loading, ssr: false })
+const ArrearInputs = dynamic(() => import("@/components/hrms/payroll/sections/arrear-inputs").then(m => m.ArrearInputsSection), { loading, ssr: false })
+const ArrearCalculation = dynamic(() => import("@/components/hrms/payroll/sections/arrear-calculation").then(m => m.ArrearCalculationSection), { loading, ssr: false })
+const SalaryRevisionArrear = dynamic(() => import("@/components/hrms/payroll/sections/salary-revision-arrear").then(m => m.SalaryRevisionArrearSection), { loading, ssr: false })
+const LopReversalArrear = dynamic(() => import("@/components/hrms/payroll/sections/lop-reversal-arrear").then(m => m.LopReversalArrearSection), { loading, ssr: false })
+const ManualArrear = dynamic(() => import("@/components/hrms/payroll/sections/manual-arrear").then(m => m.ManualArrearSection), { loading, ssr: false })
+const ArrearApproval = dynamic(() => import("@/components/hrms/payroll/sections/arrear-approval").then(m => m.ArrearApprovalSection), { loading, ssr: false })
+const ArrearPayment = dynamic(() => import("@/components/hrms/payroll/sections/arrear-payment").then(m => m.ArrearPaymentSection), { loading, ssr: false })
+const ArrearReports = dynamic(() => import("@/components/hrms/payroll/sections/arrear-reports").then(m => m.ArrearReportsSection), { loading, ssr: false })
+
+// Full & Final
+const FnFDashboard = dynamic(() => import("@/components/hrms/payroll/sections/fnf-dashboard").then(m => m.FnFDashboardSection), { loading, ssr: false })
+const FnFCases = dynamic(() => import("@/components/hrms/payroll/sections/fnf-cases").then(m => m.FnFCasesSection), { loading, ssr: false })
+const FnFInputs = dynamic(() => import("@/components/hrms/payroll/sections/fnf-inputs").then(m => m.FnFInputsSection), { loading, ssr: false })
+const FnFCalculation = dynamic(() => import("@/components/hrms/payroll/sections/fnf-calculation").then(m => m.FnFCalculationSection), { loading, ssr: false })
+const LeaveEncashment = dynamic(() => import("@/components/hrms/payroll/sections/leave-encashment").then(m => m.LeaveEncashmentSection), { loading, ssr: false })
+const NoticeRecovery = dynamic(() => import("@/components/hrms/payroll/sections/notice-recovery").then(m => m.NoticeRecoverySection), { loading, ssr: false })
+const AssetLoanRecovery = dynamic(() => import("@/components/hrms/payroll/sections/asset-loan-recovery").then(m => m.AssetLoanRecoverySection), { loading, ssr: false })
+const FnFApproval = dynamic(() => import("@/components/hrms/payroll/sections/fnf-approval").then(m => m.FnFApprovalSection), { loading, ssr: false })
+const FnFPayment = dynamic(() => import("@/components/hrms/payroll/sections/fnf-payment").then(m => m.FnFPaymentSection), { loading, ssr: false })
+const FnFLetters = dynamic(() => import("@/components/hrms/payroll/sections/fnf-letters").then(m => m.FnFLettersSection), { loading, ssr: false })
+const FnFReports = dynamic(() => import("@/components/hrms/payroll/sections/fnf-reports").then(m => m.FnFReportsSection), { loading, ssr: false })
+
+// Settings
+const GeneralSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-general").then(m => m.GeneralSettingsSection), { loading, ssr: false })
+const EntityConfiguration = dynamic(() => import("@/components/hrms/payroll/sections/entity-configuration").then(m => m.EntityConfigurationSection), { loading, ssr: false })
+const PayGroupSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-pay-group").then(m => m.PayGroupSettingsSection), { loading, ssr: false })
+const ComponentSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-component").then(m => m.ComponentSettingsSection), { loading, ssr: false })
+const StructureSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-structure").then(m => m.StructureSettingsSection), { loading, ssr: false })
+const CalendarSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-calendar").then(m => m.CalendarSettingsSection), { loading, ssr: false })
+const IntegrationSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-integration").then(m => m.IntegrationSettingsSection), { loading, ssr: false })
+const ComplianceSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-compliance").then(m => m.ComplianceSettingsSection), { loading, ssr: false })
+const TaxSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-tax").then(m => m.TaxSettingsSection), { loading, ssr: false })
+const ArrearSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-arrear").then(m => m.ArrearSettingsSection), { loading, ssr: false })
+const FnFSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-fnf").then(m => m.FnFSettingsSection), { loading, ssr: false })
+const PayslipSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-payslip").then(m => m.PayslipSettingsSection), { loading, ssr: false })
+const BankSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-bank").then(m => m.BankSettingsSection), { loading, ssr: false })
+const ApprovalSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-approval").then(m => m.ApprovalSettingsSection), { loading, ssr: false })
+const EmailSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-email").then(m => m.EmailSettingsSection), { loading, ssr: false })
+const ImportExportSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-import-export").then(m => m.ImportExportSettingsSection), { loading, ssr: false })
+const AuditSecuritySettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-audit-security").then(m => m.AuditSecuritySettingsSection), { loading, ssr: false })
+
+// ---------- Menu structure ----------
+interface SubItem {
+  id: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
 }
-function fmtCurrency(v?: number | null): string {
-  if (v === undefined || v === null) return "—"
-  return "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(v)
-}
-function fmtLakhs(v?: number | null): string {
-  if (!v) return "—"
-  if (v >= 10000000) return `₹${(v / 10000000).toFixed(2)} Cr`
-  if (v >= 100000) return `₹${(v / 100000).toFixed(2)} L`
-  return fmtCurrency(v)
+interface MainMenu {
+  id: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  accent: string // tailwind gradient e.g. "from-teal-500 to-cyan-500"
+  description: string
+  children: SubItem[]
 }
 
-const runStatusColors: Record<string, string> = {
-  Draft: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400",
-  Processing: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
-  Completed: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400",
-  Approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  Paid: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400",
-  Cancelled: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
-}
+const MENUS: MainMenu[] = [
+  {
+    id: "salary", label: "Salary", icon: Wallet, accent: "from-teal-500 to-cyan-500",
+    description: "Run monthly payroll, manage pay groups, components, structures, employee salaries, revisions, payslips & bank payments",
+    children: [
+      { id: "salary-dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "payroll-run", label: "Payroll Run", icon: Play },
+      { id: "payroll-inputs", label: "Payroll Inputs", icon: ListChecks },
+      { id: "pay-groups", label: "Pay Groups", icon: Users },
+      { id: "payroll-components", label: "Payroll Components", icon: Layers },
+      { id: "salary-structure", label: "Salary Structure", icon: FileSpreadsheet },
+      { id: "employee-salary", label: "Employee Salary", icon: UserSquare },
+      { id: "salary-revision", label: "Salary Revision", icon: TrendingUp },
+      { id: "payslips", label: "Payslips", icon: PayslipIcon },
+      { id: "bank-payment", label: "Bank / Payment", icon: Landmark },
+      { id: "salary-reports", label: "Reports", icon: BarChart3 },
+    ],
+  },
+  {
+    id: "compliance", label: "Compliance", icon: ShieldCheck, accent: "from-emerald-500 to-teal-500",
+    description: "Statutory setup, PF/EPF, ESI, PT, LWF, TDS, investment declarations, Form 16, challans & filings",
+    children: [
+      { id: "compliance-dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "statutory-setup", label: "Statutory Setup", icon: Building2 },
+      { id: "pf-records", label: "PF / EPF", icon: PiggyBank },
+      { id: "esi-records", label: "ESI", icon: HeartPulse },
+      { id: "pt-records", label: "Professional Tax", icon: Briefcase },
+      { id: "lwf-records", label: "Labour Welfare Fund", icon: HandCoins },
+      { id: "tds-records", label: "TDS / Income Tax", icon: FileCheck },
+      { id: "investment-declaration", label: "Investment Declaration", icon: CalendarClock },
+      { id: "form-16", label: "Form 16", icon: FileText },
+      { id: "challans", label: "Challans / Payments", icon: Coins },
+      { id: "compliance-reports", label: "Reports", icon: BarChart3 },
+    ],
+  },
+  {
+    id: "arrear", label: "Arrear", icon: ArrowLeftRight, accent: "from-amber-500 to-orange-500",
+    description: "Calculate, approve & pay salary arrears from revisions, LOP reversals, attendance corrections & manual entries",
+    children: [
+      { id: "arrear-dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "arrear-inputs", label: "Arrear Inputs", icon: Inbox },
+      { id: "arrear-calculation", label: "Arrear Calculation", icon: Calculator },
+      { id: "salary-revision-arrear", label: "Salary Revision Arrear", icon: GitCompareArrows },
+      { id: "lop-reversal-arrear", label: "LOP Reversal Arrear", icon: Undo2 },
+      { id: "manual-arrear", label: "Manual Arrear", icon: Hand },
+      { id: "arrear-approval", label: "Arrear Approval", icon: CheckCircle2 },
+      { id: "arrear-payment", label: "Arrear Payment", icon: Wallet },
+      { id: "arrear-reports", label: "Reports", icon: BarChart3 },
+    ],
+  },
+  {
+    id: "fnf", label: "Full & Final", icon: Receipt, accent: "from-rose-500 to-pink-500",
+    description: "Settle employee exits — auto-fetch payroll, leave encashment, notice recovery, asset/loan recovery, generate letters & track payments",
+    children: [
+      { id: "fnf-dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "fnf-cases", label: "FnF Cases", icon: ClipboardCheck },
+      { id: "fnf-inputs", label: "FnF Inputs", icon: Inbox },
+      { id: "fnf-calculation", label: "FnF Calculation", icon: Calculator },
+      { id: "leave-encashment", label: "Leave Encashment", icon: CalendarClock },
+      { id: "notice-recovery", label: "Notice Recovery", icon: ScrollText },
+      { id: "asset-loan-recovery", label: "Asset / Loan Recovery", icon: Package },
+      { id: "fnf-approval", label: "FnF Approval", icon: CheckCircle2 },
+      { id: "fnf-payment", label: "FnF Payment", icon: Wallet },
+      { id: "fnf-letters", label: "FnF Letters", icon: FileText },
+      { id: "fnf-reports", label: "Reports", icon: BarChart3 },
+    ],
+  },
+  {
+    id: "settings", label: "Settings", icon: SettingsIcon, accent: "from-slate-500 to-slate-600",
+    description: "Configure payroll defaults, entity-wise configuration (flagship 9-step wizard), pay groups, components, structures, calendar, integrations, compliance, tax, arrear, FnF, payslip, bank, approvals, emails, import/export & audit",
+    children: [
+      { id: "settings-general", label: "General Settings", icon: SlidersHorizontal },
+      { id: "entity-configuration", label: "Entity Configuration", icon: Building2 },
+      { id: "settings-pay-group", label: "Pay Group Settings", icon: Users },
+      { id: "settings-component", label: "Salary Component Settings", icon: Layers },
+      { id: "settings-structure", label: "Salary Structure Settings", icon: FileSpreadsheet },
+      { id: "settings-calendar", label: "Payroll Calendar Settings", icon: Calendar },
+      { id: "settings-integration", label: "Attendance / Leave Integration", icon: Plug },
+      { id: "settings-compliance", label: "Compliance Settings", icon: ShieldCheck },
+      { id: "settings-tax", label: "Tax Settings", icon: BadgePercent },
+      { id: "settings-arrear", label: "Arrear Settings", icon: ArrowLeftRight },
+      { id: "settings-fnf", label: "FnF Settings", icon: Receipt },
+      { id: "settings-payslip", label: "Payslip Settings", icon: FileSliders },
+      { id: "settings-bank", label: "Bank Settings", icon: Landmark },
+      { id: "settings-approval", label: "Approval Settings", icon: CheckCircle2 },
+      { id: "settings-email", label: "Email Settings", icon: Mail },
+      { id: "settings-import-export", label: "Import / Export Settings", icon: Upload },
+      { id: "settings-audit-security", label: "Audit & Security", icon: Lock },
+    ],
+  },
+]
 
 // ============================================================
 // Main Module
 // ============================================================
 export function PayrollModule() {
-  const [tab, setTab] = React.useState("structures")
+  const [activeMenu, setActiveMenu] = React.useState("salary")
+  const [activeSection, setActiveSection] = React.useState("salary-dashboard")
+  const [mobileOpen, setMobileOpen] = React.useState(false)
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.05 } },
+  // When main menu changes, auto-select first child
+  const switchMenu = (menuId: string) => {
+    const menu = MENUS.find(m => m.id === menuId)
+    if (menu && menu.children.length > 0) {
+      setActiveMenu(menuId)
+      setActiveSection(menu.children[0].id)
+      setMobileOpen(false)
+    }
   }
-  const itemVariants = {
-    hidden: { opacity: 0, y: 8 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.22, ease: "easeOut" as const } },
+
+  const currentMenu = MENUS.find(m => m.id === activeMenu)!
+  const currentSection = currentMenu.children.find(s => s.id === activeSection) || currentMenu.children[0]
+
+  const renderSection = () => {
+    switch (activeSection) {
+      // Salary
+      case "salary-dashboard": return <SalaryDashboard />
+      case "payroll-run": return <PayrollRun />
+      case "payroll-inputs": return <PayrollInputs />
+      case "pay-groups": return <PayGroups />
+      case "payroll-components": return <PayrollComponents />
+      case "salary-structure": return <SalaryStructure />
+      case "employee-salary": return <EmployeeSalary />
+      case "salary-revision": return <SalaryRevision />
+      case "payslips": return <Payslips />
+      case "bank-payment": return <BankPayment />
+      case "salary-reports": return <SalaryReports />
+      // Compliance
+      case "compliance-dashboard": return <ComplianceDashboard />
+      case "statutory-setup": return <StatutorySetup />
+      case "pf-records": return <PFRecords />
+      case "esi-records": return <ESIRecords />
+      case "pt-records": return <PTRecords />
+      case "lwf-records": return <LWFRecords />
+      case "tds-records": return <TDSRecords />
+      case "investment-declaration": return <InvestmentDeclaration />
+      case "form-16": return <Form16 />
+      case "challans": return <Challans />
+      case "compliance-reports": return <ComplianceReports />
+      // Arrear
+      case "arrear-dashboard": return <ArrearDashboard />
+      case "arrear-inputs": return <ArrearInputs />
+      case "arrear-calculation": return <ArrearCalculation />
+      case "salary-revision-arrear": return <SalaryRevisionArrear />
+      case "lop-reversal-arrear": return <LopReversalArrear />
+      case "manual-arrear": return <ManualArrear />
+      case "arrear-approval": return <ArrearApproval />
+      case "arrear-payment": return <ArrearPayment />
+      case "arrear-reports": return <ArrearReports />
+      // FnF
+      case "fnf-dashboard": return <FnFDashboard />
+      case "fnf-cases": return <FnFCases />
+      case "fnf-inputs": return <FnFInputs />
+      case "fnf-calculation": return <FnFCalculation />
+      case "leave-encashment": return <LeaveEncashment />
+      case "notice-recovery": return <NoticeRecovery />
+      case "asset-loan-recovery": return <AssetLoanRecovery />
+      case "fnf-approval": return <FnFApproval />
+      case "fnf-payment": return <FnFPayment />
+      case "fnf-letters": return <FnFLetters />
+      case "fnf-reports": return <FnFReports />
+      // Settings
+      case "settings-general": return <GeneralSettings />
+      case "entity-configuration": return <EntityConfiguration />
+      case "settings-pay-group": return <PayGroupSettings />
+      case "settings-component": return <ComponentSettings />
+      case "settings-structure": return <StructureSettings />
+      case "settings-calendar": return <CalendarSettings />
+      case "settings-integration": return <IntegrationSettings />
+      case "settings-compliance": return <ComplianceSettings />
+      case "settings-tax": return <TaxSettings />
+      case "settings-arrear": return <ArrearSettings />
+      case "settings-fnf": return <FnFSettings />
+      case "settings-payslip": return <PayslipSettings />
+      case "settings-bank": return <BankSettings />
+      case "settings-approval": return <ApprovalSettings />
+      case "settings-email": return <EmailSettings />
+      case "settings-import-export": return <ImportExportSettings />
+      case "settings-audit-security": return <AuditSecuritySettings />
+      default: return null
+    }
   }
 
   return (
-    <motion.div initial="hidden" animate="show" variants={containerVariants} className="space-y-5">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          title="Payroll Management"
-          description="Salary structures, monthly payroll runs, and payslip generation"
-          icon={Banknote}
-          badge={<Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">Phase 3</Badge>}
-        />
+    <div className="flex flex-col gap-0">
+      {/* Module header */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="flex items-start gap-3">
+          <div className={cn("rounded-xl bg-gradient-to-br p-2.5 text-white shadow-sm", currentMenu.accent)}>
+            <currentMenu.icon className="h-6 w-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">
+                Payroll — {currentMenu.label}
+              </h1>
+              <Badge variant="secondary" className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                {currentMenu.children.length} sections
+              </Badge>
+            </div>
+            <p className="mt-0.5 max-w-3xl text-sm text-slate-500 dark:text-slate-400">
+              {currentMenu.description}
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="lg:hidden"
+          onClick={() => setMobileOpen(o => !o)}
+        >
+          {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          Sections
+        </Button>
       </motion.div>
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-muted/40">
-          <TabsTrigger value="structures" className="gap-1.5"><FileSpreadsheet className="h-3.5 w-3.5" /> Salary Structures</TabsTrigger>
-          <TabsTrigger value="runs" className="gap-1.5"><Play className="h-3.5 w-3.5" /> Payroll Runs</TabsTrigger>
-          <TabsTrigger value="payslips" className="gap-1.5"><FileText className="h-3.5 w-3.5" /> Payslips</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="structures" className="mt-4">
-          <StructuresTab />
-        </TabsContent>
-        <TabsContent value="runs" className="mt-4">
-          <RunsTab />
-        </TabsContent>
-        <TabsContent value="payslips" className="mt-4">
-          <PayslipsTab />
-        </TabsContent>
-      </Tabs>
-    </motion.div>
-  )
-}
-
-// ============================================================
-// Tab 1: Salary Structures
-// ============================================================
-function StructuresTab() {
-  const [items, setItems] = React.useState<any[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [dialogOpen, setDialogOpen] = React.useState(false)
-  const [editing, setEditing] = React.useState<any | null>(null)
-  const [form, setForm] = React.useState<Record<string, any>>({})
-  const [saving, setSaving] = React.useState(false)
-  const [deleteId, setDeleteId] = React.useState<string | null>(null)
-
-  const load = React.useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch("/api/salary-structures")
-      if (!res.ok) throw new Error(`Failed (${res.status})`)
-      const data = await res.json()
-      setItems(data.items || [])
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to load salary structures")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  React.useEffect(() => { load() }, [load])
-
-  const EMPTY = {
-    code: "", name: "", description: "",
-    basicPercent: 50, hraPercent: 20, specialAllowancePercent: 20,
-    conveyanceAllowance: 1600, medicalAllowance: 1250, bonusAmount: 0,
-    pfEmployerPercent: 12, esiEmployerPercent: 3.25,
-    pfEmployeePercent: 12, esiEmployeePercent: 0.75,
-    professionalTax: 200, tdsPercent: 0, status: "Active",
-  }
-
-  const openAdd = () => { setEditing(null); setForm(EMPTY); setDialogOpen(true) }
-  const openEdit = (s: any) => {
-    setEditing(s)
-    setForm({
-      code: s.code, name: s.name, description: s.description || "",
-      basicPercent: s.basicPercent, hraPercent: s.hraPercent, specialAllowancePercent: s.specialAllowancePercent,
-      conveyanceAllowance: s.conveyanceAllowance, medicalAllowance: s.medicalAllowance, bonusAmount: s.bonusAmount,
-      pfEmployerPercent: s.pfEmployerPercent, esiEmployerPercent: s.esiEmployerPercent,
-      pfEmployeePercent: s.pfEmployeePercent, esiEmployeePercent: s.esiEmployeePercent,
-      professionalTax: s.professionalTax, tdsPercent: s.tdsPercent, status: s.status,
-    })
-    setDialogOpen(true)
-  }
-
-  const onSave = async () => {
-    if (!form.code.trim() || !form.name.trim()) { toast.error("Code and name are required"); return }
-    setSaving(true)
-    try {
-      const url = editing ? `/api/salary-structures/${editing.id}` : "/api/salary-structures"
-      const method = editing ? "PATCH" : "POST"
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) })
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}))
-        throw new Error(d?.error || `Failed (${res.status})`)
-      }
-      toast.success(editing ? "Salary structure updated" : "Salary structure created")
-      setDialogOpen(false)
-      await load()
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to save")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const onDelete = async () => {
-    if (!deleteId) return
-    setSaving(true)
-    try {
-      const res = await fetch(`/api/salary-structures/${deleteId}`, { method: "DELETE" })
-      if (!res.ok) throw new Error(`Failed (${res.status})`)
-      toast.success("Salary structure deleted")
-      setDeleteId(null)
-      await load()
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to delete")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Salary Structures</h2>
-          <p className="text-sm text-muted-foreground">Reusable CTC component templates with PF/ESI/TDS rules</p>
-        </div>
-        <Button size="sm" onClick={openAdd} className="gap-1.5"><Plus className="h-4 w-4" /> Add Structure</Button>
-      </div>
-
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-56 rounded-xl" />)}
-        </div>
-      ) : items.length === 0 ? (
-        <SectionCard>
-          <EmptyState icon={FileSpreadsheet} title="No salary structures yet" description="Create a salary structure template to assign CTC components to employees." action={<Button size="sm" onClick={openAdd} className="gap-1.5"><Plus className="h-4 w-4" /> Add Structure</Button>} />
-        </SectionCard>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map((s) => (
-            <motion.div key={s.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-              <div className="rounded-xl border border-border/60 bg-card shadow-soft hover:shadow-card transition-shadow p-5 flex flex-col h-full">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-teal-500/10 text-emerald-600 dark:text-emerald-400">
-                    <FileSpreadsheet className="h-5 w-5" />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEdit(s)}><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-rose-600 hover:text-rose-700" onClick={() => setDeleteId(s.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{s.name}</h3>
-                    <Badge variant="secondary" className="font-mono text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">{s.code}</Badge>
-                  </div>
-                  {s.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{s.description}</p>}
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                  <Comp label="Basic" value={`${s.basicPercent}%`} />
-                  <Comp label="HRA" value={`${s.hraPercent}%`} />
-                  <Comp label="Special" value={`${s.specialAllowancePercent}%`} />
-                  <Comp label="Conveyance" value={fmtCurrency(s.conveyanceAllowance)} />
-                  <Comp label="Medical" value={fmtCurrency(s.medicalAllowance)} />
-                  <Comp label="PF (E/E)" value={`${s.pfEmployeePercent}/${s.pfEmployerPercent}%`} />
-                  <Comp label="ESI (E/E)" value={`${s.esiEmployeePercent}/${s.esiEmployerPercent}%`} />
-                  <Comp label="Prof Tax" value={fmtCurrency(s.professionalTax)} />
-                </div>
-                <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
-                  <Badge variant="secondary" className={cn("text-[10px]", s.status === "Active" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400" : "bg-muted text-muted-foreground")}>{s.status}</Badge>
-                  <span className="text-xs text-muted-foreground">{s._count?.assignments || 0} employees</span>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* Add/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Edit Salary Structure" : "Add Salary Structure"}</DialogTitle>
-            <DialogDescription>{editing ? "Update the structure template." : "Define a reusable CTC component template."}</DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Code <span className="text-destructive">*</span></Label>
-              <Input value={form.code || ""} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="SS-STD" disabled={!!editing} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Name <span className="text-destructive">*</span></Label>
-              <Input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Standard Salary Structure" />
-            </div>
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label className="text-xs">Description</Label>
-              <Input value={form.description || ""} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional description" />
-            </div>
-            <div className="sm:col-span-2 pt-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Earnings (as % of CTC)</p>
-            </div>
-            <NumField label="Basic (% of CTC)" value={form.basicPercent} onChange={(v) => setForm({ ...form, basicPercent: v })} />
-            <NumField label="HRA (% of CTC)" value={form.hraPercent} onChange={(v) => setForm({ ...form, hraPercent: v })} />
-            <NumField label="Special Allowance (% of CTC)" value={form.specialAllowancePercent} onChange={(v) => setForm({ ...form, specialAllowancePercent: v })} />
-            <NumField label="Bonus (annual ₹)" value={form.bonusAmount} onChange={(v) => setForm({ ...form, bonusAmount: v })} />
-            <NumField label="Conveyance (monthly ₹)" value={form.conveyanceAllowance} onChange={(v) => setForm({ ...form, conveyanceAllowance: v })} />
-            <NumField label="Medical (monthly ₹)" value={form.medicalAllowance} onChange={(v) => setForm({ ...form, medicalAllowance: v })} />
-            <div className="sm:col-span-2 pt-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Deductions & Contributions</p>
-            </div>
-            <NumField label="PF Employee (%)" value={form.pfEmployeePercent} onChange={(v) => setForm({ ...form, pfEmployeePercent: v })} />
-            <NumField label="PF Employer (%)" value={form.pfEmployerPercent} onChange={(v) => setForm({ ...form, pfEmployerPercent: v })} />
-            <NumField label="ESI Employee (%)" value={form.esiEmployeePercent} onChange={(v) => setForm({ ...form, esiEmployeePercent: v })} />
-            <NumField label="ESI Employer (%)" value={form.esiEmployerPercent} onChange={(v) => setForm({ ...form, esiEmployerPercent: v })} />
-            <NumField label="Professional Tax (₹)" value={form.professionalTax} onChange={(v) => setForm({ ...form, professionalTax: v })} />
-            <NumField label="TDS (% of CTC)" value={form.tdsPercent} onChange={(v) => setForm({ ...form, tdsPercent: v })} />
-          </div>
-          <div className="flex items-center justify-end gap-2 pt-3 border-t">
-            <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
-            <Button size="sm" onClick={onSave} disabled={saving} className="min-w-24">
-              {saving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
-              {editing ? "Save Changes" : "Create Structure"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete salary structure?</AlertDialogTitle>
-            <AlertDialogDescription>This will not affect existing salary assignments, but the structure cannot be reused.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onDelete} disabled={saving} className="bg-rose-600 hover:bg-rose-700 text-white">
-              {saving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  )
-}
-
-// ============================================================
-// Tab 2: Payroll Runs
-// ============================================================
-function RunsTab() {
-  const [items, setItems] = React.useState<any[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [dialogOpen, setDialogOpen] = React.useState(false)
-  const [form, setForm] = React.useState<Record<string, any>>({})
-  const [saving, setSaving] = React.useState(false)
-  const [deleteId, setDeleteId] = React.useState<string | null>(null)
-  const [detailTarget, setDetailTarget] = React.useState<any | null>(null)
-  const [detailData, setDetailData] = React.useState<any | null>(null)
-  const [detailLoading, setDetailLoading] = React.useState(false)
-
-  const load = React.useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch("/api/payroll-runs")
-      if (!res.ok) throw new Error(`Failed (${res.status})`)
-      const data = await res.json()
-      setItems(data.items || [])
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to load payroll runs")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  React.useEffect(() => { load() }, [load])
-
-  const openDetail = async (r: any) => {
-    setDetailTarget(r)
-    setDetailLoading(true)
-    try {
-      const res = await fetch(`/api/payroll-runs/${r.id}`)
-      if (!res.ok) throw new Error(`Failed (${res.status})`)
-      const data = await res.json()
-      setDetailData(data)
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to load run details")
-    } finally {
-      setDetailLoading(false)
-    }
-  }
-
-  const onCreate = async () => {
-    const name = String(form.name || "").trim()
-    const payPeriod = String(form.payPeriod || "").trim()
-    if (!name) { toast.error("Name is required"); return }
-    if (!payPeriod || !/^\d{4}-\d{2}$/.test(payPeriod)) { toast.error("Pay period must be YYYY-MM"); return }
-    setSaving(true)
-    try {
-      const res = await fetch("/api/payroll-runs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, payPeriod, payDate: form.payDate || undefined }),
-      })
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}))
-        throw new Error(d?.error || `Failed (${res.status})`)
-      }
-      toast.success("Payroll run created")
-      setDialogOpen(false)
-      setForm({})
-      await load()
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to create run")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const onProcess = async (r: any) => {
-    setSaving(true)
-    try {
-      const res = await fetch(`/api/payroll-runs/${r.id}/process`, { method: "POST" })
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}))
-        throw new Error(d?.error || `Failed (${res.status})`)
-      }
-      const data = await res.json()
-      toast.success(`Payroll processed — ${data.payslipsGenerated} payslips, net ${fmtCurrency(data.totalNet)}`)
-      await load()
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to process")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const onApprove = async (r: any) => {
-    setSaving(true)
-    try {
-      const res = await fetch(`/api/payroll-runs/${r.id}/approve`, { method: "POST" })
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}))
-        throw new Error(d?.error || `Failed (${res.status})`)
-      }
-      toast.success("Payroll run approved")
-      await load()
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to approve")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const onDelete = async () => {
-    if (!deleteId) return
-    setSaving(true)
-    try {
-      const res = await fetch(`/api/payroll-runs/${deleteId}`, { method: "DELETE" })
-      if (!res.ok) throw new Error(`Failed (${res.status})`)
-      toast.success("Payroll run deleted")
-      setDeleteId(null)
-      await load()
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to delete")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  // Default name + pay period = current month
-  const now = new Date()
-  const defaultPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
-  const defaultName = `${now.toLocaleDateString("en-IN", { month: "long" })} ${now.getFullYear()} Payroll`
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Payroll Runs</h2>
-          <p className="text-sm text-muted-foreground">Create monthly runs, process payslips, approve & disburse</p>
-        </div>
-        <Button size="sm" onClick={() => { setForm({ name: defaultName, payPeriod: defaultPeriod, payDate: "" }); setDialogOpen(true) }} className="gap-1.5">
-          <Plus className="h-4 w-4" /> New Payroll Run
-        </Button>
-      </div>
-
-      {loading ? (
-        <Skeleton className="h-64 rounded-xl" />
-      ) : items.length === 0 ? (
-        <SectionCard>
-          <EmptyState icon={Play} title="No payroll runs yet" description="Create your first monthly payroll run to get started." action={<Button size="sm" onClick={() => { setForm({ name: defaultName, payPeriod: defaultPeriod, payDate: "" }); setDialogOpen(true) }} className="gap-1.5"><Plus className="h-4 w-4" /> New Payroll Run</Button>} />
-        </SectionCard>
-      ) : (
-        <div className="space-y-3">
-          {items.map((r) => (
-            <motion.div key={r.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-              <div className="rounded-xl border border-border/60 bg-card shadow-soft hover:shadow-card transition-shadow p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-xl", r.status === "Paid" ? "bg-teal-500/10 text-teal-600 dark:text-teal-400" : r.status === "Approved" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : r.status === "Completed" ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400" : "bg-amber-500/10 text-amber-600 dark:text-amber-400")}>
-                      <Banknote className="h-6 w-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold">{r.name}</h3>
-                        <Badge variant="secondary" className={cn("text-[10px] font-mono", runStatusColors[r.status] || "bg-muted text-muted-foreground")}>{r.status}</Badge>
-                        <Badge variant="secondary" className="text-[10px] font-mono bg-muted text-muted-foreground">{r.code}</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        Period: {r.payPeriod} · {fmtDate(r.payPeriodStart)} → {fmtDate(r.payPeriodEnd)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Pay date: {fmtDate(r.payDate)} · {r._count?.payslips || 0} payslips</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {r.status === "Draft" && (
-                      <Button size="sm" variant="outline" onClick={() => onProcess(r)} disabled={saving} className="gap-1.5">
-                        <Play className="h-3.5 w-3.5" /> Process
-                      </Button>
-                    )}
-                    {r.status === "Completed" && (
-                      <Button size="sm" variant="outline" onClick={() => onApprove(r)} disabled={saving} className="gap-1.5 text-emerald-700 hover:text-emerald-800">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Approve
-                      </Button>
-                    )}
-                    {r.status === "Approved" && (
-                      <Button size="sm" onClick={() => onProcess(r)} disabled={saving} className="gap-1.5 bg-teal-600 hover:bg-teal-700">
-                        <Wallet className="h-3.5 w-3.5" /> Mark Paid
-                      </Button>
-                    )}
-                    <Button size="sm" variant="ghost" onClick={() => openDetail(r)} className="gap-1.5">
-                      <Eye className="h-3.5 w-3.5" /> View
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700" onClick={() => setDeleteId(r.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-
-                {(r.status === "Completed" || r.status === "Approved" || r.status === "Paid") && (
-                  <div className="mt-4 pt-3 border-t border-border/60 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <Stat2 label="Total Gross" value={fmtCurrency(r.totalGross)} icon={TrendingUp} accent="emerald" />
-                    <Stat2 label="Total Deductions" value={fmtCurrency(r.totalDeductions)} icon={IndianRupee} accent="amber" />
-                    <Stat2 label="Total Net" value={fmtCurrency(r.totalNet)} icon={Wallet} accent="teal" />
-                    <Stat2 label="Employer PF/ESI" value={fmtCurrency(r.totalEmployerContribution)} icon={ShieldCheck} accent="cyan" />
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* Create Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>New Payroll Run</DialogTitle>
-            <DialogDescription>Create a payroll run for a pay period.</DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-1 gap-3 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Run Name <span className="text-destructive">*</span></Label>
-              <Input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="June 2026 Payroll" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Pay Period (YYYY-MM) <span className="text-destructive">*</span></Label>
-              <Input value={form.payPeriod || ""} onChange={(e) => setForm({ ...form, payPeriod: e.target.value })} placeholder="2026-06" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Pay Date</Label>
-              <Input type="date" value={form.payDate || ""} onChange={(e) => setForm({ ...form, payDate: e.target.value })} />
-            </div>
-          </div>
-          <div className="flex items-center justify-end gap-2 pt-3 border-t">
-            <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
-            <Button size="sm" onClick={onCreate} disabled={saving} className="min-w-24">
-              {saving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
-              Create Run
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Detail Dialog */}
-      <Dialog open={!!detailTarget} onOpenChange={(o) => !o && setDetailTarget(null)}>
-        <DialogContent className="max-w-5xl max-h-[88vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{detailTarget?.name} — Payslips</DialogTitle>
-            <DialogDescription>{detailTarget?.code} · Period {detailTarget?.payPeriod}</DialogDescription>
-          </DialogHeader>
-          {detailLoading ? (
-            <Skeleton className="h-64 rounded-xl" />
-          ) : detailData && detailData.payslips && detailData.payslips.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-border/60">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/40 hover:bg-muted/40">
-                    <TableHead className="text-xs font-semibold uppercase">Employee</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase">Dept</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase text-right">Gross</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase text-right">Deductions</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase text-right">Net</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase">Status</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {detailData.payslips.map((p: any) => (
-                    <TableRow key={p.id} className="hover:bg-muted/30">
-                      <TableCell className="text-sm">
-                        <div className="font-medium">{p.employee?.displayName || `${p.employee?.firstName} ${p.employee?.lastName}`}</div>
-                        <div className="text-xs text-muted-foreground font-mono">{p.employee?.employeeCode}</div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{p.employee?.department?.name || "—"}</TableCell>
-                      <TableCell className="text-sm text-right font-medium">{fmtCurrency(p.grossEarnings)}</TableCell>
-                      <TableCell className="text-sm text-right text-rose-600 dark:text-rose-400">-{fmtCurrency(p.totalDeductions)}</TableCell>
-                      <TableCell className="text-sm text-right font-bold text-emerald-700 dark:text-emerald-400">{fmtCurrency(p.netSalary)}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={cn("text-[10px]", runStatusColors[p.status] || "bg-muted text-muted-foreground")}>{p.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => toast.info(`Payslip ${p.id.slice(-6)} — download coming soon`)}>
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <EmptyState icon={FileText} title="No payslips yet" description="Process this payroll run to generate payslips." />
+      <div className="flex flex-col gap-4 lg:flex-row">
+        {/* Sidebar — main menus + sub items */}
+        <aside
+          className={cn(
+            "lg:w-72 lg:flex-shrink-0",
+            mobileOpen ? "block" : "hidden lg:block"
           )}
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete payroll run?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently delete the run and all its payslips.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onDelete} disabled={saving} className="bg-rose-600 hover:bg-rose-700 text-white">
-              {saving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  )
-}
-
-// ============================================================
-// Tab 3: Payslips (all employees, all runs)
-// ============================================================
-function PayslipsTab() {
-  const [items, setItems] = React.useState<any[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [search, setSearch] = React.useState("")
-  const [statusFilter, setStatusFilter] = React.useState("all")
-  const [viewTarget, setViewTarget] = React.useState<any | null>(null)
-  const [viewData, setViewData] = React.useState<any | null>(null)
-  const [viewLoading, setViewLoading] = React.useState(false)
-
-  const load = React.useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch("/api/payslips")
-      if (!res.ok) throw new Error(`Failed (${res.status})`)
-      const data = await res.json()
-      setItems(data.items || [])
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to load payslips")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  React.useEffect(() => { load() }, [load])
-
-  const filtered = React.useMemo(() => {
-    return items.filter((p) => {
-      if (statusFilter !== "all" && p.status !== statusFilter) return false
-      if (search) {
-        const emp = p.employee
-        const name = emp ? `${emp.firstName} ${emp.lastName} ${emp.displayName || ""} ${emp.employeeCode || ""}`.toLowerCase() : ""
-        if (!name.includes(search.toLowerCase())) return false
-      }
-      return true
-    })
-  }, [items, search, statusFilter])
-
-  const openView = async (p: any) => {
-    setViewTarget(p)
-    setViewLoading(true)
-    try {
-      const res = await fetch(`/api/payslips/${p.id}`)
-      if (!res.ok) throw new Error(`Failed (${res.status})`)
-      const data = await res.json()
-      setViewData(data)
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to load payslip")
-    } finally {
-      setViewLoading(false)
-    }
-  }
-
-  const totalNet = filtered.reduce((s, p) => s + (p.netSalary || 0), 0)
-  const totalGross = filtered.reduce((s, p) => s + (p.grossEarnings || 0), 0)
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Payslips</h2>
-          <p className="text-sm text-muted-foreground">All generated payslips across payroll runs</p>
-        </div>
-      </div>
-
-      {/* Stat strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Payslips" value={items.length} icon={FileText} accent="emerald" sub="All runs" />
-        <StatCard label="Filtered" value={filtered.length} icon={Users} accent="cyan" sub="Matching filters" />
-        <StatCard label="Total Gross" value={fmtLakhs(totalGross)} icon={TrendingUp} accent="amber" sub="Filtered" />
-        <StatCard label="Total Net" value={fmtLakhs(totalNet)} icon={Wallet} accent="teal" sub="Filtered" />
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search employee..." className="pl-9 h-9 bg-background" />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="Generated">Generated</SelectItem>
-            <SelectItem value="Approved">Approved</SelectItem>
-            <SelectItem value="Paid">Paid</SelectItem>
-            <SelectItem value="Cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Table */}
-      {loading ? (
-        <Skeleton className="h-64 rounded-xl" />
-      ) : filtered.length === 0 ? (
-        <SectionCard>
-          <EmptyState icon={FileText} title="No payslips found" description={items.length === 0 ? "Process a payroll run to generate payslips." : "Try adjusting your filters."} />
-        </SectionCard>
-      ) : (
-        <SectionCard>
-          <div className="overflow-x-auto rounded-lg border border-border/60">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  <TableHead className="text-xs font-semibold uppercase">Employee</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase">Period</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-right">Gross</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-right">Deductions</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-right">Net</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase">Status</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((p) => (
-                  <TableRow key={p.id} className="hover:bg-muted/30">
-                    <TableCell className="text-sm">
-                      <div className="font-medium">{p.employee?.displayName || `${p.employee?.firstName} ${p.employee?.lastName}`}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{p.employee?.employeeCode}</div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{p.payPeriod}</TableCell>
-                    <TableCell className="text-sm text-right font-medium">{fmtCurrency(p.grossEarnings)}</TableCell>
-                    <TableCell className="text-sm text-right text-rose-600 dark:text-rose-400">-{fmtCurrency(p.totalDeductions)}</TableCell>
-                    <TableCell className="text-sm text-right font-bold text-emerald-700 dark:text-emerald-400">{fmtCurrency(p.netSalary)}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={cn("text-[10px]", runStatusColors[p.status] || "bg-muted text-muted-foreground")}>{p.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openView(p)}>
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </SectionCard>
-      )}
-
-      {/* View Dialog (formal payslip) */}
-      <Dialog open={!!viewTarget} onOpenChange={(o) => !o && setViewTarget(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-emerald-600" /> Payslip</DialogTitle>
-            <DialogDescription>Pay period: {viewData?.payPeriod || viewTarget?.payPeriod}</DialogDescription>
-          </DialogHeader>
-          {viewLoading ? (
-            <Skeleton className="h-64 rounded-xl" />
-          ) : viewData ? (
-            <div className="space-y-4">
-              {/* Header */}
-              <div className="rounded-xl bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-cyan-500/10 p-4 border border-emerald-500/20">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">{viewData.employee?.entity?.legalName || viewData.employee?.entity?.tradeName || "ACME Corporation"}</p>
-                    <h3 className="text-lg font-semibold mt-0.5">{viewData.employee?.displayName || `${viewData.employee?.firstName} ${viewData.employee?.lastName}`}</h3>
-                    <p className="text-xs text-muted-foreground font-mono">{viewData.employee?.employeeCode} · {viewData.employee?.designation?.name || "—"}</p>
-                    <p className="text-xs text-muted-foreground">{viewData.employee?.department?.name || "—"} · {viewData.employee?.entity?.tradeName || "—"}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Pay Period</p>
-                    <p className="font-semibold">{viewData.payPeriod}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Pay Date</p>
-                    <p className="font-medium">{fmtDate(viewData.payDate)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Working days */}
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="rounded-lg border border-border/60 p-2">
-                  <p className="text-[10px] uppercase text-muted-foreground">Working Days</p>
-                  <p className="font-bold">{viewData.workingDays}</p>
-                </div>
-                <div className="rounded-lg border border-border/60 p-2">
-                  <p className="text-[10px] uppercase text-muted-foreground">Days Paid</p>
-                  <p className="font-bold text-emerald-700 dark:text-emerald-400">{viewData.daysPaid}</p>
-                </div>
-                <div className="rounded-lg border border-border/60 p-2">
-                  <p className="text-[10px] uppercase text-muted-foreground">LOP Days</p>
-                  <p className="font-bold text-rose-600 dark:text-rose-400">{viewData.lopDays}</p>
-                </div>
-              </div>
-
-              {/* Earnings & Deductions */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-xl border border-emerald-500/30 p-4">
-                  <p className="text-xs font-semibold uppercase text-emerald-700 dark:text-emerald-400 mb-3 flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" /> Earnings</p>
-                  <div className="space-y-1.5 text-sm">
-                    <PayRow label="Basic" value={viewData.basic} />
-                    <PayRow label="HRA" value={viewData.hra} />
-                    <PayRow label="Special Allowance" value={viewData.specialAllowance} />
-                    <PayRow label="Conveyance" value={viewData.conveyanceAllowance} />
-                    <PayRow label="Medical" value={viewData.medicalAllowance} />
-                    {viewData.bonusAmount > 0 && <PayRow label="Bonus" value={viewData.bonusAmount} />}
-                    <div className="pt-2 mt-2 border-t border-emerald-500/20 flex items-center justify-between font-semibold">
-                      <span>Gross Earnings</span>
-                      <span className="text-emerald-700 dark:text-emerald-400">{fmtCurrency(viewData.grossEarnings)}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="rounded-xl border border-rose-500/30 p-4">
-                  <p className="text-xs font-semibold uppercase text-rose-700 dark:text-rose-400 mb-3 flex items-center gap-1.5"><IndianRupee className="h-3.5 w-3.5" /> Deductions</p>
-                  <div className="space-y-1.5 text-sm">
-                    <PayRow label="PF (Employee)" value={viewData.pfEmployee} />
-                    {viewData.esiEmployee > 0 && <PayRow label="ESI (Employee)" value={viewData.esiEmployee} />}
-                    <PayRow label="Professional Tax" value={viewData.professionalTax} />
-                    {viewData.tdsAmount > 0 && <PayRow label="TDS" value={viewData.tdsAmount} />}
-                    <div className="pt-2 mt-2 border-t border-rose-500/20 flex items-center justify-between font-semibold">
-                      <span>Total Deductions</span>
-                      <span className="text-rose-700 dark:text-rose-400">-{fmtCurrency(viewData.totalDeductions)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Net pay */}
-              <div className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 p-4 text-white flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-wide opacity-90">Net Salary Payable</p>
-                  <p className="text-2xl font-bold">{fmtCurrency(viewData.netSalary)}</p>
-                </div>
-                <Wallet className="h-8 w-8 opacity-80" />
-              </div>
-
-              {/* Employer contributions + CTC */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                <div className="rounded-lg border border-border/60 p-2.5">
-                  <p className="text-muted-foreground uppercase">Employer PF</p>
-                  <p className="font-semibold">{fmtCurrency(viewData.pfEmployer)}</p>
-                </div>
-                <div className="rounded-lg border border-border/60 p-2.5">
-                  <p className="text-muted-foreground uppercase">Employer ESI</p>
-                  <p className="font-semibold">{fmtCurrency(viewData.esiEmployer)}</p>
-                </div>
-                <div className="rounded-lg border border-border/60 p-2.5">
-                  <p className="text-muted-foreground uppercase">Monthly CTC</p>
-                  <p className="font-semibold">{fmtCurrency(viewData.ctc / 12)}</p>
-                </div>
-              </div>
-
-              {/* Bank details */}
-              {viewData.employee?.bankName && (
-                <div className="rounded-lg border border-border/60 p-3 text-xs">
-                  <p className="text-muted-foreground uppercase mb-1">Credited To</p>
-                  <p className="font-medium">{viewData.employee.bankName} · <span className="font-mono">XXXX{String(viewData.employee.accountNumber || "").slice(-4)}</span></p>
-                </div>
-              )}
+        >
+          <div className="sticky top-2 rounded-xl border border-slate-200 bg-white/80 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80">
+            {/* Main menu tabs */}
+            <div className="flex gap-1 overflow-x-auto border-b border-slate-200 p-2 dark:border-slate-700">
+              {MENUS.map(m => {
+                const active = activeMenu === m.id
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => switchMenu(m.id)}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap",
+                      active
+                        ? cn("bg-gradient-to-r text-white shadow-sm", m.accent)
+                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                    )}
+                  >
+                    <m.icon className="h-3.5 w-3.5" />
+                    {m.label}
+                  </button>
+                )
+              })}
             </div>
-          ) : (
-            <EmptyState icon={FileText} title="Payslip not found" />
-          )}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t">
-            <Button variant="outline" size="sm" onClick={() => toast.info("PDF download coming soon")} className="gap-1.5">
-              <Download className="h-3.5 w-3.5" /> Download PDF
-            </Button>
-            <Button size="sm" onClick={() => setViewTarget(null)}>Close</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
 
-// ============================================================
-// Sub-components
-// ============================================================
-function Comp({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
-    </div>
-  )
-}
-function NumField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs">{label}</Label>
-      <Input type="number" step="0.01" value={value ?? 0} onChange={(e) => onChange(Number(e.target.value))} />
-    </div>
-  )
-}
-function Stat2({ label, value, icon: Icon, accent }: { label: string; value: string; icon: any; accent: string }) {
-  const accents: Record<string, string> = {
-    emerald: "text-emerald-600 dark:text-emerald-400",
-    amber: "text-amber-600 dark:text-amber-400",
-    teal: "text-teal-600 dark:text-teal-400",
-    cyan: "text-cyan-600 dark:text-cyan-400",
-  }
-  return (
-    <div>
-      <p className="text-[10px] uppercase text-muted-foreground tracking-wide">{label}</p>
-      <div className={cn("flex items-center gap-1.5 mt-0.5", accents[accent] || "text-foreground")}>
-        <Icon className="h-3.5 w-3.5" />
-        <span className="font-bold text-sm">{value}</span>
+            {/* Sub items */}
+            <nav className="max-h-[calc(100vh-220px)] overflow-y-auto p-2">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeMenu}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 8 }}
+                  transition={{ duration: 0.15 }}
+                  className="space-y-0.5"
+                >
+                  {currentMenu.children.map(child => {
+                    const active = activeSection === child.id
+                    return (
+                      <button
+                        key={child.id}
+                        onClick={() => { setActiveSection(child.id); setMobileOpen(false) }}
+                        className={cn(
+                          "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all",
+                          active
+                            ? cn("bg-gradient-to-r text-white shadow-sm", currentMenu.accent)
+                            : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                        )}
+                      >
+                        <child.icon className="h-4 w-4 flex-shrink-0" />
+                        <span className="flex-1 text-left">{child.label}</span>
+                        {active && <ChevronRight className="h-3.5 w-3.5" />}
+                      </button>
+                    )
+                  })}
+                </motion.div>
+              </AnimatePresence>
+            </nav>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <div className="min-w-0 flex-1">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSection}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              {renderSection()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   )
 }
-function PayRow({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium tabular-nums">{fmtCurrency(value)}</span>
-    </div>
-  )
-}
+
+export default PayrollModule

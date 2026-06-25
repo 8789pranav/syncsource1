@@ -1,0 +1,819 @@
+     1→"use client"
+     2→
+     3→// =============================================================
+     4→// Offboarding — Settings (spec #20, #21, #22) — Task ID 2j
+     5→// Module-level controls + per-entity default configuration.
+     6→// 7 left-sidebar tabs. Rose theme accents.
+     7→// =============================================================
+     8→
+     9→import * as React from "react"
+    10→import { useState } from "react"
+    11→import { motion, AnimatePresence } from "framer-motion"
+    12→import { toast } from "sonner"
+    13→import {
+    14→  Settings as SettingsIcon, UserMinus, Building2, ClipboardCheck,
+    15→  Wallet, Mail, Plus, Pencil, ChevronRight, Check,
+    16→  Save, X, Lock,
+    17→} from "lucide-react"
+    18→
+    19→import { cn } from "@/lib/utils"
+    20→import { Card, CardContent } from "@/components/ui/card"
+    21→import { Button } from "@/components/ui/button"
+    22→import { Input } from "@/components/ui/input"
+    23→import { Label } from "@/components/ui/label"
+    24→import { Switch } from "@/components/ui/switch"
+    25→import { Badge } from "@/components/ui/badge"
+    26→import { Separator } from "@/components/ui/separator"
+    27→import {
+    28→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    29→} from "@/components/ui/select"
+    30→import {
+    31→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    32→} from "@/components/ui/table"
+    33→import {
+    34→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+    35→} from "@/components/ui/dialog"
+    36→
+    37→import {
+    38→  OffboardingSettings, EntityConfiguration,
+    39→} from "../shared"
+    40→import {
+    41→  OFFBOARDING_SETTINGS, ENTITY_CONFIGURATIONS,
+    42→  EXIT_WORKFLOWS, KANBAN_BOARDS, EXIT_CHECKLISTS, EXIT_INTERVIEW_FORMS,
+    43→  EXIT_EMAIL_TEMPLATES, EXIT_DOCUMENT_TEMPLATES,
+    44→} from "../data"
+    45→
+    46→// =============================================================
+    47→// Type defs
+    48→// =============================================================
+    49→
+    50→type FieldType = "switch" | "text" | "select"
+    51→
+    52→interface FieldDef {
+    53→  key: string
+    54→  label: string
+    55→  description?: string
+    56→  type: FieldType
+    57→  placeholder?: string
+    58→  options?: string[]
+    59→  full?: boolean
+    60→}
+    61→
+    62→interface CategoryDef {
+    63→  key: keyof OffboardingSettings
+    64→  label: string
+    65→  short: string
+    66→  icon: React.ComponentType<{ className?: string }>
+    67→  description: string
+    68→  fields: FieldDef[]
+    69→}
+    70→
+    71→// =============================================================
+    72→// Reference option lists — built from seed data
+    73→// =============================================================
+    74→
+    75→const HR_OWNERS = ["Anita Desai", "Fatima Hassan", "Priya Patel", "Rajesh Kumar", "Vikram Singh"]
+    76→const FNF_RULES = ["India FnF Rule", "UAE FnF Rule", "US FnF Rule", "UK FnF Rule", "Standard FnF Rule"]
+    77→const ASSET_RULES = ["Standard Asset Recovery Rule", "India Asset Recovery Rule", "UAE Asset Recovery Rule", "US Asset Recovery Rule"]
+    78→const IT_RULES = ["Standard IT Revocation Rule", "India IT Revocation Rule", "UAE IT Revocation Rule", "Immediate Revoke Rule"]
+    79→// Build email group options from the seeded email templates (event types)
+    80→const EMAIL_GROUPS = Array.from(new Set([
+    81→  "India Exit Emails", "UAE Exit Emails", "US Exit Emails", "Standard Exit Emails",
+    82→  ...EXIT_EMAIL_TEMPLATES.map((t) => t.name),
+    83→]))
+    84→const APPROVAL_WORKFLOWS = ["Standard Exit Approval", "India Exit Approval", "UAE Exit Approval", "Termination Approval"]
+    85→// Build letter group options from the seeded document templates (document types)
+    86→const LETTER_GROUPS = Array.from(new Set([
+    87→  "India Exit Letters", "UAE Exit Letters", "Standard Exit Letters", "Termination Letters",
+    88→  ...EXIT_DOCUMENT_TEMPLATES.map((t) => t.documentType),
+    89→]))
+    90→const NOTICE_POLICIES = ["India 60-Day Notice Policy", "UAE 30-Day Notice Policy", "US 14-Day Notice Policy", "UK 30-Day Notice Policy"]
+    91→const ENTITIES = ["ACME India Pvt Ltd", "ACME UAE FZ-LLC", "ACME US Inc", "ACME UK Ltd"]
+    92→
+    93→const WORKFLOW_OPTIONS = EXIT_WORKFLOWS.map((w) => w.name)
+    94→const BOARD_OPTIONS = KANBAN_BOARDS.map((b) => b.name)
+    95→const CHECKLIST_OPTIONS = EXIT_CHECKLISTS.map((c) => c.name)
+    96→const INTERVIEW_OPTIONS = EXIT_INTERVIEW_FORMS.map((f) => f.name)
+    97→
+    98→// =============================================================
+    99→// Static field definitions per category
+   100→// =============================================================
+   101→
+   102→const CATEGORIES: CategoryDef[] = [
+   103→  {
+   104→    key: "general",
+   105→    label: "General Settings",
+   106→    short: "General",
+   107→    icon: SettingsIcon,
+   108→    description: "Master switches and tenant defaults for the offboarding module.",
+   109→    fields: [
+   110→      { key: "enableModule", label: "Enable Offboarding Module", description: "Master switch for the entire offboarding module.", type: "switch" },
+   111→      { key: "allowEmployeeResignation", label: "Allow Employee Resignation", description: "Let employees submit resignations via self-service portal.", type: "switch" },
+   112→      { key: "allowManagerInitiatedExit", label: "Allow Manager Initiated Exit", description: "Managers can initiate exits for their team members.", type: "switch" },
+   113→      { key: "allowHrInitiatedExit", label: "Allow HR Initiated Exit", description: "HR admins can initiate exits directly.", type: "switch" },
+   114→      { key: "allowBulkExitInitiation", label: "Allow Bulk Exit", description: "Initiate exits for multiple employees at once.", type: "switch" },
+   115→      { key: "allowResignationWithdrawal", label: "Allow Resignation Withdrawal", description: "Employees can withdraw a submitted resignation.", type: "switch" },
+   116→      { key: "allowExitCancellation", label: "Allow Exit Cancellation", description: "HR can cancel an in-progress exit case.", type: "switch" },
+   117→      { key: "allowRehire", label: "Allow Rehire", description: "Track rehire eligibility and re-onboard ex-employees.", type: "switch" },
+   118→      { key: "defaultExitWorkflow", label: "Default Exit Workflow", description: "Used when no entity or exit-type override applies.", type: "select", options: WORKFLOW_OPTIONS, full: true },
+   119→      { key: "defaultKanbanBoard", label: "Default Kanban Board", description: "Default board for tracking exit case stage movement.", type: "select", options: BOARD_OPTIONS, full: true },
+   120→      { key: "defaultHrOwner", label: "Default HR Owner", description: "Fallback HR owner assigned to new exit cases.", type: "select", options: HR_OWNERS, full: true },
+   121→    ],
+   122→  },
+   123→  {
+   124→    key: "employeeExit",
+   125→    label: "Employee Exit Settings",
+   126→    short: "Employee Exit",
+   127→    icon: UserMinus,
+   128→    description: "Exit ID generation, duplicate detection and edit rules.",
+   129→    fields: [
+   130→      { key: "exitIdAutoGenerate", label: "Exit ID Auto Generate", description: "Automatically generate exit case IDs on creation.", type: "switch" },
+   131→      { key: "exitIdPrefix", label: "Exit ID Prefix", description: "Prefix used when generating exit case IDs.", type: "text", placeholder: "EXIT" },
+   132→      { key: "exitIdFormat", label: "Exit ID Format", description: "Use {YYYY} for year and {####} for running number.", type: "text", placeholder: "EXIT-{YYYY}-{####}", full: true },
+   133→      { key: "duplicateCheck", label: "Duplicate Active Exit Case Check", description: "Prevent creating a second active exit for the same employee.", type: "switch" },
+   134→      { key: "allowBackdated", label: "Allow Backdated Exit Initiation", description: "Allow initiating exits with a past resignation date.", type: "switch" },
+   135→      { key: "allowFutureDated", label: "Allow Future-Dated Exit", description: "Allow initiating exits with a future resignation date.", type: "switch" },
+   136→      { key: "allowLwdChange", label: "Allow LWD Change", description: "Allow updating the last working day after exit is initiated.", type: "switch" },
+   137→      { key: "allowExitHold", label: "Allow Exit Hold", description: "Allow putting an exit case on hold temporarily.", type: "switch" },
+   138→      { key: "allowExitReopen", label: "Allow Exit Reopen", description: "Allow reopening a closed or cancelled exit case.", type: "switch" },
+   139→    ],
+   140→  },
+   141→  {
+   142→    key: "clearance",
+   143→    label: "Clearance Settings",
+   144→    short: "Clearance",
+   145→    icon: ClipboardCheck,
+   146→    description: "Department-wise clearance task configuration and blocking rules.",
+   147→    fields: [
+   148→      { key: "enableClearance", label: "Enable Clearance", description: "Master switch for the clearance process.", type: "switch" },
+   149→      { key: "allowEntityWise", label: "Allow Entity-Wise", description: "Per-entity clearance checklists.", type: "switch" },
+   150→      { key: "allowDeptWise", label: "Allow Department-Wise", description: "Per-department clearance checklists.", type: "switch" },
+   151→      { key: "allowMandatoryTask", label: "Allow Mandatory Task", description: "Allow marking clearance tasks as mandatory.", type: "switch" },
+   152→      { key: "allowBlockingTask", label: "Allow Blocking Task", description: "Blocking tasks prevent exit closure until completed.", type: "switch" },
+   153→      { key: "allowTaskWaiver", label: "Allow Task Waiver", description: "Allow waiving clearance tasks with approval.", type: "switch" },
+   154→      { key: "allowRecoveryAmount", label: "Allow Recovery Amount", description: "Allow raising recovery amounts on clearance tasks.", type: "switch" },
+   155→      { key: "requireBeforeFnf", label: "Require Before FnF", description: "Block FnF until clearance is complete.", type: "switch" },
+   156→      { key: "requireBeforeExitClosure", label: "Require Before Exit Closure", description: "Block exit closure until clearance is complete.", type: "switch" },
+   157→    ],
+   158→  },
+   159→  {
+   160→    key: "fnf",
+   161→    label: "FnF Settings",
+   162→    short: "FnF",
+   163→    icon: Wallet,
+   164→    description: "Full & Final settlement calculation, approval and tracking.",
+   165→    fields: [
+   166→      { key: "enableFnf", label: "Enable FnF", description: "Master switch for the FnF settlement process.", type: "switch" },
+   167→      { key: "allowEntityWise", label: "Allow Entity-Wise", description: "Per-entity FnF rules.", type: "switch" },
+   168→      { key: "allowPayrollGroupWise", label: "Allow Payroll Group-Wise", description: "Per-payroll-group FnF rules.", type: "switch" },
+   169→      { key: "autoFetchPayroll", label: "Auto Fetch Payroll Inputs", description: "Automatically pull payroll inputs into FnF.", type: "switch" },
+   170→      { key: "autoFetchLeaveEncashment", label: "Auto Fetch Leave Encashment", description: "Auto-calculate leave encashment from leave balance.", type: "switch" },
+   171→      { key: "autoFetchAssetRecovery", label: "Auto Fetch Asset Recovery", description: "Auto-pull asset damage/loss recovery amounts.", type: "switch" },
+   172→      { key: "autoFetchLoanRecovery", label: "Auto Fetch Loan Recovery", description: "Auto-pull outstanding loan recovery amounts.", type: "switch" },
+   173→      { key: "allowManualEarnings", label: "Allow Manual Earnings", description: "Let HR add manual earning line items.", type: "switch" },
+   174→      { key: "allowManualDeductions", label: "Allow Manual Deductions", description: "Let HR add manual deduction line items.", type: "switch" },
+   175→      { key: "fnfApprovalRequired", label: "Approval Required", description: "FnF requires finance approval before payment.", type: "switch" },
+   176→      { key: "fnfPaymentTracking", label: "Payment Tracking", description: "Track FnF payment status and date.", type: "switch" },
+   177→    ],
+   178→  },
+   179→  {
+   180→    key: "email",
+   181→    label: "Email Settings",
+   182→    short: "Email",
+   183→    icon: Mail,
+   184→    description: "Notification triggers, templates, retries and default sender.",
+   185→    fields: [
+   186→      { key: "enableNotifications", label: "Enable Notifications", description: "Master switch for exit email notifications.", type: "switch" },
+   187→      { key: "enableEntityWise", label: "Enable Entity-Wise", description: "Per-entity email templates.", type: "switch" },
+   188→      { key: "enableWorkflowWise", label: "Enable Workflow-Wise", description: "Per-workflow email templates.", type: "switch" },
+   189→      { key: "enableStageWise", label: "Enable Stage-Wise", description: "Trigger emails on stage transitions.", type: "switch" },
+   190→      { key: "enableReminders", label: "Enable Reminders", description: "Send reminder emails for pending tasks.", type: "switch" },
+   191→      { key: "enableEscalations", label: "Enable Escalations", description: "Escalate overdue tasks via email.", type: "switch" },
+   192→      { key: "enableEmailLogs", label: "Enable Logs", description: "Log every email sent for audit.", type: "switch" },
+   193→      { key: "enableRetry", label: "Enable Retry", description: "Retry failed emails automatically.", type: "switch" },
+   194→      { key: "defaultFromEmail", label: "Default From Email", type: "text", placeholder: "hr@acmecorp.com", full: true },
+   195→      { key: "defaultReplyTo", label: "Default Reply-To Email", type: "text", placeholder: "hr-support@acmecorp.com", full: true },
+   196→    ],
+   197→  },
+   198→  {
+   199→    key: "audit",
+   200→    label: "Audit & Security",
+   201→    short: "Audit & Security",
+   202→    icon: Lock,
+   203→    description: "Audit trail, change tracking and access controls.",
+   204→    fields: [
+   205→      { key: "enableAuditLog", label: "Enable Audit Log", description: "Master switch for the audit trail.", type: "switch" },
+   206→      { key: "trackExitDetails", label: "Track Exit Details Changes", type: "switch" },
+   207→      { key: "trackWorkflowChanges", label: "Track Workflow Changes", type: "switch" },
+   208→      { key: "trackStageMovement", label: "Track Stage Movement", type: "switch" },
+   209→      { key: "trackClearance", label: "Track Clearance Changes", type: "switch" },
+   210→      { key: "trackAssetRecovery", label: "Track Asset Recovery Changes", type: "switch" },
+   211→      { key: "trackItRevocation", label: "Track IT Revocation Changes", type: "switch" },
+   212→      { key: "trackFnf", label: "Track FnF Changes", type: "switch" },
+   213→      { key: "trackLetterGeneration", label: "Track Letter Generation", type: "switch" },
+   214→      { key: "trackEmployeeStatus", label: "Track Employee Status Change", type: "switch" },
+   215→      { key: "softDeleteOnly", label: "Soft Delete Only", description: "Never hard-delete records; mark them as deleted.", type: "switch" },
+   216→      { key: "rbac", label: "Role-Based Access Control", description: "Enforce role-based permissions on offboarding actions.", type: "switch" },
+   217→    ],
+   218→  },
+   219→]
+   220→
+   221→// Insert Entity Configuration as the 3rd tab (after Employee Exit, before Clearance)
+   222→const ENTITY_TAB_ID = "__entity__"
+   223→
+   224→interface TabDef {
+   225→  id: string
+   226→  label: string
+   227→  icon: React.ComponentType<{ className?: string }>
+   228→  description: string
+   229→  isEntity?: boolean
+   230→}
+   231→
+   232→function buildTabs(): TabDef[] {
+   233→  const tabs: TabDef[] = []
+   234→  for (let i = 0; i < CATEGORIES.length; i++) {
+   235→    const c = CATEGORIES[i]
+   236→    tabs.push({ id: c.key, label: c.short, icon: c.icon, description: c.description })
+   237→    if (i === 1) {
+   238→      tabs.push({ id: ENTITY_TAB_ID, label: "Entity Configuration", icon: Building2, description: "Per-entity offboarding defaults.", isEntity: true })
+   239→    }
+   240→  }
+   241→  return tabs
+   242→}
+   243→
+   244→const TABS = buildTabs()
+   245→
+   246→// =============================================================
+   247→// Main Section
+   248→// =============================================================
+   249→
+   250→export function SettingsSection() {
+   251→  const [activeTab, setActiveTab] = useState<string>("general")
+   252→
+   253→  return (
+   254→    <div className="flex flex-col gap-5">
+   255→      {/* Page header */}
+   256→      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+   257→        <div className="flex items-center gap-2.5">
+   258→          <div className="grid h-9 w-9 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/20">
+   259→            <SettingsIcon className="h-5 w-5" />
+   260→          </div>
+   261→          <div>
+   262→            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
+   263→            <p className="text-xs sm:text-sm text-muted-foreground">
+   264→              Module-level controls and per-entity default configuration for offboarding.
+   265→            </p>
+   266→          </div>
+   267→        </div>
+   268→      </div>
+   269→
+   270→      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-5">
+   271→        {/* LEFT: vertical tab bar */}
+   272→        <nav aria-label="Settings sections" className="lg:sticky lg:top-4 lg:self-start">
+   273→          <div className="bg-muted/30 rounded-xl p-1.5 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible lg:max-h-[calc(100vh-2rem)]">
+   274→            {TABS.map((t) => {
+   275→              const Icon = t.icon
+   276→              const active = activeTab === t.id
+   277→              return (
+   278→                <button
+   279→                  key={t.id}
+   280→                  onClick={() => setActiveTab(t.id)}
+   281→                  aria-current={active ? "page" : undefined}
+   282→                  className={cn(
+   283→                    "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all whitespace-nowrap lg:w-full lg:justify-between",
+   284→                    active
+   285→                      ? "bg-card shadow-soft text-rose-700 dark:text-rose-300"
+   286→                      : "text-muted-foreground hover:text-foreground hover:bg-card/60",
+   287→                  )}
+   288→                >
+   289→                  <span className="flex items-center gap-2.5 min-w-0">
+   290→                    <Icon className={cn(
+   291→                      "h-4 w-4 shrink-0",
+   292→                      active ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground group-hover:text-foreground",
+   293→                    )} />
+   294→                    <span className="truncate">{t.label}</span>
+   295→                  </span>
+   296→                  {t.isEntity && (
+   297→                    <Badge variant="outline" className="hidden lg:inline-flex text-[10px] px-1.5 py-0 h-4 border-rose-300/60 text-rose-700 dark:text-rose-300 dark:border-rose-500/40">
+   298→                      Spec #21
+   299→                    </Badge>
+   300→                  )}
+   301→                  {active && <ChevronRight className="hidden lg:block h-3.5 w-3.5 text-rose-500 shrink-0" />}
+   302→                </button>
+   303→              )
+   304→            })}
+   305→          </div>
+   306→        </nav>
+   307→
+   308→        {/* RIGHT: tab content */}
+   309→        <div className="min-w-0">
+   310→          <AnimatePresence mode="wait">
+   311→            <motion.div
+   312→              key={activeTab}
+   313→              initial={{ opacity: 0, y: 8 }}
+   314→              animate={{ opacity: 1, y: 0 }}
+   315→              exit={{ opacity: 0, y: -8 }}
+   316→              transition={{ duration: 0.18, ease: "easeOut" }}
+   317→            >
+   318→              {activeTab === ENTITY_TAB_ID ? <EntityConfigurationPanel /> : <SettingsFormPanel tabId={activeTab} />}
+   319→            </motion.div>
+   320→          </AnimatePresence>
+   321→        </div>
+   322→      </div>
+   323→    </div>
+   324→  )
+   325→}
+   326→
+   327→// =============================================================
+   328→// Settings Form Panel (for the 6 normal categories)
+   329→// =============================================================
+   330→
+   331→function SettingsFormPanel({ tabId }: { tabId: string }) {
+   332→  const cat = CATEGORIES.find((c) => c.key === tabId)!
+   333→  const [values, setValues] = useState<Record<string, any>>(() => {
+   334→    const v: Record<string, any> = {}
+   335→    const seed = OFFBOARDING_SETTINGS[cat.key] as any
+   336→    for (const f of cat.fields) v[f.key] = seed?.[f.key] ?? defaultFor(f)
+   337→    return v
+   338→  })
+   339→
+   340→  function setValue(key: string, value: any) {
+   341→    setValues((prev) => ({ ...prev, [key]: value }))
+   342→    const field = cat.fields.find((f) => f.key === key)
+   343→    if (field?.type === "switch") {
+   344→      toast.success(`${field.label}: ${value ? "Enabled" : "Disabled"}`, {
+   345→        description: `${cat.label} updated locally.`,
+   346→      })
+   347→    } else {
+   348→      toast.success(`${field?.label || key} updated`, { description: `${cat.label} updated locally.` })
+   349→    }
+   350→  }
+   351→
+   352→  const switches = cat.fields.filter((f) => f.type === "switch")
+   353→  const others = cat.fields.filter((f) => f.type !== "switch")
+   354→
+   355→  return (
+   356→    <Card className="rounded-xl border-border/60 shadow-soft">
+   357→      <CardContent className="p-5 sm:p-6">
+   358→        {/* Header */}
+   359→        <div className="flex items-start justify-between gap-3 pb-4 border-b border-border/60">
+   360→          <div className="flex items-start gap-3 min-w-0">
+   361→            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/20">
+   362→              <cat.icon className="h-5 w-5" />
+   363→            </div>
+   364→            <div className="min-w-0">
+   365→              <h2 className="text-base font-semibold text-foreground">{cat.label}</h2>
+   366→              <p className="text-xs text-muted-foreground mt-0.5">{cat.description}</p>
+   367→            </div>
+   368→          </div>
+   369→          <Badge variant="outline" className="border-rose-300/60 text-rose-700 dark:text-rose-300 dark:border-rose-500/40 shrink-0">
+   370→            <Check className="h-3 w-3 mr-1" /> Saved
+   371→          </Badge>
+   372→        </div>
+   373→
+   374→        {/* Switches */}
+   375→        {switches.length > 0 && (
+   376→          <div className={cn("grid gap-3 pt-4", switches.length >= 4 ? "sm:grid-cols-2" : "grid-cols-1")}>
+   377→            {switches.map((f) => (
+   378→              <SwitchRow key={f.key} field={f} checked={!!values[f.key]} onChange={(v) => setValue(f.key, v)} />
+   379→            ))}
+   380→          </div>
+   381→        )}
+   382→
+   383→        {switches.length > 0 && others.length > 0 && <Separator className="my-4" />}
+   384→
+   385→        {/* Text/Select fields */}
+   386→        {others.length > 0 && (
+   387→          <div className="grid gap-4 sm:grid-cols-2">
+   388→            {others.map((f) => (
+   389→              <FieldRow key={f.key} field={f} value={values[f.key]} onChange={(v) => setValue(f.key, v)} />
+   390→            ))}
+   391→          </div>
+   392→        )}
+   393→      </CardContent>
+   394→    </Card>
+   395→  )
+   396→}
+   397→
+   398→function defaultFor(f: FieldDef): any {
+   399→  switch (f.type) {
+   400→    case "switch": return false
+   401→    case "select": return f.options?.[0] ?? ""
+   402→    default: return ""
+   403→  }
+   404→}
+   405→
+   406→// ---------- Field primitives ----------
+   407→
+   408→function SwitchRow({ field, checked, onChange }: { field: FieldDef; checked: boolean; onChange: (v: boolean) => void }) {
+   409→  return (
+   410→    <label
+   411→      htmlFor={`sw-${field.key}`}
+   412→      className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-background/60 hover:bg-background p-3 transition-colors cursor-pointer"
+   413→    >
+   414→      <div className="min-w-0">
+   415→        <div className="text-sm font-medium text-foreground">{field.label}</div>
+   416→        {field.description && <div className="text-xs text-muted-foreground mt-0.5">{field.description}</div>}
+   417→      </div>
+   418→      <Switch
+   419→        id={`sw-${field.key}`}
+   420→        checked={checked}
+   421→        onCheckedChange={onChange}
+   422→        className="data-[state=checked]:bg-rose-600 dark:data-[state=checked]:bg-rose-500 mt-0.5"
+   423→      />
+   424→    </label>
+   425→  )
+   426→}
+   427→
+   428→function FieldRow({ field, value, onChange }: { field: FieldDef; value: any; onChange: (v: any) => void }) {
+   429→  return (
+   430→    <div className={cn("flex flex-col gap-1.5", field.full && "sm:col-span-2")}>
+   431→      <Label htmlFor={`f-${field.key}`} className="text-xs font-medium text-foreground">{field.label}</Label>
+   432→      {field.description && <p className="text-xs text-muted-foreground">{field.description}</p>}
+   433→      {field.type === "select" ? (
+   434→        <Select value={String(value ?? "")} onValueChange={onChange}>
+   435→          <SelectTrigger id={`f-${field.key}`} className="w-full"><SelectValue placeholder="Select..." /></SelectTrigger>
+   436→          <SelectContent>
+   437→            {(field.options || []).map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+   438→          </SelectContent>
+   439→        </Select>
+   440→      ) : (
+   441→        <Input
+   442→          id={`f-${field.key}`}
+   443→          value={value ?? ""}
+   444→          placeholder={field.placeholder}
+   445→          onChange={(e) => onChange(e.target.value)}
+   446→          className="h-9"
+   447→        />
+   448→      )}
+   449→    </div>
+   450→  )
+   451→}
+   452→
+   453→// =============================================================
+   454→// Entity Configuration Panel
+   455→// =============================================================
+   456→
+   457→const ENTITY_CONFIG_STATUSES = ["Active", "Inactive"] as const
+   458→
+   459→interface EntityConfigFormState {
+   460→  id?: string
+   461→  entity: string
+   462→  useTenantDefault: boolean
+   463→  defaultExitWorkflow: string
+   464→  defaultKanbanBoard: string
+   465→  defaultClearanceChecklist: string
+   466→  defaultAssetRecoveryRule: string
+   467→  defaultItRevocationRule: string
+   468→  defaultFnfRule: string
+   469→  defaultExitInterviewForm: string
+   470→  defaultEmailGroup: string
+   471→  defaultApprovalWorkflow: string
+   472→  defaultLetterGroup: string
+   473→  defaultHrOwner: string
+   474→  defaultNoticePolicy: string
+   475→  effectiveFrom: string
+   476→  effectiveTo: string
+   477→  status: "Active" | "Inactive"
+   478→}
+   479→
+   480→const EMPTY_FORM: EntityConfigFormState = {
+   481→  entity: "",
+   482→  useTenantDefault: true,
+   483→  defaultExitWorkflow: "",
+   484→  defaultKanbanBoard: "",
+   485→  defaultClearanceChecklist: "",
+   486→  defaultAssetRecoveryRule: "",
+   487→  defaultItRevocationRule: "",
+   488→  defaultFnfRule: "",
+   489→  defaultExitInterviewForm: "",
+   490→  defaultEmailGroup: "",
+   491→  defaultApprovalWorkflow: "",
+   492→  defaultLetterGroup: "",
+   493→  defaultHrOwner: "",
+   494→  defaultNoticePolicy: "",
+   495→  effectiveFrom: "",
+   496→  effectiveTo: "",
+   497→  status: "Active",
+   498→}
+   499→
+   500→function toForm(ec: EntityConfiguration): EntityConfigFormState {
+   501→  return {
+   502→    id: ec.id,
+   503→    entity: ec.entity,
+   504→    useTenantDefault: ec.useTenantDefault,
+   505→    defaultExitWorkflow: ec.defaultExitWorkflow || "",
+   506→    defaultKanbanBoard: ec.defaultKanbanBoard || "",
+   507→    defaultClearanceChecklist: ec.defaultClearanceChecklist || "",
+   508→    defaultAssetRecoveryRule: ec.defaultAssetRecoveryRule || "",
+   509→    defaultItRevocationRule: ec.defaultItRevocationRule || "",
+   510→    defaultFnfRule: ec.defaultFnfRule || "",
+   511→    defaultExitInterviewForm: ec.defaultExitInterviewForm || "",
+   512→    defaultEmailGroup: ec.defaultEmailGroup || "",
+   513→    defaultApprovalWorkflow: ec.defaultApprovalWorkflow || "",
+   514→    defaultLetterGroup: ec.defaultLetterGroup || "",
+   515→    defaultHrOwner: ec.defaultHrOwner || "",
+   516→    defaultNoticePolicy: ec.defaultNoticePolicy || "",
+   517→    effectiveFrom: ec.effectiveFrom || "",
+   518→    effectiveTo: ec.effectiveTo || "",
+   519→    status: ec.status,
+   520→  }
+   521→}
+   522→
+   523→function EntityConfigurationPanel() {
+   524→  const [configs, setConfigs] = useState<EntityConfiguration[]>(ENTITY_CONFIGURATIONS)
+   525→  const [dialogOpen, setDialogOpen] = useState(false)
+   526→  const [form, setForm] = useState<EntityConfigFormState>(EMPTY_FORM)
+   527→
+   528→  function openAdd() {
+   529→    setForm(EMPTY_FORM)
+   530→    setDialogOpen(true)
+   531→  }
+   532→  function openEdit(ec: EntityConfiguration) {
+   533→    setForm(toForm(ec))
+   534→    setDialogOpen(true)
+   535→  }
+   536→
+   537→  function setField<K extends keyof EntityConfigFormState>(k: K, v: EntityConfigFormState[K]) {
+   538→    setForm((prev) => ({ ...prev, [k]: v }))
+   539→  }
+   540→
+   541→  function handleSave() {
+   542→    if (!form.entity) {
+   543→      toast.error("Please select an entity / company.")
+   544→      return
+   545→    }
+   546→    const isEdit = !!form.id
+   547→    const newConfig: EntityConfiguration = {
+   548→      id: form.id || `ec-${Date.now()}`,
+   549→      entity: form.entity,
+   550→      useTenantDefault: form.useTenantDefault,
+   551→      defaultExitWorkflow: form.useTenantDefault ? undefined : form.defaultExitWorkflow || undefined,
+   552→      defaultKanbanBoard: form.useTenantDefault ? undefined : form.defaultKanbanBoard || undefined,
+   553→      defaultClearanceChecklist: form.useTenantDefault ? undefined : form.defaultClearanceChecklist || undefined,
+   554→      defaultAssetRecoveryRule: form.useTenantDefault ? undefined : form.defaultAssetRecoveryRule || undefined,
+   555→      defaultItRevocationRule: form.useTenantDefault ? undefined : form.defaultItRevocationRule || undefined,
+   556→      defaultFnfRule: form.useTenantDefault ? undefined : form.defaultFnfRule || undefined,
+   557→      defaultExitInterviewForm: form.useTenantDefault ? undefined : form.defaultExitInterviewForm || undefined,
+   558→      defaultEmailGroup: form.useTenantDefault ? undefined : form.defaultEmailGroup || undefined,
+   559→      defaultApprovalWorkflow: form.useTenantDefault ? undefined : form.defaultApprovalWorkflow || undefined,
+   560→      defaultLetterGroup: form.useTenantDefault ? undefined : form.defaultLetterGroup || undefined,
+   561→      defaultHrOwner: form.useTenantDefault ? undefined : form.defaultHrOwner || undefined,
+   562→      defaultNoticePolicy: form.useTenantDefault ? undefined : form.defaultNoticePolicy || undefined,
+   563→      effectiveFrom: form.effectiveFrom || undefined,
+   564→      effectiveTo: form.effectiveTo || undefined,
+   565→      status: form.status,
+   566→    }
+   567→    setConfigs((prev) => isEdit
+   568→      ? prev.map((c) => (c.id === newConfig.id ? newConfig : c))
+   569→      : [...prev, newConfig])
+   570→    setDialogOpen(false)
+   571→    toast.success(isEdit ? `Configuration updated for ${newConfig.entity}` : `Configuration added for ${newConfig.entity}`)
+   572→  }
+   573→
+   574→  return (
+   575→    <Card className="rounded-xl border-border/60 shadow-soft">
+   576→      <CardContent className="p-5 sm:p-6">
+   577→        {/* Header */}
+   578→        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-border/60">
+   579→          <div className="flex items-start gap-3 min-w-0">
+   580→            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/20">
+   581→              <Building2 className="h-5 w-5" />
+   582→            </div>
+   583→            <div className="min-w-0">
+   584→              <h2 className="text-base font-semibold text-foreground">Entity Configuration</h2>
+   585→              <p className="text-xs text-muted-foreground mt-0.5">
+   586→                Per-entity default workflows, checklists, FnF rules, email groups and HR owners.
+   587→              </p>
+   588→            </div>
+   589→          </div>
+   590→          <Button size="sm" className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white shrink-0" onClick={openAdd}>
+   591→            <Plus className="h-4 w-4" /> Add Entity Configuration
+   592→          </Button>
+   593→        </div>
+   594→
+   595→        {/* Table */}
+   596→        <div className="pt-4 overflow-x-auto">
+   597→          <Table>
+   598→            <TableHeader>
+   599→              <TableRow className="border-border/60 hover:bg-transparent">
+   600→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[180px]">Entity</TableHead>
+   601→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[110px]">Use Tenant Default</TableHead>
+   602→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[180px]">Default Workflow</TableHead>
+   603→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[160px]">Kanban Board</TableHead>
+   604→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[180px]">Clearance Checklist</TableHead>
+   605→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[150px]">FnF Rule</TableHead>
+   606→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[160px]">Email Group</TableHead>
+   607→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[180px]">Exit Interview Form</TableHead>
+   608→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[160px]">Letter Group</TableHead>
+   609→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[140px]">HR Owner</TableHead>
+   610→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[150px]">Notice Policy</TableHead>
+   611→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[90px]">Status</TableHead>
+   612→                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold min-w-[80px] text-right">Actions</TableHead>
+   613→              </TableRow>
+   614→            </TableHeader>
+   615→            <TableBody>
+   616→              {configs.map((ec) => (
+   617→                <TableRow key={ec.id} className="border-border/40 hover:bg-rose-50/40 dark:hover:bg-rose-500/5 transition-colors">
+   618→                  <TableCell className="text-sm font-medium text-foreground">{ec.entity}</TableCell>
+   619→                  <TableCell>
+   620→                    {ec.useTenantDefault ? (
+   621→                      <Badge variant="outline" className="border-border/60 text-foreground/70">Yes</Badge>
+   622→                    ) : (
+   623→                      <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300 border-0">No</Badge>
+   624→                    )}
+   625→                  </TableCell>
+   626→                  <TableCell className="text-xs text-foreground/90">{ec.defaultExitWorkflow || "—"}</TableCell>
+   627→                  <TableCell className="text-xs text-foreground/90">{ec.defaultKanbanBoard || "—"}</TableCell>
+   628→                  <TableCell className="text-xs text-foreground/90">{ec.defaultClearanceChecklist || "—"}</TableCell>
+   629→                  <TableCell className="text-xs text-foreground/90">{ec.defaultFnfRule || "—"}</TableCell>
+   630→                  <TableCell className="text-xs text-foreground/90">{ec.defaultEmailGroup || "—"}</TableCell>
+   631→                  <TableCell className="text-xs text-foreground/90">{ec.defaultExitInterviewForm || "—"}</TableCell>
+   632→                  <TableCell className="text-xs text-foreground/90">{ec.defaultLetterGroup || "—"}</TableCell>
+   633→                  <TableCell className="text-xs text-foreground/90">{ec.defaultHrOwner || "—"}</TableCell>
+   634→                  <TableCell className="text-xs text-foreground/90">{ec.defaultNoticePolicy || "—"}</TableCell>
+   635→                  <TableCell>
+   636→                    <Badge className={cn(
+   637→                      "font-medium border-0",
+   638→                      ec.status === "Active"
+   639→                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+   640→                        : "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400",
+   641→                    )}>
+   642→                      {ec.status}
+   643→                    </Badge>
+   644→                  </TableCell>
+   645→                  <TableCell className="text-right">
+   646→                    <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs hover:bg-rose-500/10 hover:text-rose-700 dark:hover:text-rose-300" onClick={() => openEdit(ec)}>
+   647→                      <Pencil className="h-3.5 w-3.5" /> Edit
+   648→                    </Button>
+   649→                  </TableCell>
+   650→                </TableRow>
+   651→              ))}
+   652→              {configs.length === 0 && (
+   653→                <TableRow>
+   654→                  <TableCell colSpan={13} className="py-12 text-center text-muted-foreground text-sm">
+   655→                    No entity configurations yet. Click &ldquo;Add Entity Configuration&rdquo; to create one.
+   656→                  </TableCell>
+   657→                </TableRow>
+   658→              )}
+   659→            </TableBody>
+   660→          </Table>
+   661→        </div>
+   662→      </CardContent>
+   663→
+   664→      {/* Add/Edit dialog */}
+   665→      <EntityConfigDialog
+   666→        open={dialogOpen}
+   667→        form={form}
+   668→        onFieldChange={setField}
+   669→        onClose={() => setDialogOpen(false)}
+   670→        onSave={handleSave}
+   671→        isEdit={!!form.id}
+   672→      />
+   673→    </Card>
+   674→  )
+   675→}
+   676→
+   677→// =============================================================
+   678→// Entity Configuration Dialog
+   679→// =============================================================
+   680→
+   681→function EntityConfigDialog({
+   682→  open, form, onFieldChange, onClose, onSave, isEdit,
+   683→}: {
+   684→  open: boolean
+   685→  form: EntityConfigFormState
+   686→  onFieldChange: <K extends keyof EntityConfigFormState>(k: K, v: EntityConfigFormState[K]) => void
+   687→  onClose: () => void
+   688→  onSave: () => void
+   689→  isEdit: boolean
+   690→}) {
+   691→  const selectField = (key: keyof EntityConfigFormState, label: string, options: string[]) => (
+   692→    <div className="flex flex-col gap-1.5">
+   693→      <Label className="text-xs font-medium text-foreground">{label}</Label>
+   694→      <Select value={String(form[key] ?? "")} onValueChange={(v) => onFieldChange(key, v as any)}>
+   695→        <SelectTrigger className="w-full h-9"><SelectValue placeholder="Select..." /></SelectTrigger>
+   696→        <SelectContent>
+   697→          {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+   698→        </SelectContent>
+   699→      </Select>
+   700→    </div>
+   701→  )
+   702→
+   703→  return (
+   704→    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+   705→      <DialogContent className="sm:max-w-3xl max-h-[92vh] p-0 gap-0 overflow-hidden">
+   706→        <DialogHeader className="px-5 py-4 border-b border-border/60 bg-gradient-to-br from-rose-500/8 via-transparent to-transparent">
+   707→          <DialogTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+   708→            <Building2 className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+   709→            {isEdit ? "Edit Entity Configuration" : "Add Entity Configuration"}
+   710→          </DialogTitle>
+   711→          <DialogDescription className="text-xs text-muted-foreground">
+   712→            Configure per-entity offboarding defaults. When &ldquo;Use Tenant Default&rdquo; is on, the tenant-level settings apply.
+   713→          </DialogDescription>
+   714→        </DialogHeader>
+   715→
+   716→        <div className="overflow-y-auto max-h-[68vh] px-5 py-4 flex flex-col gap-4">
+   717→          {/* Top row: Entity + Use Tenant Default + Status */}
+   718→          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   719→            <div className="flex flex-col gap-1.5">
+   720→              <Label className="text-xs font-medium text-foreground">Entity / Company *</Label>
+   721→              <Select value={form.entity} onValueChange={(v) => onFieldChange("entity", v)}>
+   722→                <SelectTrigger className="w-full h-9"><SelectValue placeholder="Select entity..." /></SelectTrigger>
+   723→                <SelectContent>
+   724→                  {ENTITIES.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+   725→                </SelectContent>
+   726→              </Select>
+   727→            </div>
+   728→            <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/60 p-3">
+   729→              <div className="min-w-0">
+   730→                <div className="text-sm font-medium text-foreground">Use Tenant Default</div>
+   731→                <p className="text-xs text-muted-foreground mt-0.5">Inherit tenant-level defaults for this entity.</p>
+   732→              </div>
+   733→              <Switch
+   734→                checked={form.useTenantDefault}
+   735→                onCheckedChange={(v) => onFieldChange("useTenantDefault", v)}
+   736→                className="data-[state=checked]:bg-rose-600 dark:data-[state=checked]:bg-rose-500"
+   737→              />
+   738→            </div>
+   739→          </div>
+   740→
+   741→          {!form.useTenantDefault && (
+   742→            <motion.div
+   743→              initial={{ opacity: 0, height: 0 }}
+   744→              animate={{ opacity: 1, height: "auto" }}
+   745→              exit={{ opacity: 0, height: 0 }}
+   746→              className="flex flex-col gap-4"
+   747→            >
+   748→              <Separator />
+   749→              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+   750→                Entity-Specific Defaults
+   751→              </p>
+   752→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   753→                {selectField("defaultExitWorkflow", "Default Exit Workflow", WORKFLOW_OPTIONS)}
+   754→                {selectField("defaultKanbanBoard", "Default Kanban Board", BOARD_OPTIONS)}
+   755→                {selectField("defaultClearanceChecklist", "Default Clearance Checklist", CHECKLIST_OPTIONS)}
+   756→                {selectField("defaultAssetRecoveryRule", "Default Asset Recovery Rule", ASSET_RULES)}
+   757→                {selectField("defaultItRevocationRule", "Default IT Revocation Rule", IT_RULES)}
+   758→                {selectField("defaultFnfRule", "Default FnF Rule", FNF_RULES)}
+   759→                {selectField("defaultExitInterviewForm", "Default Exit Interview Form", INTERVIEW_OPTIONS)}
+   760→                {selectField("defaultEmailGroup", "Default Email Group", EMAIL_GROUPS)}
+   761→                {selectField("defaultApprovalWorkflow", "Default Approval Workflow", APPROVAL_WORKFLOWS)}
+   762→                {selectField("defaultLetterGroup", "Default Letter Group", LETTER_GROUPS)}
+   763→                {selectField("defaultHrOwner", "Default HR Owner", HR_OWNERS)}
+   764→                {selectField("defaultNoticePolicy", "Default Notice Policy", NOTICE_POLICIES)}
+   765→              </div>
+   766→            </motion.div>
+   767→          )}
+   768→
+   769→          <Separator />
+   770→
+   771→          {/* Effective dates + status */}
+   772→          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   773→            <div className="flex flex-col gap-1.5">
+   774→              <Label htmlFor="effectiveFrom" className="text-xs font-medium text-foreground">Effective From</Label>
+   775→              <Input
+   776→                id="effectiveFrom"
+   777→                type="date"
+   778→                value={form.effectiveFrom}
+   779→                onChange={(e) => onFieldChange("effectiveFrom", e.target.value)}
+   780→                className="h-9"
+   781→              />
+   782→            </div>
+   783→            <div className="flex flex-col gap-1.5">
+   784→              <Label htmlFor="effectiveTo" className="text-xs font-medium text-foreground">Effective To</Label>
+   785→              <Input
+   786→                id="effectiveTo"
+   787→                type="date"
+   788→                value={form.effectiveTo}
+   789→                onChange={(e) => onFieldChange("effectiveTo", e.target.value)}
+   790→                className="h-9"
+   791→              />
+   792→            </div>
+   793→            <div className="flex flex-col gap-1.5">
+   794→              <Label className="text-xs font-medium text-foreground">Status</Label>
+   795→              <Select value={form.status} onValueChange={(v) => onFieldChange("status", v as any)}>
+   796→                <SelectTrigger className="w-full h-9"><SelectValue /></SelectTrigger>
+   797→                <SelectContent>
+   798→                  {ENTITY_CONFIG_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+   799→                </SelectContent>
+   800→              </Select>
+   801→            </div>
+   802→          </div>
+   803→        </div>
+   804→
+   805→        <DialogFooter className="px-5 py-3 border-t border-border/60 bg-muted/30 flex items-center gap-2">
+   806→          <Button variant="outline" size="sm" className="gap-1.5" onClick={onClose}>
+   807→            <X className="h-4 w-4" /> Cancel
+   808→          </Button>
+   809→          <Button size="sm" className="gap-1.5 ml-auto bg-rose-600 hover:bg-rose-700 text-white" onClick={onSave}>
+   810→            <Save className="h-4 w-4" /> {isEdit ? "Save Changes" : "Add Configuration"}
+   811→          </Button>
+   812→        </DialogFooter>
+   813→      </DialogContent>
+   814→    </Dialog>
+   815→  )
+   816→}
+   817→
+   818→export default SettingsSection
+   819→

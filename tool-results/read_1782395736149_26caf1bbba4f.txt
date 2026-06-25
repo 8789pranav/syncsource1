@@ -1,0 +1,440 @@
+     1→"use client"
+     2→
+     3→// ============================================================
+     4→// PayrollModule — Enterprise Payroll (Phase 3 rebuild)
+     5→// ------------------------------------------------------------
+     6→// 5 main menus with nested sub-sections:
+     7→//   1. Salary       — Dashboard, Payroll Run, Payroll Inputs, Pay Groups,
+     8→//                     Payroll Components, Salary Structure, Employee Salary,
+     9→//                     Salary Revision, Payslips, Bank/Payment, Reports
+    10→//   2. Compliance   — Dashboard, Statutory Setup, PF/EPF, ESI, PT, LWF,
+    11→//                     TDS/Income Tax, Investment Declaration, Form 16,
+    12→//                     Challans/Payments, Reports
+    13→//   3. Arrear       — Dashboard, Arrear Inputs, Arrear Calculation,
+    14→//                     Salary Revision Arrear, LOP Reversal Arrear, Manual Arrear,
+    15→//                     Arrear Approval, Arrear Payment, Reports
+    16→//   4. Full & Final — Dashboard, FnF Cases, FnF Inputs, FnF Calculation,
+    17→//                     Leave Encashment, Notice Recovery, Asset/Loan Recovery,
+    18→//                     FnF Approval, FnF Payment, FnF Letters, Reports
+    19→//   5. Settings     — General, Entity Configuration (flagship 9-step wizard),
+    20→//                     Pay Group, Component, Structure, Calendar, Integration,
+    21→//                     Compliance, Tax, Arrear, FnF, Payslip, Bank, Approval,
+    22→//                     Email, Import/Export, Audit & Security
+    23→// ============================================================
+    24→
+    25→import * as React from "react"
+    26→import dynamic from "next/dynamic"
+    27→import { motion, AnimatePresence } from "framer-motion"
+    28→import {
+    29→  Banknote, Wallet, Receipt, FileText, Settings as SettingsIcon,
+    30→  LayoutDashboard, Play, ListChecks, Users, Layers, FileSpreadsheet,
+    31→  UserSquare, TrendingUp, FileText as PayslipIcon, Landmark, BarChart3,
+    32→  ShieldCheck, Building2, PiggyBank, HeartPulse, Briefcase, HandCoins,
+    33→  FileCheck, CalendarClock, Coins, ArrowLeftRight, ClipboardCheck,
+    34→  Inbox, Calculator, GitCompareArrows, Undo2, Hand, CheckCircle2, Mail,
+    35→  SlidersHorizontal, Globe, Calendar, Plug, BadgePercent, FileSliders,
+    36→  ScrollText, Upload, Lock, ChevronRight, Menu, X,
+    37→} from "lucide-react"
+    38→import { cn } from "@/lib/utils"
+    39→import { Button } from "@/components/ui/button"
+    40→import { Badge } from "@/components/ui/badge"
+    41→
+    42→// ---------- Lazy-loaded sections ----------
+    43→const loading = () => (
+    44→  <div className="flex h-[60vh] items-center justify-center">
+    45→    <div className="h-8 w-8 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
+    46→  </div>
+    47→)
+    48→
+    49→// Salary
+    50→const SalaryDashboard = dynamic(() => import("@/components/hrms/payroll/sections/salary-dashboard").then(m => m.SalaryDashboardSection), { loading, ssr: false })
+    51→const PayrollRun = dynamic(() => import("@/components/hrms/payroll/sections/payroll-run").then(m => m.PayrollRunSection), { loading, ssr: false })
+    52→const PayrollInputs = dynamic(() => import("@/components/hrms/payroll/sections/payroll-inputs").then(m => m.PayrollInputsSection), { loading, ssr: false })
+    53→const PayGroups = dynamic(() => import("@/components/hrms/payroll/sections/pay-groups").then(m => m.PayGroupsSection), { loading, ssr: false })
+    54→const PayrollComponents = dynamic(() => import("@/components/hrms/payroll/sections/payroll-components").then(m => m.PayrollComponentsSection), { loading, ssr: false })
+    55→const SalaryStructure = dynamic(() => import("@/components/hrms/payroll/sections/salary-structure").then(m => m.SalaryStructureSection), { loading, ssr: false })
+    56→const EmployeeSalary = dynamic(() => import("@/components/hrms/payroll/sections/employee-salary").then(m => m.EmployeeSalarySection), { loading, ssr: false })
+    57→const SalaryRevision = dynamic(() => import("@/components/hrms/payroll/sections/salary-revision").then(m => m.SalaryRevisionSection), { loading, ssr: false })
+    58→const Payslips = dynamic(() => import("@/components/hrms/payroll/sections/payslips").then(m => m.PayslipsSection), { loading, ssr: false })
+    59→const BankPayment = dynamic(() => import("@/components/hrms/payroll/sections/bank-payment").then(m => m.BankPaymentSection), { loading, ssr: false })
+    60→const SalaryReports = dynamic(() => import("@/components/hrms/payroll/sections/salary-reports").then(m => m.SalaryReportsSection), { loading, ssr: false })
+    61→
+    62→// Compliance
+    63→const ComplianceDashboard = dynamic(() => import("@/components/hrms/payroll/sections/compliance-dashboard").then(m => m.ComplianceDashboardSection), { loading, ssr: false })
+    64→const StatutorySetup = dynamic(() => import("@/components/hrms/payroll/sections/statutory-setup").then(m => m.StatutorySetupSection), { loading, ssr: false })
+    65→const PFRecords = dynamic(() => import("@/components/hrms/payroll/sections/pf-records").then(m => m.PFRecordsSection), { loading, ssr: false })
+    66→const ESIRecords = dynamic(() => import("@/components/hrms/payroll/sections/esi-records").then(m => m.ESIRecordsSection), { loading, ssr: false })
+    67→const PTRecords = dynamic(() => import("@/components/hrms/payroll/sections/pt-records").then(m => m.PTRecordsSection), { loading, ssr: false })
+    68→const LWFRecords = dynamic(() => import("@/components/hrms/payroll/sections/lwf-records").then(m => m.LWFRecordsSection), { loading, ssr: false })
+    69→const TDSRecords = dynamic(() => import("@/components/hrms/payroll/sections/tds-records").then(m => m.TDSRecordsSection), { loading, ssr: false })
+    70→const InvestmentDeclaration = dynamic(() => import("@/components/hrms/payroll/sections/investment-declaration").then(m => m.InvestmentDeclarationSection), { loading, ssr: false })
+    71→const Form16 = dynamic(() => import("@/components/hrms/payroll/sections/form-16").then(m => m.Form16Section), { loading, ssr: false })
+    72→const Challans = dynamic(() => import("@/components/hrms/payroll/sections/challans").then(m => m.ChallansSection), { loading, ssr: false })
+    73→const ComplianceReports = dynamic(() => import("@/components/hrms/payroll/sections/compliance-reports").then(m => m.ComplianceReportsSection), { loading, ssr: false })
+    74→
+    75→// Arrear
+    76→const ArrearDashboard = dynamic(() => import("@/components/hrms/payroll/sections/arrear-dashboard").then(m => m.ArrearDashboardSection), { loading, ssr: false })
+    77→const ArrearInputs = dynamic(() => import("@/components/hrms/payroll/sections/arrear-inputs").then(m => m.ArrearInputsSection), { loading, ssr: false })
+    78→const ArrearCalculation = dynamic(() => import("@/components/hrms/payroll/sections/arrear-calculation").then(m => m.ArrearCalculationSection), { loading, ssr: false })
+    79→const SalaryRevisionArrear = dynamic(() => import("@/components/hrms/payroll/sections/salary-revision-arrear").then(m => m.SalaryRevisionArrearSection), { loading, ssr: false })
+    80→const LopReversalArrear = dynamic(() => import("@/components/hrms/payroll/sections/lop-reversal-arrear").then(m => m.LopReversalArrearSection), { loading, ssr: false })
+    81→const ManualArrear = dynamic(() => import("@/components/hrms/payroll/sections/manual-arrear").then(m => m.ManualArrearSection), { loading, ssr: false })
+    82→const ArrearApproval = dynamic(() => import("@/components/hrms/payroll/sections/arrear-approval").then(m => m.ArrearApprovalSection), { loading, ssr: false })
+    83→const ArrearPayment = dynamic(() => import("@/components/hrms/payroll/sections/arrear-payment").then(m => m.ArrearPaymentSection), { loading, ssr: false })
+    84→const ArrearReports = dynamic(() => import("@/components/hrms/payroll/sections/arrear-reports").then(m => m.ArrearReportsSection), { loading, ssr: false })
+    85→
+    86→// Full & Final
+    87→const FnFDashboard = dynamic(() => import("@/components/hrms/payroll/sections/fnf-dashboard").then(m => m.FnFDashboardSection), { loading, ssr: false })
+    88→const FnFCases = dynamic(() => import("@/components/hrms/payroll/sections/fnf-cases").then(m => m.FnFCasesSection), { loading, ssr: false })
+    89→const FnFInputs = dynamic(() => import("@/components/hrms/payroll/sections/fnf-inputs").then(m => m.FnFInputsSection), { loading, ssr: false })
+    90→const FnFCalculation = dynamic(() => import("@/components/hrms/payroll/sections/fnf-calculation").then(m => m.FnFCalculationSection), { loading, ssr: false })
+    91→const LeaveEncashment = dynamic(() => import("@/components/hrms/payroll/sections/leave-encashment").then(m => m.LeaveEncashmentSection), { loading, ssr: false })
+    92→const NoticeRecovery = dynamic(() => import("@/components/hrms/payroll/sections/notice-recovery").then(m => m.NoticeRecoverySection), { loading, ssr: false })
+    93→const AssetLoanRecovery = dynamic(() => import("@/components/hrms/payroll/sections/asset-loan-recovery").then(m => m.AssetLoanRecoverySection), { loading, ssr: false })
+    94→const FnFApproval = dynamic(() => import("@/components/hrms/payroll/sections/fnf-approval").then(m => m.FnFApprovalSection), { loading, ssr: false })
+    95→const FnFPayment = dynamic(() => import("@/components/hrms/payroll/sections/fnf-payment").then(m => m.FnFPaymentSection), { loading, ssr: false })
+    96→const FnFLetters = dynamic(() => import("@/components/hrms/payroll/sections/fnf-letters").then(m => m.FnFLettersSection), { loading, ssr: false })
+    97→const FnFReports = dynamic(() => import("@/components/hrms/payroll/sections/fnf-reports").then(m => m.FnFReportsSection), { loading, ssr: false })
+    98→
+    99→// Settings
+   100→const GeneralSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-general").then(m => m.GeneralSettingsSection), { loading, ssr: false })
+   101→const EntityConfiguration = dynamic(() => import("@/components/hrms/payroll/sections/entity-configuration").then(m => m.EntityConfigurationSection), { loading, ssr: false })
+   102→const PayGroupSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-pay-group").then(m => m.PayGroupSettingsSection), { loading, ssr: false })
+   103→const ComponentSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-component").then(m => m.ComponentSettingsSection), { loading, ssr: false })
+   104→const StructureSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-structure").then(m => m.StructureSettingsSection), { loading, ssr: false })
+   105→const CalendarSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-calendar").then(m => m.CalendarSettingsSection), { loading, ssr: false })
+   106→const IntegrationSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-integration").then(m => m.IntegrationSettingsSection), { loading, ssr: false })
+   107→const ComplianceSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-compliance").then(m => m.ComplianceSettingsSection), { loading, ssr: false })
+   108→const TaxSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-tax").then(m => m.TaxSettingsSection), { loading, ssr: false })
+   109→const ArrearSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-arrear").then(m => m.ArrearSettingsSection), { loading, ssr: false })
+   110→const FnFSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-fnf").then(m => m.FnFSettingsSection), { loading, ssr: false })
+   111→const PayslipSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-payslip").then(m => m.PayslipSettingsSection), { loading, ssr: false })
+   112→const BankSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-bank").then(m => m.BankSettingsSection), { loading, ssr: false })
+   113→const ApprovalSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-approval").then(m => m.ApprovalSettingsSection), { loading, ssr: false })
+   114→const EmailSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-email").then(m => m.EmailSettingsSection), { loading, ssr: false })
+   115→const ImportExportSettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-import-export").then(m => m.ImportExportSettingsSection), { loading, ssr: false })
+   116→const AuditSecuritySettings = dynamic(() => import("@/components/hrms/payroll/sections/settings-audit-security").then(m => m.AuditSecuritySettingsSection), { loading, ssr: false })
+   117→
+   118→// ---------- Menu structure ----------
+   119→interface SubItem {
+   120→  id: string
+   121→  label: string
+   122→  icon: React.ComponentType<{ className?: string }>
+   123→}
+   124→interface MainMenu {
+   125→  id: string
+   126→  label: string
+   127→  icon: React.ComponentType<{ className?: string }>
+   128→  accent: string // tailwind gradient e.g. "from-teal-500 to-cyan-500"
+   129→  description: string
+   130→  children: SubItem[]
+   131→}
+   132→
+   133→const MENUS: MainMenu[] = [
+   134→  {
+   135→    id: "salary", label: "Salary", icon: Wallet, accent: "from-teal-500 to-cyan-500",
+   136→    description: "Run monthly payroll, manage pay groups, components, structures, employee salaries, revisions, payslips & bank payments",
+   137→    children: [
+   138→      { id: "salary-dashboard", label: "Dashboard", icon: LayoutDashboard },
+   139→      { id: "payroll-run", label: "Payroll Run", icon: Play },
+   140→      { id: "payroll-inputs", label: "Payroll Inputs", icon: ListChecks },
+   141→      { id: "pay-groups", label: "Pay Groups", icon: Users },
+   142→      { id: "payroll-components", label: "Payroll Components", icon: Layers },
+   143→      { id: "salary-structure", label: "Salary Structure", icon: FileSpreadsheet },
+   144→      { id: "employee-salary", label: "Employee Salary", icon: UserSquare },
+   145→      { id: "salary-revision", label: "Salary Revision", icon: TrendingUp },
+   146→      { id: "payslips", label: "Payslips", icon: PayslipIcon },
+   147→      { id: "bank-payment", label: "Bank / Payment", icon: Landmark },
+   148→      { id: "salary-reports", label: "Reports", icon: BarChart3 },
+   149→    ],
+   150→  },
+   151→  {
+   152→    id: "compliance", label: "Compliance", icon: ShieldCheck, accent: "from-emerald-500 to-teal-500",
+   153→    description: "Statutory setup, PF/EPF, ESI, PT, LWF, TDS, investment declarations, Form 16, challans & filings",
+   154→    children: [
+   155→      { id: "compliance-dashboard", label: "Dashboard", icon: LayoutDashboard },
+   156→      { id: "statutory-setup", label: "Statutory Setup", icon: Building2 },
+   157→      { id: "pf-records", label: "PF / EPF", icon: PiggyBank },
+   158→      { id: "esi-records", label: "ESI", icon: HeartPulse },
+   159→      { id: "pt-records", label: "Professional Tax", icon: Briefcase },
+   160→      { id: "lwf-records", label: "Labour Welfare Fund", icon: HandCoins },
+   161→      { id: "tds-records", label: "TDS / Income Tax", icon: FileCheck },
+   162→      { id: "investment-declaration", label: "Investment Declaration", icon: CalendarClock },
+   163→      { id: "form-16", label: "Form 16", icon: FileText },
+   164→      { id: "challans", label: "Challans / Payments", icon: Coins },
+   165→      { id: "compliance-reports", label: "Reports", icon: BarChart3 },
+   166→    ],
+   167→  },
+   168→  {
+   169→    id: "arrear", label: "Arrear", icon: ArrowLeftRight, accent: "from-amber-500 to-orange-500",
+   170→    description: "Calculate, approve & pay salary arrears from revisions, LOP reversals, attendance corrections & manual entries",
+   171→    children: [
+   172→      { id: "arrear-dashboard", label: "Dashboard", icon: LayoutDashboard },
+   173→      { id: "arrear-inputs", label: "Arrear Inputs", icon: Inbox },
+   174→      { id: "arrear-calculation", label: "Arrear Calculation", icon: Calculator },
+   175→      { id: "salary-revision-arrear", label: "Salary Revision Arrear", icon: GitCompareArrows },
+   176→      { id: "lop-reversal-arrear", label: "LOP Reversal Arrear", icon: Undo2 },
+   177→      { id: "manual-arrear", label: "Manual Arrear", icon: Hand },
+   178→      { id: "arrear-approval", label: "Arrear Approval", icon: CheckCircle2 },
+   179→      { id: "arrear-payment", label: "Arrear Payment", icon: Wallet },
+   180→      { id: "arrear-reports", label: "Reports", icon: BarChart3 },
+   181→    ],
+   182→  },
+   183→  {
+   184→    id: "fnf", label: "Full & Final", icon: Receipt, accent: "from-rose-500 to-pink-500",
+   185→    description: "Settle employee exits — auto-fetch payroll, leave encashment, notice recovery, asset/loan recovery, generate letters & track payments",
+   186→    children: [
+   187→      { id: "fnf-dashboard", label: "Dashboard", icon: LayoutDashboard },
+   188→      { id: "fnf-cases", label: "FnF Cases", icon: ClipboardCheck },
+   189→      { id: "fnf-inputs", label: "FnF Inputs", icon: Inbox },
+   190→      { id: "fnf-calculation", label: "FnF Calculation", icon: Calculator },
+   191→      { id: "leave-encashment", label: "Leave Encashment", icon: CalendarClock },
+   192→      { id: "notice-recovery", label: "Notice Recovery", icon: ScrollText },
+   193→      { id: "asset-loan-recovery", label: "Asset / Loan Recovery", icon: Package },
+   194→      { id: "fnf-approval", label: "FnF Approval", icon: CheckCircle2 },
+   195→      { id: "fnf-payment", label: "FnF Payment", icon: Wallet },
+   196→      { id: "fnf-letters", label: "FnF Letters", icon: FileText },
+   197→      { id: "fnf-reports", label: "Reports", icon: BarChart3 },
+   198→    ],
+   199→  },
+   200→  {
+   201→    id: "settings", label: "Settings", icon: SettingsIcon, accent: "from-slate-500 to-slate-600",
+   202→    description: "Configure payroll defaults, entity-wise configuration (flagship 9-step wizard), pay groups, components, structures, calendar, integrations, compliance, tax, arrear, FnF, payslip, bank, approvals, emails, import/export & audit",
+   203→    children: [
+   204→      { id: "settings-general", label: "General Settings", icon: SlidersHorizontal },
+   205→      { id: "entity-configuration", label: "Entity Configuration", icon: Building2 },
+   206→      { id: "settings-pay-group", label: "Pay Group Settings", icon: Users },
+   207→      { id: "settings-component", label: "Salary Component Settings", icon: Layers },
+   208→      { id: "settings-structure", label: "Salary Structure Settings", icon: FileSpreadsheet },
+   209→      { id: "settings-calendar", label: "Payroll Calendar Settings", icon: Calendar },
+   210→      { id: "settings-integration", label: "Attendance / Leave Integration", icon: Plug },
+   211→      { id: "settings-compliance", label: "Compliance Settings", icon: ShieldCheck },
+   212→      { id: "settings-tax", label: "Tax Settings", icon: BadgePercent },
+   213→      { id: "settings-arrear", label: "Arrear Settings", icon: ArrowLeftRight },
+   214→      { id: "settings-fnf", label: "FnF Settings", icon: Receipt },
+   215→      { id: "settings-payslip", label: "Payslip Settings", icon: FileSliders },
+   216→      { id: "settings-bank", label: "Bank Settings", icon: Landmark },
+   217→      { id: "settings-approval", label: "Approval Settings", icon: CheckCircle2 },
+   218→      { id: "settings-email", label: "Email Settings", icon: Mail },
+   219→      { id: "settings-import-export", label: "Import / Export Settings", icon: Upload },
+   220→      { id: "settings-audit-security", label: "Audit & Security", icon: Lock },
+   221→    ],
+   222→  },
+   223→]
+   224→
+   225→// ============================================================
+   226→// Main Module
+   227→// ============================================================
+   228→export function PayrollModule() {
+   229→  const [activeMenu, setActiveMenu] = React.useState("salary")
+   230→  const [activeSection, setActiveSection] = React.useState("salary-dashboard")
+   231→  const [mobileOpen, setMobileOpen] = React.useState(false)
+   232→
+   233→  // When main menu changes, auto-select first child
+   234→  const switchMenu = (menuId: string) => {
+   235→    const menu = MENUS.find(m => m.id === menuId)
+   236→    if (menu && menu.children.length > 0) {
+   237→      setActiveMenu(menuId)
+   238→      setActiveSection(menu.children[0].id)
+   239→      setMobileOpen(false)
+   240→    }
+   241→  }
+   242→
+   243→  const currentMenu = MENUS.find(m => m.id === activeMenu)!
+   244→  const currentSection = currentMenu.children.find(s => s.id === activeSection) || currentMenu.children[0]
+   245→
+   246→  const renderSection = () => {
+   247→    switch (activeSection) {
+   248→      // Salary
+   249→      case "salary-dashboard": return <SalaryDashboard />
+   250→      case "payroll-run": return <PayrollRun />
+   251→      case "payroll-inputs": return <PayrollInputs />
+   252→      case "pay-groups": return <PayGroups />
+   253→      case "payroll-components": return <PayrollComponents />
+   254→      case "salary-structure": return <SalaryStructure />
+   255→      case "employee-salary": return <EmployeeSalary />
+   256→      case "salary-revision": return <SalaryRevision />
+   257→      case "payslips": return <Payslips />
+   258→      case "bank-payment": return <BankPayment />
+   259→      case "salary-reports": return <SalaryReports />
+   260→      // Compliance
+   261→      case "compliance-dashboard": return <ComplianceDashboard />
+   262→      case "statutory-setup": return <StatutorySetup />
+   263→      case "pf-records": return <PFRecords />
+   264→      case "esi-records": return <ESIRecords />
+   265→      case "pt-records": return <PTRecords />
+   266→      case "lwf-records": return <LWFRecords />
+   267→      case "tds-records": return <TDSRecords />
+   268→      case "investment-declaration": return <InvestmentDeclaration />
+   269→      case "form-16": return <Form16 />
+   270→      case "challans": return <Challans />
+   271→      case "compliance-reports": return <ComplianceReports />
+   272→      // Arrear
+   273→      case "arrear-dashboard": return <ArrearDashboard />
+   274→      case "arrear-inputs": return <ArrearInputs />
+   275→      case "arrear-calculation": return <ArrearCalculation />
+   276→      case "salary-revision-arrear": return <SalaryRevisionArrear />
+   277→      case "lop-reversal-arrear": return <LopReversalArrear />
+   278→      case "manual-arrear": return <ManualArrear />
+   279→      case "arrear-approval": return <ArrearApproval />
+   280→      case "arrear-payment": return <ArrearPayment />
+   281→      case "arrear-reports": return <ArrearReports />
+   282→      // FnF
+   283→      case "fnf-dashboard": return <FnFDashboard />
+   284→      case "fnf-cases": return <FnFCases />
+   285→      case "fnf-inputs": return <FnFInputs />
+   286→      case "fnf-calculation": return <FnFCalculation />
+   287→      case "leave-encashment": return <LeaveEncashment />
+   288→      case "notice-recovery": return <NoticeRecovery />
+   289→      case "asset-loan-recovery": return <AssetLoanRecovery />
+   290→      case "fnf-approval": return <FnFApproval />
+   291→      case "fnf-payment": return <FnFPayment />
+   292→      case "fnf-letters": return <FnFLetters />
+   293→      case "fnf-reports": return <FnFReports />
+   294→      // Settings
+   295→      case "settings-general": return <GeneralSettings />
+   296→      case "entity-configuration": return <EntityConfiguration />
+   297→      case "settings-pay-group": return <PayGroupSettings />
+   298→      case "settings-component": return <ComponentSettings />
+   299→      case "settings-structure": return <StructureSettings />
+   300→      case "settings-calendar": return <CalendarSettings />
+   301→      case "settings-integration": return <IntegrationSettings />
+   302→      case "settings-compliance": return <ComplianceSettings />
+   303→      case "settings-tax": return <TaxSettings />
+   304→      case "settings-arrear": return <ArrearSettings />
+   305→      case "settings-fnf": return <FnFSettings />
+   306→      case "settings-payslip": return <PayslipSettings />
+   307→      case "settings-bank": return <BankSettings />
+   308→      case "settings-approval": return <ApprovalSettings />
+   309→      case "settings-email": return <EmailSettings />
+   310→      case "settings-import-export": return <ImportExportSettings />
+   311→      case "settings-audit-security": return <AuditSecuritySettings />
+   312→      default: return null
+   313→    }
+   314→  }
+   315→
+   316→  return (
+   317→    <div className="flex flex-col gap-0">
+   318→      {/* Module header */}
+   319→      <motion.div
+   320→        initial={{ opacity: 0, y: -8 }}
+   321→        animate={{ opacity: 1, y: 0 }}
+   322→        className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+   323→      >
+   324→        <div className="flex items-start gap-3">
+   325→          <div className={cn("rounded-xl bg-gradient-to-br p-2.5 text-white shadow-sm", currentMenu.accent)}>
+   326→            <currentMenu.icon className="h-6 w-6" />
+   327→          </div>
+   328→          <div>
+   329→            <div className="flex items-center gap-2">
+   330→              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">
+   331→                Payroll — {currentMenu.label}
+   332→              </h1>
+   333→              <Badge variant="secondary" className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+   334→                {currentMenu.children.length} sections
+   335→              </Badge>
+   336→            </div>
+   337→            <p className="mt-0.5 max-w-3xl text-sm text-slate-500 dark:text-slate-400">
+   338→              {currentMenu.description}
+   339→            </p>
+   340→          </div>
+   341→        </div>
+   342→        <Button
+   343→          variant="outline"
+   344→          size="sm"
+   345→          className="lg:hidden"
+   346→          onClick={() => setMobileOpen(o => !o)}
+   347→        >
+   348→          {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+   349→          Sections
+   350→        </Button>
+   351→      </motion.div>
+   352→
+   353→      <div className="flex flex-col gap-4 lg:flex-row">
+   354→        {/* Sidebar — main menus + sub items */}
+   355→        <aside
+   356→          className={cn(
+   357→            "lg:w-72 lg:flex-shrink-0",
+   358→            mobileOpen ? "block" : "hidden lg:block"
+   359→          )}
+   360→        >
+   361→          <div className="sticky top-2 rounded-xl border border-slate-200 bg-white/80 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80">
+   362→            {/* Main menu tabs */}
+   363→            <div className="flex gap-1 overflow-x-auto border-b border-slate-200 p-2 dark:border-slate-700">
+   364→              {MENUS.map(m => {
+   365→                const active = activeMenu === m.id
+   366→                return (
+   367→                  <button
+   368→                    key={m.id}
+   369→                    onClick={() => switchMenu(m.id)}
+   370→                    className={cn(
+   371→                      "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap",
+   372→                      active
+   373→                        ? cn("bg-gradient-to-r text-white shadow-sm", m.accent)
+   374→                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+   375→                    )}
+   376→                  >
+   377→                    <m.icon className="h-3.5 w-3.5" />
+   378→                    {m.label}
+   379→                  </button>
+   380→                )
+   381→              })}
+   382→            </div>
+   383→
+   384→            {/* Sub items */}
+   385→            <nav className="max-h-[calc(100vh-220px)] overflow-y-auto p-2">
+   386→              <AnimatePresence mode="wait">
+   387→                <motion.div
+   388→                  key={activeMenu}
+   389→                  initial={{ opacity: 0, x: -8 }}
+   390→                  animate={{ opacity: 1, x: 0 }}
+   391→                  exit={{ opacity: 0, x: 8 }}
+   392→                  transition={{ duration: 0.15 }}
+   393→                  className="space-y-0.5"
+   394→                >
+   395→                  {currentMenu.children.map(child => {
+   396→                    const active = activeSection === child.id
+   397→                    return (
+   398→                      <button
+   399→                        key={child.id}
+   400→                        onClick={() => { setActiveSection(child.id); setMobileOpen(false) }}
+   401→                        className={cn(
+   402→                          "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all",
+   403→                          active
+   404→                            ? cn("bg-gradient-to-r text-white shadow-sm", currentMenu.accent)
+   405→                            : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+   406→                        )}
+   407→                      >
+   408→                        <child.icon className="h-4 w-4 flex-shrink-0" />
+   409→                        <span className="flex-1 text-left">{child.label}</span>
+   410→                        {active && <ChevronRight className="h-3.5 w-3.5" />}
+   411→                      </button>
+   412→                    )
+   413→                  })}
+   414→                </motion.div>
+   415→              </AnimatePresence>
+   416→            </nav>
+   417→          </div>
+   418→        </aside>
+   419→
+   420→        {/* Main content */}
+   421→        <div className="min-w-0 flex-1">
+   422→          <AnimatePresence mode="wait">
+   423→            <motion.div
+   424→              key={activeSection}
+   425→              initial={{ opacity: 0, y: 8 }}
+   426→              animate={{ opacity: 1, y: 0 }}
+   427→              exit={{ opacity: 0, y: -8 }}
+   428→              transition={{ duration: 0.2 }}
+   429→            >
+   430→              {renderSection()}
+   431→            </motion.div>
+   432→          </AnimatePresence>
+   433→        </div>
+   434→      </div>
+   435→    </div>
+   436→  )
+   437→}
+   438→
+   439→export default PayrollModule
+   440→
