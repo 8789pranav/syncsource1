@@ -136,7 +136,7 @@ function Sidebar() {
   return (
     <aside
       className={cn(
-        "sticky top-0 h-screen shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col transition-[width] duration-200 z-30",
+        "sticky top-0 h-screen shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col overflow-hidden transition-[width] duration-200 z-30",
         sidebarOpen ? "w-64" : "w-16",
       )}
     >
@@ -147,7 +147,7 @@ function Sidebar() {
           </div>
         )}
       </div>
-      <ScrollArea className="flex-1 px-2 py-3">
+      <ScrollArea className="flex-1 min-h-0 px-2 py-3">
         <nav className="space-y-4">
           {GROUPS.map((g) => {
             const items = MODULES.filter((m) => m.group === g.id)
