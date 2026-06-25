@@ -1,0 +1,528 @@
+     1→"use client"
+     2→
+     3→// ============================================================================
+     4→//  Documents — Employee Documents (Task ID 4-b)
+     5→// ----------------------------------------------------------------------------
+     6→//  Employee document management with verification workflow.
+     7→//  Theme: violet/purple accent.
+     8→// ============================================================================
+     9→
+    10→import * as React from "react"
+    11→import { motion } from "framer-motion"
+    12→import { toast } from "sonner"
+    13→import {
+    14→  UserSquare, Upload, Filter, MoreHorizontal, Eye, FileText, Download,
+    15→  RefreshCw, History, CheckCircle2, XCircle, AlertTriangle, FileX2,
+    16→  Archive, Pencil, FileUp, Plus, Search, Trash2, CalendarClock,
+    17→} from "lucide-react"
+    18→
+    19→import { cn } from "@/lib/utils"
+    20→import { Button } from "@/components/ui/button"
+    21→import { Input } from "@/components/ui/input"
+    22→import { Label } from "@/components/ui/label"
+    23→import { Textarea } from "@/components/ui/textarea"
+    24→import { Badge } from "@/components/ui/badge"
+    25→import { Card, CardContent } from "@/components/ui/card"
+    26→import { Separator } from "@/components/ui/separator"
+    27→import { ScrollArea } from "@/components/ui/scroll-area"
+    28→import {
+    29→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+    30→} from "@/components/ui/dialog"
+    31→import {
+    32→  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+    33→} from "@/components/ui/select"
+    34→import {
+    35→  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+    36→} from "@/components/ui/table"
+    37→import {
+    38→  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+    39→  DropdownMenuItem, DropdownMenuSeparator,
+    40→} from "@/components/ui/dropdown-menu"
+    41→
+    42→import {
+    43→  ENTITIES, EMPLOYEE_DOC_CATEGORIES, STATUS_COLORS,
+    44→  formatDate, daysUntil, dueStatus, initials, avatarColor,
+    45→  EmployeeDoc,
+    46→} from "../shared"
+    47→import { EMPLOYEE_DOCUMENTS } from "../data"
+    48→
+    49→// ---------- motion ----------
+    50→const gridContainer = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } }
+    51→const gridItem = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }
+    52→
+    53→// ---------- Stat tile ----------
+    54→function StatTile({ label, value, icon: Icon, accent, sub }: {
+    55→  label: string; value: React.ReactNode; icon: React.ComponentType<{ className?: string }>
+    56→  accent: "violet" | "emerald" | "amber" | "rose" | "sky" | "cyan"; sub?: string
+    57→}) {
+    58→  const map: Record<string, string> = {
+    59→    violet: "from-violet-500/15 to-violet-500/5 text-violet-600 dark:text-violet-400",
+    60→    emerald: "from-emerald-500/15 to-emerald-500/5 text-emerald-600 dark:text-emerald-400",
+    61→    amber: "from-amber-500/15 to-amber-500/5 text-amber-600 dark:text-amber-400",
+    62→    rose: "from-rose-500/15 to-rose-500/5 text-rose-600 dark:text-rose-400",
+    63→    sky: "from-sky-500/15 to-sky-500/5 text-sky-600 dark:text-sky-400",
+    64→    cyan: "from-cyan-500/15 to-cyan-500/5 text-cyan-600 dark:text-cyan-400",
+    65→  }
+    66→  return (
+    67→    <Card className={cn("rounded-xl border border-border/60 shadow-soft bg-gradient-to-br", map[accent])}>
+    68→      <CardContent className="p-4">
+    69→        <div className="flex items-start justify-between gap-2">
+    70→          <div className="min-w-0">
+    71→            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide truncate">{label}</p>
+    72→            <p className="text-xl font-semibold mt-1 text-foreground tabular-nums leading-none">{value}</p>
+    73→            {sub && <p className="text-[11px] text-muted-foreground mt-1.5 truncate">{sub}</p>}
+    74→          </div>
+    75→          <div className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background/70 ring-1 backdrop-blur-sm", map[accent])}>
+    76→            <Icon className="h-4 w-4" />
+    77→          </div>
+    78→        </div>
+    79→      </CardContent>
+    80→    </Card>
+    81→  )
+    82→}
+    83→
+    84→// ---------- Upload Dialog ----------
+    85→function UploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+    86→  const [form, setForm] = React.useState({
+    87→    employee: "", entity: "", department: "", designation: "",
+    88→    category: "", documentType: "", expiryDate: "", remarks: "",
+    89→  })
+    90→  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+    91→
+    92→  const employees = React.useMemo(() => {
+    93→    const map = new Map<string, EmployeeDoc>()
+    94→    EMPLOYEE_DOCUMENTS.forEach(d => map.set(d.employeeCode, d))
+    95→    return Array.from(map.values())
+    96→  }, [])
+    97→
+    98→  const submit = () => {
+    99→    if (!form.employee || !form.category || !form.documentType) {
+   100→      toast.error("Employee, category & document type are required")
+   101→      return
+   102→    }
+   103→    toast.success("Document uploaded", {
+   104→      description: `${form.documentType} uploaded for ${form.employee}`,
+   105→    })
+   106→    setForm({ employee: "", entity: "", department: "", designation: "", category: "", documentType: "", expiryDate: "", remarks: "" })
+   107→    onClose()
+   108→  }
+   109→
+   110→  return (
+   111→    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+   112→      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+   113→        <DialogHeader>
+   114→          <DialogTitle className="flex items-center gap-2">
+   115→            <Upload className="h-4 w-4 text-violet-600" /> Upload Employee Document
+   116→          </DialogTitle>
+   117→          <DialogDescription>Upload a document for an employee. Verification workflow will start automatically.</DialogDescription>
+   118→        </DialogHeader>
+   119→        <ScrollArea className="flex-1 -mx-6 px-6">
+   120→          <div className="space-y-4 pb-2">
+   121→            {/* Employee selection */}
+   122→            <div className="space-y-2">
+   123→              <Label className="text-xs">Employee *</Label>
+   124→              <Select value={form.employee} onValueChange={v => {
+   125→                const emp = employees.find(e => e.employeeCode === v)
+   126→                set("employee", v)
+   127→                if (emp) { set("entity", emp.entityName); set("department", emp.department); set("designation", emp.designation) }
+   128→              }}>
+   129→                <SelectTrigger className="bg-background"><SelectValue placeholder="Select employee" /></SelectTrigger>
+   130→                <SelectContent>
+   131→                  {employees.map(e => (
+   132→                    <SelectItem key={e.employeeCode} value={e.employeeCode}>
+   133→                      {e.employeeName} ({e.employeeCode})
+   134→                    </SelectItem>
+   135→                  ))}
+   136→                </SelectContent>
+   137→              </Select>
+   138→            </div>
+   139→
+   140→            {/* Filters row */}
+   141→            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+   142→              <div className="space-y-1.5">
+   143→                <Label className="text-xs">Entity</Label>
+   144→                <Select value={form.entity} onValueChange={v => set("entity", v)}>
+   145→                  <SelectTrigger className="bg-background"><SelectValue placeholder="Entity" /></SelectTrigger>
+   146→                  <SelectContent>
+   147→                    {ENTITIES.map(e => <SelectItem key={e.id} value={e.name}>{e.name}</SelectItem>)}
+   148→                  </SelectContent>
+   149→                </Select>
+   150→              </div>
+   151→              <div className="space-y-1.5">
+   152→                <Label className="text-xs">Department</Label>
+   153→                <Input value={form.department} onChange={e => set("department", e.target.value)} placeholder="e.g. Engineering" className="bg-background" />
+   154→              </div>
+   155→              <div className="space-y-1.5">
+   156→                <Label className="text-xs">Designation</Label>
+   157→                <Input value={form.designation} onChange={e => set("designation", e.target.value)} placeholder="e.g. SDE II" className="bg-background" />
+   158→              </div>
+   159→            </div>
+   160→
+   161→            <Separator />
+   162→
+   163→            {/* Doc details */}
+   164→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   165→              <div className="space-y-1.5">
+   166→                <Label className="text-xs">Document Category *</Label>
+   167→                <Select value={form.category} onValueChange={v => set("category", v)}>
+   168→                  <SelectTrigger className="bg-background"><SelectValue placeholder="Select category" /></SelectTrigger>
+   169→                  <SelectContent>
+   170→                    {EMPLOYEE_DOC_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+   171→                  </SelectContent>
+   172→                </Select>
+   173→              </div>
+   174→              <div className="space-y-1.5">
+   175→                <Label className="text-xs">Document Type *</Label>
+   176→                <Input value={form.documentType} onChange={e => set("documentType", e.target.value)} placeholder="e.g. Aadhaar Card" className="bg-background" />
+   177→              </div>
+   178→              <div className="space-y-1.5 sm:col-span-2">
+   179→                <Label className="text-xs">Expiry Date (optional)</Label>
+   180→                <Input type="date" value={form.expiryDate} onChange={e => set("expiryDate", e.target.value)} className="bg-background" />
+   181→              </div>
+   182→            </div>
+   183→
+   184→            {/* File upload mock */}
+   185→            <div className="space-y-1.5">
+   186→              <Label className="text-xs">File</Label>
+   187→              <div className="rounded-lg border-2 border-dashed border-border/60 bg-muted/20 p-5 text-center hover:border-violet-500/40 hover:bg-violet-50/30 dark:hover:bg-violet-500/5 transition-colors cursor-pointer">
+   188→                <FileUp className="h-7 w-7 text-muted-foreground/60 mx-auto mb-1" />
+   189→                <p className="text-xs text-muted-foreground">Click or drop file here · PDF, JPG, PNG (max 10 MB)</p>
+   190→              </div>
+   191→            </div>
+   192→
+   193→            <div className="space-y-1.5">
+   194→              <Label className="text-xs">Remarks</Label>
+   195→              <Textarea value={form.remarks} onChange={e => set("remarks", e.target.value)} placeholder="Any remarks..." className="bg-background min-h-[60px]" />
+   196→            </div>
+   197→          </div>
+   198→        </ScrollArea>
+   199→        <Separator />
+   200→        <DialogFooter className="bg-muted/30 -mx-6 px-6 py-3 gap-2">
+   201→          <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+   202→          <Button size="sm" onClick={submit} className="gap-1.5 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white">
+   203→            <Upload className="h-3.5 w-3.5" /> Upload Document
+   204→          </Button>
+   205→        </DialogFooter>
+   206→      </DialogContent>
+   207→    </Dialog>
+   208→  )
+   209→}
+   210→
+   211→// ---------- View History Dialog ----------
+   212→function HistoryDialog({ doc, open, onClose }: { doc: EmployeeDoc | null; open: boolean; onClose: () => void }) {
+   213→  if (!doc) return null
+   214→  // Mock version timeline
+   215→  const versions = Array.from({ length: Math.max(1, doc.version) }).map((_, i) => ({
+   216→    version: i + 1,
+   217→    uploadedBy: doc.uploadedBy || "Unknown",
+   218→    uploadedDate: new Date(new Date(doc.uploadedDate || Date.now()).getTime() - (doc.version - i - 1) * 86400000 * 30).toISOString(),
+   219→    remarks: i === doc.version - 1 ? doc.remarks || "Latest version" : `Replaced — version ${i + 1}`,
+   220→    isCurrent: i === doc.version - 1,
+   221→  })).reverse()
+   222→
+   223→  return (
+   224→    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+   225→      <DialogContent className="sm:max-w-xl max-h-[80vh] flex flex-col">
+   226→        <DialogHeader>
+   227→          <DialogTitle className="flex items-center gap-2">
+   228→            <History className="h-4 w-4 text-violet-600" /> Version History
+   229→          </DialogTitle>
+   230→          <DialogDescription>{doc.documentName} · {doc.employeeName} ({doc.employeeCode})</DialogDescription>
+   231→        </DialogHeader>
+   232→        <ScrollArea className="flex-1 -mx-6 px-6">
+   233→          <ol className="relative border-l border-border/60 ml-3 space-y-3 pb-2">
+   234→            {versions.map((v, i) => (
+   235→              <li key={v.version} className="ml-4">
+   236→                <span className={cn(
+   237→                  "absolute -left-[13px] grid h-6 w-6 place-items-center rounded-full text-white ring-4 ring-background",
+   238→                  v.isCurrent ? "bg-gradient-to-br from-violet-500 to-purple-600" : "bg-muted-foreground"
+   239→                )}>
+   240→                  <span className="text-[10px] font-bold">{v.version}</span>
+   241→                </span>
+   242→                <div className="rounded-lg border border-border/40 bg-background p-3">
+   243→                  <div className="flex items-center justify-between gap-2">
+   244→                    <p className="text-sm font-semibold text-foreground">Version {v.version} {v.isCurrent && <Badge variant="secondary" className="ml-1 text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400">Current</Badge>}</p>
+   245→                    <span className="text-[11px] text-muted-foreground">{formatDate(v.uploadedDate)}</span>
+   246→                  </div>
+   247→                  <p className="text-[11px] text-muted-foreground mt-1">Uploaded by {v.uploadedBy}</p>
+   248→                  <p className="text-xs text-muted-foreground mt-1 italic">{v.remarks}</p>
+   249→                </div>
+   250→                {i < versions.length - 1 && <div className="text-[10px] text-muted-foreground/60 mt-1 ml-1">↓ superseded</div>}
+   251→              </li>
+   252→            ))}
+   253→          </ol>
+   254→        </ScrollArea>
+   255→      </DialogContent>
+   256→    </Dialog>
+   257→  )
+   258→}
+   259→
+   260→// ============================================================================
+   261→//  Main component
+   262→// ============================================================================
+   263→export function EmployeeDocumentsSection() {
+   264→  const [filters, setFilters] = React.useState({
+   265→    entity: "all", department: "all", category: "all", status: "all", search: "",
+   266→    uploadedFrom: "", uploadedTo: "", expiryFrom: "", expiryTo: "",
+   267→  })
+   268→  const [uploadOpen, setUploadOpen] = React.useState(false)
+   269→  const [historyDoc, setHistoryDoc] = React.useState<EmployeeDoc | null>(null)
+   270→  const [historyOpen, setHistoryOpen] = React.useState(false)
+   271→
+   272→  const setF = (k: string, v: string) => setFilters(f => ({ ...f, [k]: v }))
+   273→
+   274→  const departments = React.useMemo(() => Array.from(new Set(EMPLOYEE_DOCUMENTS.map(d => d.department))).sort(), [])
+   275→  const entities = React.useMemo(() => Array.from(new Set(EMPLOYEE_DOCUMENTS.map(d => d.entityName))), [])
+   276→
+   277→  const filtered = React.useMemo(() => {
+   278→    let list = EMPLOYEE_DOCUMENTS
+   279→    if (filters.entity !== "all") list = list.filter(d => d.entityName === filters.entity)
+   280→    if (filters.department !== "all") list = list.filter(d => d.department === filters.department)
+   281→    if (filters.category !== "all") list = list.filter(d => d.category === filters.category)
+   282→    if (filters.status !== "all") list = list.filter(d => d.status === filters.status)
+   283→    if (filters.search.trim()) {
+   284→      const q = filters.search.toLowerCase()
+   285→      list = list.filter(d =>
+   286→        d.employeeName.toLowerCase().includes(q) ||
+   287→        d.employeeCode.toLowerCase().includes(q) ||
+   288→        d.documentName.toLowerCase().includes(q)
+   289→      )
+   290→    }
+   291→    if (filters.uploadedFrom) list = list.filter(d => d.uploadedDate && new Date(d.uploadedDate) >= new Date(filters.uploadedFrom))
+   292→    if (filters.uploadedTo) list = list.filter(d => d.uploadedDate && new Date(d.uploadedDate) <= new Date(filters.uploadedTo))
+   293→    if (filters.expiryFrom) list = list.filter(d => d.expiryDate && new Date(d.expiryDate) >= new Date(filters.expiryFrom))
+   294→    if (filters.expiryTo) list = list.filter(d => d.expiryDate && new Date(d.expiryDate) <= new Date(filters.expiryTo))
+   295→    return list
+   296→  }, [filters])
+   297→
+   298→  const stats = {
+   299→    total: EMPLOYEE_DOCUMENTS.length,
+   300→    verified: EMPLOYEE_DOCUMENTS.filter(d => d.status === "Verified").length,
+   301→    pending: EMPLOYEE_DOCUMENTS.filter(d => d.status === "Pending Verification" || d.status === "Uploaded").length,
+   302→    expiring: EMPLOYEE_DOCUMENTS.filter(d => d.status === "Expiring Soon" || (d.expiryDate && dueStatus(d.expiryDate) === "soon")).length,
+   303→    expired: EMPLOYEE_DOCUMENTS.filter(d => d.status === "Expired" || (d.expiryDate && dueStatus(d.expiryDate) === "overdue")).length,
+   304→    rejected: EMPLOYEE_DOCUMENTS.filter(d => d.status === "Rejected" || d.status === "Correction Required").length,
+   305→  }
+   306→
+   307→  const onRowAction = (action: string, doc: EmployeeDoc) => {
+   308→    if (action === "View History") {
+   309→      setHistoryDoc(doc); setHistoryOpen(true); return
+   310→    }
+   311→    toast.success(action, { description: `${doc.documentName} · ${doc.employeeName}` })
+   312→  }
+   313→
+   314→  return (
+   315→    <div className="space-y-4">
+   316→      {/* ---------- Header ---------- */}
+   317→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-border/60">
+   318→        <div className="flex items-start gap-3 min-w-0">
+   319→          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-soft">
+   320→            <UserSquare className="h-5 w-5" />
+   321→          </div>
+   322→          <div className="min-w-0">
+   323→            <h1 className="text-xl font-semibold tracking-tight text-foreground truncate">Employee Documents</h1>
+   324→            <p className="text-sm text-muted-foreground mt-0.5">Manage identity, address, education, bank, statutory & employment documents per employee.</p>
+   325→          </div>
+   326→        </div>
+   327→        <div className="flex items-center gap-2 shrink-0">
+   328→          <Button size="sm" variant="outline" onClick={() => toast.info("Bulk import dialog opened")} className="gap-1.5"><FileUp className="h-3.5 w-3.5" /> Bulk Import</Button>
+   329→          <Button size="sm" variant="outline" onClick={() => toast.success("Export started")} className="gap-1.5"><Download className="h-3.5 w-3.5" /> Export</Button>
+   330→          <Button size="sm" onClick={() => setUploadOpen(true)} className="gap-1.5 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white">
+   331→            <Upload className="h-3.5 w-3.5" /> Upload Document
+   332→          </Button>
+   333→        </div>
+   334→      </div>
+   335→
+   336→      {/* ---------- Stat tiles ---------- */}
+   337→      <motion.div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" variants={gridContainer} initial="hidden" animate="show">
+   338→        <motion.div variants={gridItem}><StatTile label="Total Documents" value={stats.total} icon={FileText} accent="violet" /></motion.div>
+   339→        <motion.div variants={gridItem}><StatTile label="Verified" value={stats.verified} icon={CheckCircle2} accent="emerald" /></motion.div>
+   340→        <motion.div variants={gridItem}><StatTile label="Pending Verification" value={stats.pending} icon={AlertTriangle} accent="amber" /></motion.div>
+   341→        <motion.div variants={gridItem}><StatTile label="Expiring Soon" value={stats.expiring} icon={CalendarClock} accent="sky" /></motion.div>
+   342→        <motion.div variants={gridItem}><StatTile label="Expired" value={stats.expired} icon={FileX2} accent="rose" /></motion.div>
+   343→        <motion.div variants={gridItem}><StatTile label="Rejected" value={stats.rejected} icon={XCircle} accent="cyan" /></motion.div>
+   344→      </motion.div>
+   345→
+   346→      {/* ---------- Filter bar ---------- */}
+   347→      <Card className="border-border/60 rounded-xl shadow-soft">
+   348→        <CardContent className="p-4">
+   349→          <div className="flex items-center gap-2 mb-3">
+   350→            <Filter className="h-4 w-4 text-violet-500" />
+   351→            <h3 className="text-sm font-semibold text-foreground">Filters</h3>
+   352→          </div>
+   353→          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+   354→            <Select value={filters.entity} onValueChange={v => setF("entity", v)}>
+   355→              <SelectTrigger className="h-9 text-xs bg-background"><SelectValue placeholder="Entity" /></SelectTrigger>
+   356→              <SelectContent>
+   357→                <SelectItem value="all">All Entities</SelectItem>
+   358→                {entities.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+   359→              </SelectContent>
+   360→            </Select>
+   361→            <Select value={filters.department} onValueChange={v => setF("department", v)}>
+   362→              <SelectTrigger className="h-9 text-xs bg-background"><SelectValue placeholder="Department" /></SelectTrigger>
+   363→              <SelectContent>
+   364→                <SelectItem value="all">All Departments</SelectItem>
+   365→                {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+   366→              </SelectContent>
+   367→            </Select>
+   368→            <Select value={filters.category} onValueChange={v => setF("category", v)}>
+   369→              <SelectTrigger className="h-9 text-xs bg-background"><SelectValue placeholder="Category" /></SelectTrigger>
+   370→              <SelectContent>
+   371→                <SelectItem value="all">All Categories</SelectItem>
+   372→                {EMPLOYEE_DOC_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+   373→              </SelectContent>
+   374→            </Select>
+   375→            <Select value={filters.status} onValueChange={v => setF("status", v)}>
+   376→              <SelectTrigger className="h-9 text-xs bg-background"><SelectValue placeholder="Status" /></SelectTrigger>
+   377→              <SelectContent>
+   378→                <SelectItem value="all">All Statuses</SelectItem>
+   379→                {["Verified", "Pending Verification", "Uploaded", "Expiring Soon", "Expired", "Rejected", "Correction Required"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+   380→              </SelectContent>
+   381→            </Select>
+   382→            <div className="relative col-span-2 sm:col-span-1">
+   383→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   384→              <Input value={filters.search} onChange={e => setF("search", e.target.value)} placeholder="Search employee / doc..." className="pl-9 h-9 bg-background" />
+   385→            </div>
+   386→            <Input type="date" value={filters.uploadedFrom} onChange={e => setF("uploadedFrom", e.target.value)} className="h-9 bg-background" title="Uploaded from" />
+   387→            <Input type="date" value={filters.uploadedTo} onChange={e => setF("uploadedTo", e.target.value)} className="h-9 bg-background" title="Uploaded to" />
+   388→            <Input type="date" value={filters.expiryFrom} onChange={e => setF("expiryFrom", e.target.value)} className="h-9 bg-background" title="Expiry from" />
+   389→          </div>
+   390→          {(filters.uploadedFrom || filters.uploadedTo || filters.expiryFrom || filters.expiryTo) && (
+   391→            <div className="flex items-center gap-2 mt-3 text-xs">
+   392→              <CalendarClock className="h-3 w-3 text-muted-foreground" />
+   393→              <span className="text-muted-foreground">Date range active</span>
+   394→              <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setFilters(f => ({ ...f, uploadedFrom: "", uploadedTo: "", expiryFrom: "", expiryTo: "" }))}>
+   395→                Clear dates
+   396→              </Button>
+   397→            </div>
+   398→          )}
+   399→        </CardContent>
+   400→      </Card>
+   401→
+   402→      {/* ---------- Table ---------- */}
+   403→      <Card className="border-border/60 rounded-xl shadow-soft overflow-hidden">
+   404→        <ScrollArea className="max-h-[640px]">
+   405→          <Table>
+   406→            <TableHeader className="sticky top-0 bg-muted/40 backdrop-blur z-10">
+   407→              <TableRow className="hover:bg-muted/40">
+   408→                <TableHead className="min-w-[200px]">Employee</TableHead>
+   409→                <TableHead className="min-w-[140px]">Entity / Dept</TableHead>
+   410→                <TableHead className="min-w-[180px]">Document Name</TableHead>
+   411→                <TableHead className="min-w-[120px]">Category</TableHead>
+   412→                <TableHead className="min-w-[120px]">Document Type</TableHead>
+   413→                <TableHead className="min-w-[110px]">Uploaded Date</TableHead>
+   414→                <TableHead className="min-w-[110px]">Uploaded By</TableHead>
+   415→                <TableHead className="min-w-[110px]">Verified By</TableHead>
+   416→                <TableHead className="min-w-[110px]">Expiry Date</TableHead>
+   417→                <TableHead className="min-w-[110px]">Status</TableHead>
+   418→                <TableHead className="w-[60px] text-right pr-4">Actions</TableHead>
+   419→              </TableRow>
+   420→            </TableHeader>
+   421→            <TableBody>
+   422→              {filtered.length === 0 ? (
+   423→                <TableRow>
+   424→                  <TableCell colSpan={11} className="text-center py-12">
+   425→                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+   426→                      <FileText className="h-8 w-8 opacity-40" />
+   427→                      <p className="text-sm font-medium">No documents match your filters</p>
+   428→                    </div>
+   429→                  </TableCell>
+   430→                </TableRow>
+   431→              ) : filtered.map(d => {
+   432→                const cat = EMPLOYEE_DOC_CATEGORIES.find(c => c.value === d.category)
+   433→                const expiryTone = d.expiryDate ? dueStatus(d.expiryDate) : "none"
+   434→                const rowTint = d.status === "Expired" || expiryTone === "overdue"
+   435→                  ? "bg-rose-50/40 dark:bg-rose-500/5"
+   436→                  : d.status === "Expiring Soon" || expiryTone === "soon"
+   437→                    ? "bg-amber-50/40 dark:bg-amber-500/5"
+   438→                    : ""
+   439→                return (
+   440→                  <TableRow key={d.id} className={cn("border-border/40 hover:bg-violet-50/30 dark:hover:bg-violet-500/5", rowTint)}>
+   441→                    <TableCell>
+   442→                      <div className="flex items-center gap-2.5 min-w-0">
+   443→                        <div className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white", avatarColor(d.employeeCode))}>
+   444→                          <span className="text-[10px] font-semibold">{initials(d.employeeName)}</span>
+   445→                        </div>
+   446→                        <div className="min-w-0">
+   447→                          <p className="text-sm font-medium text-foreground truncate">{d.employeeName}</p>
+   448→                          <p className="text-[11px] text-muted-foreground font-mono">{d.employeeCode}</p>
+   449→                        </div>
+   450→                      </div>
+   451→                    </TableCell>
+   452→                    <TableCell>
+   453→                      <p className="text-xs text-foreground truncate max-w-[140px]">{d.entityName}</p>
+   454→                      <p className="text-[11px] text-muted-foreground truncate">{d.department}</p>
+   455→                    </TableCell>
+   456→                    <TableCell>
+   457→                      <p className="text-sm font-medium text-foreground truncate max-w-[180px]">{d.documentName}</p>
+   458→                      {d.remarks && <p className="text-[11px] text-muted-foreground truncate max-w-[180px]">{d.remarks}</p>}
+   459→                    </TableCell>
+   460→                    <TableCell>
+   461→                      {cat && <Badge variant="secondary" className={cn("text-[10px] border-0", cat.color)}>{cat.label}</Badge>}
+   462→                    </TableCell>
+   463→                    <TableCell><span className="text-xs text-foreground">{d.documentType}</span></TableCell>
+   464→                    <TableCell>
+   465→                      <span className="text-xs text-foreground">{formatDate(d.uploadedDate)}</span>
+   466→                      <p className="text-[10px] text-muted-foreground">v{d.version} · {d.fileSize}</p>
+   467→                    </TableCell>
+   468→                    <TableCell><span className="text-xs text-foreground">{d.uploadedBy || "—"}</span></TableCell>
+   469→                    <TableCell>
+   470→                      {d.verifiedBy ? (
+   471→                        <span className="text-xs text-foreground">{d.verifiedBy}</span>
+   472→                      ) : <span className="text-xs text-muted-foreground italic">—</span>}
+   473→                    </TableCell>
+   474→                    <TableCell>
+   475→                      {d.expiryDate ? (
+   476→                        <div>
+   477→                          <span className={cn(
+   478→                            "text-xs font-medium",
+   479→                            expiryTone === "overdue" ? "text-rose-600 dark:text-rose-400"
+   480→                              : expiryTone === "soon" ? "text-amber-600 dark:text-amber-400"
+   481→                                : "text-foreground"
+   482→                          )}>{formatDate(d.expiryDate)}</span>
+   483→                          <p className="text-[10px] text-muted-foreground">{daysUntil(d.expiryDate) >= 0 ? `${daysUntil(d.expiryDate)}d left` : `${Math.abs(daysUntil(d.expiryDate))}d ago`}</p>
+   484→                        </div>
+   485→                      ) : <span className="text-xs text-muted-foreground">—</span>}
+   486→                    </TableCell>
+   487→                    <TableCell>
+   488→                      <Badge variant="secondary" className={cn("text-[11px] border-0", STATUS_COLORS[d.status])}>{d.status}</Badge>
+   489→                    </TableCell>
+   490→                    <TableCell className="text-right pr-4">
+   491→                      <DropdownMenu>
+   492→                        <DropdownMenuTrigger asChild>
+   493→                          <Button size="icon" variant="ghost" className="h-7 w-7">
+   494→                            <MoreHorizontal className="h-4 w-4" />
+   495→                          </Button>
+   496→                        </DropdownMenuTrigger>
+   497→                        <DropdownMenuContent align="end" className="w-44">
+   498→                          <DropdownMenuItem onClick={() => onRowAction("View", d)}><Eye className="h-3.5 w-3.5 mr-2" /> View</DropdownMenuItem>
+   499→                          <DropdownMenuItem onClick={() => onRowAction("Preview", d)}><FileText className="h-3.5 w-3.5 mr-2" /> Preview</DropdownMenuItem>
+   500→                          <DropdownMenuItem onClick={() => onRowAction("Download", d)}><Download className="h-3.5 w-3.5 mr-2" /> Download</DropdownMenuItem>
+   501→                          <DropdownMenuItem onClick={() => onRowAction("Upload New Version", d)}><FileUp className="h-3.5 w-3.5 mr-2" /> Upload New Version</DropdownMenuItem>
+   502→                          <DropdownMenuSeparator />
+   503→                          <DropdownMenuItem onClick={() => onRowAction("Verify", d)} className="text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5 mr-2" /> Verify</DropdownMenuItem>
+   504→                          <DropdownMenuItem onClick={() => onRowAction("Reject", d)} className="text-rose-700 dark:text-rose-400"><XCircle className="h-3.5 w-3.5 mr-2" /> Reject</DropdownMenuItem>
+   505→                          <DropdownMenuItem onClick={() => onRowAction("Ask Correction", d)} className="text-amber-700 dark:text-amber-400"><AlertTriangle className="h-3.5 w-3.5 mr-2" /> Ask Correction</DropdownMenuItem>
+   506→                          <DropdownMenuItem onClick={() => onRowAction("Mark Expired", d)} className="text-rose-700 dark:text-rose-400"><FileX2 className="h-3.5 w-3.5 mr-2" /> Mark Expired</DropdownMenuItem>
+   507→                          <DropdownMenuSeparator />
+   508→                          <DropdownMenuItem onClick={() => onRowAction("Archive", d)}><Archive className="h-3.5 w-3.5 mr-2" /> Archive</DropdownMenuItem>
+   509→                          <DropdownMenuItem onClick={() => onRowAction("View History", d)}><History className="h-3.5 w-3.5 mr-2" /> View History</DropdownMenuItem>
+   510→                        </DropdownMenuContent>
+   511→                      </DropdownMenu>
+   512→                    </TableCell>
+   513→                  </TableRow>
+   514→                )
+   515→              })}
+   516→            </TableBody>
+   517→          </Table>
+   518→        </ScrollArea>
+   519→      </Card>
+   520→
+   521→      <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} />
+   522→      <HistoryDialog doc={historyDoc} open={historyOpen} onClose={() => { setHistoryOpen(false); setHistoryDoc(null) }} />
+   523→    </div>
+   524→  )
+   525→}
+   526→
+   527→export default EmployeeDocumentsSection
+   528→
