@@ -103,6 +103,7 @@ export type ModuleId =
   | "organization"
   | "employees"
   | "onboarding"
+  | "offboarding"
   | "leave"
   | "shift"
   | "roster"

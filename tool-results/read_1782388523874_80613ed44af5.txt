@@ -1,0 +1,402 @@
+     1→"use client"
+     2→
+     3→// ============================================================================
+     4→//  Offboarding — seed data (in-memory)
+     5→// ----------------------------------------------------------------------------
+     6→//  Single source of truth for all offboarding section components.
+     7→//  This mimics what the Prisma database would return, so sections can be
+     8→//  built against realistic data without a schema migration.
+     9→// ============================================================================
+    10→
+    11→import {
+    12→  ExitCase, ExitWorkflow, DEFAULT_EXIT_STAGES, ClearanceTask, AssetRecoveryItem,
+    13→  ITAccessItem, FnFRecord, FnFEntry, ExitDocumentTemplate, ExitEmailTemplate,
+    14→  ExitChecklist, ExitInterviewForm, AlumniRecord, ResignationRequest,
+    15→  OffboardingLog, OffboardingSettings, EntityConfiguration, WorkflowStep,
+    16→} from "./shared"
+    17→
+    18→const now = new Date()
+    19→const daysAgo = (n: number) => new Date(now.getTime() - n * 86400000).toISOString()
+    20→const daysAhead = (n: number) => new Date(now.getTime() + n * 86400000).toISOString()
+    21→const dateStr = (n: number) => daysAgo(n).slice(0, 10)
+    22→
+    23→// ---------- Workflows ----------
+    24→export const EXIT_WORKFLOWS: ExitWorkflow[] = [
+    25→  {
+    26→    id: "wf-1",
+    27→    name: "Standard Exit Workflow",
+    28→    code: "STD_EXIT",
+    29→    description: "Default exit workflow for full-time employees — covers resignation, notice, clearance, asset recovery, IT revocation, FnF, and letters.",
+    30→    version: 2,
+    31→    status: "Published",
+    32→    scopeType: "Tenant Default",
+    33→    kanbanBoardId: "board-1",
+    34→    kanbanBoardName: "Default Exit Kanban",
+    35→    clearanceChecklistId: "cl-1",
+    36→    emailGroupId: "eg-1",
+    37→    fnfRuleId: "fnf-1",
+    38→    isDefault: true,
+    39→    priority: 1,
+    40→    stages: DEFAULT_EXIT_STAGES,
+    41→    steps: [
+    42→      { id: "ws1", title: "Basic Details", description: "Workflow name, code, scope, version", icon: "FileText", status: "complete" },
+    43→      { id: "ws2", title: "Applicability", description: "Tenant / Entity / Dept / Employee type", icon: "Filter", status: "complete" },
+    44→      { id: "ws3", title: "Kanban Board", description: "Default Exit Kanban with 14 stages", icon: "KanbanSquare", status: "complete" },
+    45→      { id: "ws4", title: "Exit Request Rules", description: "Allow resignation, withdrawal, LWD change", icon: "FileEdit", status: "complete" },
+    46→      { id: "ws5", title: "Clearance & Checklists", description: "9 departments, mandatory + blocking tasks", icon: "ClipboardCheck", status: "complete" },
+    47→      { id: "ws6", title: "Asset Recovery Rules", description: "Auto-fetch assets, damage recovery", icon: "Package", status: "complete" },
+    48→      { id: "ws7", title: "IT Revocation Rules", description: "Revoke on LWD EOD, data backup", icon: "Lock", status: "complete" },
+    49→      { id: "ws8", title: "Exit Interview Rules", description: "HR exit interview, mandatory", icon: "MessageSquare", status: "complete" },
+    50→      { id: "ws9", title: "FnF Rules", description: "Auto-fetch payroll, leave, loans", icon: "Wallet", status: "complete" },
+    51→      { id: "ws10", title: "Document / Letter Rules", description: "Relieving + Experience + No Dues", icon: "FileText", status: "complete" },
+    52→      { id: "ws11", title: "Approval Rules", description: "Manager + HR + FnF approval", icon: "ShieldCheck", status: "complete" },
+    53→      { id: "ws12", title: "Email Rules", description: "24 event-based email templates", icon: "Mail", status: "complete" },
+    54→      { id: "ws13", title: "Employee Status / Alumni", description: "Mark exited, create alumni profile", icon: "Users", status: "complete" },
+    55→      { id: "ws14", title: "Review & Publish", description: "Final review and publish", icon: "CheckCircle2", status: "complete" },
+    56→    ],
+    57→    createdAt: daysAgo(120),
+    58→    updatedAt: daysAgo(15),
+    59→  },
+    60→  {
+    61→    id: "wf-2",
+    62→    name: "India Full-Time Exit Workflow",
+    63→    code: "INDIA_FT_EXIT",
+    64→    description: "India-specific exit workflow with FnF, gratuity, notice period recovery, and statutory deductions.",
+    65→    version: 1,
+    66→    status: "Published",
+    67→    scopeType: "Entity",
+    68→    entity: "ACME India Pvt Ltd",
+    69→    kanbanBoardId: "board-2",
+    70→    kanbanBoardName: "India Exit Kanban",
+    71→    clearanceChecklistId: "cl-2",
+    72→    emailGroupId: "eg-2",
+    73→    fnfRuleId: "fnf-2",
+    74→    isDefault: false,
+    75→    priority: 2,
+    76→    stages: DEFAULT_EXIT_STAGES,
+    77→    steps: [
+    78→      { id: "ws1", title: "Basic Details", description: "India FT exit workflow", icon: "FileText", status: "complete" },
+    79→      { id: "ws2", title: "Applicability", description: "ACME India, Full-Time", icon: "Filter", status: "complete" },
+    80→      { id: "ws3", title: "Kanban Board", description: "India Exit Kanban", icon: "KanbanSquare", status: "complete" },
+    81→      { id: "ws4", title: "Exit Request Rules", description: "60-day notice, allow withdrawal before approval", icon: "FileEdit", status: "complete" },
+    82→      { id: "ws5", title: "Clearance & Checklists", description: "HR + IT + Admin + Finance + Payroll", icon: "ClipboardCheck", status: "complete" },
+    83→      { id: "ws6", title: "Asset Recovery Rules", description: "Laptop, ID card, access card", icon: "Package", status: "complete" },
+    84→      { id: "ws7", title: "IT Revocation Rules", description: "Revoke on LWD EOD", icon: "Lock", status: "complete" },
+    85→      { id: "ws8", title: "Exit Interview Rules", description: "Mandatory HR exit interview", icon: "MessageSquare", status: "complete" },
+    86→      { id: "ws9", title: "FnF Rules", description: "Gratuity, PF, leave encashment", icon: "Wallet", status: "complete" },
+    87→      { id: "ws10", title: "Document / Letter Rules", description: "Relieving + Experience + FnF letter", icon: "FileText", status: "complete" },
+    88→      { id: "ws11", title: "Approval Rules", description: "Manager + HR + FnF approval", icon: "ShieldCheck", status: "complete" },
+    89→      { id: "ws12", title: "Email Rules", description: "India exit email group", icon: "Mail", status: "complete" },
+    90→      { id: "ws13", title: "Employee Status / Alumni", description: "Alumni profile, eligible for rehire", icon: "Users", status: "complete" },
+    91→      { id: "ws14", title: "Review & Publish", description: "Published v1", icon: "CheckCircle2", status: "complete" },
+    92→    ],
+    93→    createdAt: daysAgo(90),
+    94→    updatedAt: daysAgo(10),
+    95→  },
+    96→  {
+    97→    id: "wf-3",
+    98→    name: "UAE Exit Workflow",
+    99→    code: "UAE_EXIT",
+   100→    description: "UAE-specific exit workflow with visa cancellation, passport clearance, and end-of-service gratuity.",
+   101→    version: 1,
+   102→    status: "Published",
+   103→    scopeType: "Entity",
+   104→    entity: "ACME UAE FZ-LLC",
+   105→    kanbanBoardId: "board-3",
+   106→    kanbanBoardName: "UAE Exit Kanban",
+   107→    clearanceChecklistId: "cl-3",
+   108→    emailGroupId: "eg-3",
+   109→    fnfRuleId: "fnf-3",
+   110→    isDefault: false,
+   111→    priority: 3,
+   112→    stages: DEFAULT_EXIT_STAGES,
+   113→    steps: [
+   114→      { id: "ws1", title: "Basic Details", description: "UAE exit workflow", icon: "FileText", status: "complete" },
+   115→      { id: "ws2", title: "Applicability", description: "ACME UAE", icon: "Filter", status: "complete" },
+   116→      { id: "ws3", title: "Kanban Board", description: "UAE Exit Kanban", icon: "KanbanSquare", status: "complete" },
+   117→      { id: "ws4", title: "Exit Request Rules", description: "30-day notice", icon: "FileEdit", status: "complete" },
+   118→      { id: "ws5", title: "Clearance & Checklists", description: "Passport, visa, admin, payroll", icon: "ClipboardCheck", status: "complete" },
+   119→      { id: "ws6", title: "Asset Recovery Rules", description: "Laptop, SIM, accommodation", icon: "Package", status: "complete" },
+   120→      { id: "ws7", title: "IT Revocation Rules", description: "Revoke immediately for high-risk", icon: "Lock", status: "complete" },
+   121→      { id: "ws8", title: "Exit Interview Rules", description: "Optional", icon: "MessageSquare", status: "complete" },
+   122→      { id: "ws9", title: "FnF Rules", description: "EOS gratuity, leave encashment", icon: "Wallet", status: "complete" },
+   123→      { id: "ws10", title: "Document / Letter Rules", description: "Service letter, contract closure", icon: "FileText", status: "complete" },
+   124→      { id: "ws11", title: "Approval Rules", description: "HR + FnF approval", icon: "ShieldCheck", status: "complete" },
+   125→      { id: "ws12", title: "Email Rules", description: "UAE exit emails", icon: "Mail", status: "complete" },
+   126→      { id: "ws13", title: "Employee Status / Alumni", description: "Alumni, visa cancelled", icon: "Users", status: "complete" },
+   127→      { id: "ws14", title: "Review & Publish", description: "Published v1", icon: "CheckCircle2", status: "complete" },
+   128→    ],
+   129→    createdAt: daysAgo(60),
+   130→    updatedAt: daysAgo(7),
+   131→  },
+   132→  {
+   133→    id: "wf-4",
+   134→    name: "Termination Exit Workflow",
+   135→    code: "TERM_EXIT",
+   136→    description: "Involuntary termination workflow with immediate IT revocation, security clearance, and legal hold.",
+   137→    version: 1,
+   138→    status: "Draft",
+   139→    scopeType: "Exit Type",
+   140→    exitType: "Involuntary Termination",
+   141→    kanbanBoardId: "board-1",
+   142→    kanbanBoardName: "Default Exit Kanban",
+   143→    clearanceChecklistId: "cl-4",
+   144→    emailGroupId: "eg-1",
+   145→    fnfRuleId: "fnf-1",
+   146→    isDefault: false,
+   147→    priority: 5,
+   148→    stages: DEFAULT_EXIT_STAGES,
+   149→    steps: [
+   150→      { id: "ws1", title: "Basic Details", description: "Termination workflow", icon: "FileText", status: "complete" },
+   151→      { id: "ws2", title: "Applicability", description: "Exit Type: Involuntary Termination", icon: "Filter", status: "complete" },
+   152→      { id: "ws3", title: "Kanban Board", description: "Default Exit Kanban", icon: "KanbanSquare", status: "complete" },
+   153→      { id: "ws4", title: "Exit Request Rules", description: "HR initiated, no notice period", icon: "FileEdit", status: "complete" },
+   154→      { id: "ws5", title: "Clearance & Checklists", description: "Security + Legal + IT clearance", icon: "ClipboardCheck", status: "complete" },
+   155→      { id: "ws6", title: "Asset Recovery Rules", description: "Immediate asset recovery", icon: "Package", status: "complete" },
+   156→      { id: "ws7", title: "IT Revocation Rules", description: "Revoke immediately", icon: "Lock", status: "complete" },
+   157→      { id: "ws8", title: "Exit Interview Rules", description: "Not applicable", icon: "MessageSquare", status: "complete" },
+   158→      { id: "ws9", title: "FnF Rules", description: "FnF with notice recovery", icon: "Wallet", status: "complete" },
+   159→      { id: "ws10", title: "Document / Letter Rules", description: "Termination letter", icon: "FileText", status: "complete" },
+   160→      { id: "ws11", title: "Approval Rules", description: "Legal + HR head approval", icon: "ShieldCheck", status: "complete" },
+   161→      { id: "ws12", title: "Email Rules", description: "Termination notification", icon: "Mail", status: "incomplete" },
+   162→      { id: "ws13", title: "Employee Status / Alumni", description: "No-rehire, blacklist", icon: "Users", status: "incomplete" },
+   163→      { id: "ws14", title: "Review & Publish", description: "Draft — pending review", icon: "CheckCircle2", status: "incomplete" },
+   164→    ],
+   165→    createdAt: daysAgo(30),
+   166→    updatedAt: daysAgo(2),
+   167→  },
+   168→]
+   169→
+   170→// ---------- Exit Cases ----------
+   171→export const EXIT_CASES: ExitCase[] = [
+   172→  {
+   173→    id: "ec-1", exitCaseId: "EXIT-2025-001", employeeCode: "EMP-1042", employeeName: "Rahul Sharma", avatarColor: "#10b981",
+   174→    entity: "ACME India Pvt Ltd", branch: "Bangalore HQ", location: "Bangalore", department: "Engineering", designation: "Senior Software Engineer",
+   175→    grade: "L4", employmentType: "Full-time", reportingManager: "Priya Patel", hrOwner: "Anita Desai",
+   176→    exitType: "Voluntary Resignation", exitCategory: "Voluntary", exitReason: "Better Opportunity",
+   177→    resignationDate: dateStr(25), noticeStartDate: dateStr(24), requestedLwd: dateStr(-35), approvedLwd: dateStr(-35),
+   178→    workflowId: "wf-2", workflowName: "India Full-Time Exit Workflow", currentStageId: "s6",
+   179→    clearanceStatus: "In Progress", assetStatus: "Pending", itAccessStatus: "Pending", fnfStatus: "Not Started",
+   180→    letterStatus: "Not Started", exitStatus: "Active", riskFlag: "low", legalHold: false, regrettable: true,
+   181→    eligibleRehire: true, confidential: false, noticeShortfallDays: 0, enteredStageAt: daysAgo(3), createdAt: daysAgo(25), updatedAt: daysAgo(1),
+   182→  },
+   183→  {
+   184→    id: "ec-2", exitCaseId: "EXIT-2025-002", employeeCode: "EMP-1087", employeeName: "Sneha Reddy", avatarColor: "#0ea5e9",
+   185→    entity: "ACME India Pvt Ltd", branch: "Hyderabad", location: "Hyderabad", department: "Product", designation: "Product Manager",
+   186→    grade: "L5", employmentType: "Full-time", reportingManager: "Vikram Singh", hrOwner: "Anita Desai",
+   187→    exitType: "Voluntary Resignation", exitCategory: "Voluntary", exitReason: "Career Growth",
+   188→    resignationDate: dateStr(15), noticeStartDate: dateStr(14), requestedLwd: dateStr(-45), approvedLwd: dateStr(-45),
+   189→    workflowId: "wf-2", workflowName: "India Full-Time Exit Workflow", currentStageId: "s4",
+   190→    clearanceStatus: "Not Started", assetStatus: "Not Started", itAccessStatus: "Not Started", fnfStatus: "Not Started",
+   191→    letterStatus: "Not Started", exitStatus: "Active", riskFlag: "medium", legalHold: false, regrettable: true,
+   192→    eligibleRehire: true, confidential: false, noticeShortfallDays: 15, enteredStageAt: daysAgo(1), createdAt: daysAgo(15), updatedAt: daysAgo(1),
+   193→  },
+   194→  {
+   195→    id: "ec-3", exitCaseId: "EXIT-2025-003", employeeCode: "EMP-1120", employeeName: "Arjun Mehta", avatarColor: "#8b5cf6",
+   196→    entity: "ACME UAE FZ-LLC", branch: "Dubai", location: "Dubai", department: "Sales", designation: "Sales Director",
+   197→    grade: "L6", employmentType: "Full-time", reportingManager: "Mohammed Al Farsi", hrOwner: "Fatima Hassan",
+   198→    exitType: "End of Contract", exitCategory: "Contract End", exitReason: "End of Contract Term",
+   199→    resignationDate: dateStr(10), noticeStartDate: dateStr(9), requestedLwd: dateStr(-20), approvedLwd: dateStr(-20),
+   200→    workflowId: "wf-3", workflowName: "UAE Exit Workflow", currentStageId: "s5",
+   201→    clearanceStatus: "Not Started", assetStatus: "Not Started", itAccessStatus: "Not Started", fnfStatus: "Not Started",
+   202→    letterStatus: "Not Started", exitStatus: "Active", riskFlag: "low", legalHold: false, regrettable: false,
+   203→    eligibleRehire: true, confidential: false, noticeShortfallDays: 0, enteredStageAt: daysAgo(5), createdAt: daysAgo(10), updatedAt: daysAgo(2),
+   204→  },
+   205→  {
+   206→    id: "ec-4", exitCaseId: "EXIT-2025-004", employeeCode: "EMP-0987", employeeName: "Kavya Nair", avatarColor: "#f59e0b",
+   207→    entity: "ACME India Pvt Ltd", branch: "Bangalore HQ", location: "Bangalore", department: "Finance", designation: "Finance Analyst",
+   208→    grade: "L3", employmentType: "Full-time", reportingManager: "Rajesh Kumar", hrOwner: "Anita Desai",
+   209→    exitType: "Voluntary Resignation", exitCategory: "Voluntary", exitReason: "Compensation",
+   210→    resignationDate: dateStr(45), noticeStartDate: dateStr(44), requestedLwd: dateStr(-15), approvedLwd: dateStr(-15),
+   211→    actualLwd: dateStr(-15),
+   212→    workflowId: "wf-2", workflowName: "India Full-Time Exit Workflow", currentStageId: "s10",
+   213→    clearanceStatus: "Completed", assetStatus: "Completed", itAccessStatus: "Revoked", fnfStatus: "Approved",
+   214→    letterStatus: "Generated", exitStatus: "Active", riskFlag: "low", legalHold: false, regrettable: false,
+   215→    eligibleRehire: true, confidential: false, noticeShortfallDays: 0, enteredStageAt: daysAgo(2), createdAt: daysAgo(45), updatedAt: daysAgo(1),
+   216→  },
+   217→  {
+   218→    id: "ec-5", exitCaseId: "EXIT-2025-005", employeeCode: "EMP-1156", employeeName: "Vikram Rao", avatarColor: "#ec4899",
+   219→    entity: "ACME India Pvt Ltd", branch: "Mumbai", location: "Mumbai", department: "Engineering", designation: "Tech Lead",
+   220→    grade: "L5", employmentType: "Full-time", reportingManager: "Priya Patel", hrOwner: "Anita Desai",
+   221→    exitType: "Involuntary Termination", exitCategory: "Involuntary", exitReason: "Performance",
+   222→    resignationDate: dateStr(5), noticeStartDate: dateStr(5), requestedLwd: dateStr(0), approvedLwd: dateStr(0),
+   223→    actualLwd: dateStr(0),
+   224→    workflowId: "wf-4", workflowName: "Termination Exit Workflow", currentStageId: "s11",
+   225→    clearanceStatus: "Completed", assetStatus: "Completed", itAccessStatus: "Revoked", fnfStatus: "Paid",
+   226→    letterStatus: "Issued", exitStatus: "Exited", riskFlag: "high", legalHold: true, regrettable: false,
+   227→    eligibleRehire: false, confidential: true, noticeShortfallDays: 60, enteredStageAt: daysAgo(1), createdAt: daysAgo(5), updatedAt: daysAgo(1),
+   228→  },
+   229→  {
+   230→    id: "ec-6", exitCaseId: "EXIT-2025-006", employeeCode: "EMP-1078", employeeName: "Deepak Verma", avatarColor: "#14b8a6",
+   231→    entity: "ACME India Pvt Ltd", branch: "Bangalore HQ", location: "Bangalore", department: "Engineering", designation: "Software Engineer",
+   232→    grade: "L2", employmentType: "Full-time", reportingManager: "Arjun Mehta", hrOwner: "Anita Desai",
+   233→    exitType: "Voluntary Resignation", exitCategory: "Voluntary", exitReason: "Higher Studies",
+   234→    resignationDate: dateStr(60), noticeStartDate: dateStr(59), requestedLwd: dateStr(0), approvedLwd: dateStr(0),
+   235→    actualLwd: dateStr(0),
+   236→    workflowId: "wf-2", workflowName: "India Full-Time Exit Workflow", currentStageId: "s12",
+   237→    clearanceStatus: "Completed", assetStatus: "Completed", itAccessStatus: "Revoked", fnfStatus: "Closed",
+   238→    letterStatus: "Issued", exitStatus: "Exited", riskFlag: "low", legalHold: false, regrettable: false,
+   239→    eligibleRehire: true, confidential: false, noticeShortfallDays: 0, enteredStageAt: daysAgo(3), createdAt: daysAgo(60), updatedAt: daysAgo(3),
+   240→  },
+   241→  {
+   242→    id: "ec-7", exitCaseId: "EXIT-2025-007", employeeCode: "EMP-1190", employeeName: "Pooja Iyer", avatarColor: "#f97316",
+   243→    entity: "ACME India Pvt Ltd", branch: "Pune", location: "Pune", department: "HR", designation: "HR Executive",
+   244→    grade: "L2", employmentType: "Full-time", reportingManager: "Anita Desai", hrOwner: "Anita Desai",
+   245→    exitType: "Voluntary Resignation", exitCategory: "Voluntary", exitReason: "Work Life Balance",
+   246→    resignationDate: dateStr(8), noticeStartDate: dateStr(7), requestedLwd: dateStr(-52), approvedLwd: dateStr(-52),
+   247→    workflowId: "wf-2", workflowName: "India Full-Time Exit Workflow", currentStageId: "s3",
+   248→    clearanceStatus: "Not Started", assetStatus: "Not Started", itAccessStatus: "Not Started", fnfStatus: "Not Started",
+   249→    letterStatus: "Not Started", exitStatus: "Active", riskFlag: "low", legalHold: false, regrettable: true,
+   250→    eligibleRehire: true, confidential: false, noticeShortfallDays: 0, enteredStageAt: daysAgo(2), createdAt: daysAgo(8), updatedAt: daysAgo(2),
+   251→  },
+   252→  {
+   253→    id: "ec-8", exitCaseId: "EXIT-2025-008", employeeCode: "EMP-1102", employeeName: "Rohan Gupta", avatarColor: "#84cc16",
+   254→    entity: "ACME India Pvt Ltd", branch: "Bangalore HQ", location: "Bangalore", department: "Engineering", designation: "QA Engineer",
+   255→    grade: "L3", employmentType: "Contract", reportingManager: "Priya Patel", hrOwner: "Anita Desai",
+   256→    exitType: "Absconding", exitCategory: "Absconding", exitReason: "Absconding",
+   257→    resignationDate: dateStr(20), noticeStartDate: dateStr(20), requestedLwd: dateStr(0), approvedLwd: dateStr(0),
+   258→    workflowId: "wf-1", workflowName: "Standard Exit Workflow", currentStageId: "s13",
+   259→    clearanceStatus: "Overdue", assetStatus: "Pending", itAccessStatus: "Pending", fnfStatus: "On Hold",
+   260→    letterStatus: "Not Started", exitStatus: "On Hold", riskFlag: "high", legalHold: true, regrettable: false,
+   261→    eligibleRehire: false, confidential: true, noticeShortfallDays: 60, enteredStageAt: daysAgo(10), createdAt: daysAgo(20), updatedAt: daysAgo(5),
+   262→  },
+   263→]
+   264→
+   265→// ---------- Resignation Requests ----------
+   266→export const RESIGNATION_REQUESTS: ResignationRequest[] = [
+   267→  {
+   268→    id: "rr-1", requestId: "RES-2025-009", employeeCode: "EMP-1201", employeeName: "Aditya Joshi", avatarColor: "#0ea5e9",
+   269→    department: "Engineering", designation: "Senior Software Engineer", reportingManager: "Priya Patel",
+   270→    resignationDate: dateStr(2), requestedLwd: dateStr(-58), exitReason: "Better Opportunity",
+   271→    detailedReason: "Received an offer with better compensation and growth opportunities at a competitor.",
+   272→    status: "Pending Manager Approval", managerDecision: "Pending",
+   273→    noticeShortfallDays: 0, regrettable: true, createdAt: daysAgo(2), updatedAt: daysAgo(1),
+   274→  },
+   275→  {
+   276→    id: "rr-2", requestId: "RES-2025-010", employeeCode: "EMP-1198", employeeName: "Meera Krishnan", avatarColor: "#8b5cf6",
+   277→    department: "Design", designation: "UX Designer", reportingManager: "Sneha Reddy",
+   278→    resignationDate: dateStr(4), requestedLwd: dateStr(-25), exitReason: "Career Growth",
+   279→    detailedReason: "Looking for a role with more strategic design leadership.",
+   280→    status: "Pending HR Approval", managerDecision: "Approved", managerRecommendedLwd: dateStr(-25),
+   281→    managerRemarks: "Recommended approval. Meera has been a strong contributor. Suggest 30-day notice.",
+   282→    hrDecision: "Pending", noticeShortfallDays: 30, regrettable: true, createdAt: daysAgo(4), updatedAt: daysAgo(1),
+   283→  },
+   284→  {
+   285→    id: "rr-3", requestId: "RES-2025-008", employeeCode: "EMP-1185", employeeName: "Karthik Subramaniam", avatarColor: "#f59e0b",
+   286→    department: "Engineering", designation: "DevOps Engineer", reportingManager: "Priya Patel",
+   287→    resignationDate: dateStr(7), requestedLwd: dateStr(-53), exitReason: "Compensation",
+   288→    detailedReason: "Current compensation below market rate for my skills and experience.",
+   289→    status: "Approved", managerDecision: "Approved", managerRecommendedLwd: dateStr(-53),
+   290→    managerRemarks: "Tried retention but couldn't match the offer. Approved for exit.",
+   291→    hrDecision: "Approved", hrFinalLwd: dateStr(-53), hrRemarks: "Approved. Exit case EXIT-2025-006 initiated.",
+   292→    noticeShortfallDays: 0, regrettable: false, createdAt: daysAgo(7), updatedAt: daysAgo(3),
+   293→  },
+   294→  {
+   295→    id: "rr-4", requestId: "RES-2025-007", employeeCode: "EMP-1179", employeeName: "Ananya Bose", avatarColor: "#ec4899",
+   296→    department: "Marketing", designation: "Marketing Manager", reportingManager: "Vikram Singh",
+   297→    resignationDate: dateStr(12), requestedLwd: dateStr(-48), exitReason: "Relocation",
+   298→    detailedReason: "Relocating to another city due to family commitments.",
+   299→    status: "Withdrawn", managerDecision: "Approved", managerRecommendedLwd: dateStr(-48),
+   300→    managerRemarks: "Approved. Understandable reason.",
+   301→    hrDecision: "Approved", hrFinalLwd: dateStr(-48),
+   302→    noticeShortfallDays: 0, regrettable: true, createdAt: daysAgo(12), updatedAt: daysAgo(5),
+   303→  },
+   304→  {
+   305→    id: "rr-5", requestId: "RES-2025-011", employeeCode: "EMP-1210", employeeName: "Sanjay Pillai", avatarColor: "#14b8a6",
+   306→    department: "Sales", designation: "Sales Executive", reportingManager: "Arjun Mehta",
+   307→    resignationDate: dateStr(1), requestedLwd: dateStr(-59), exitReason: "Better Opportunity",
+   308→    detailedReason: "Better package and role at another company.",
+   309→    status: "Submitted", managerDecision: "Pending",
+   310→    noticeShortfallDays: 0, regrettable: false, createdAt: daysAgo(1), updatedAt: daysAgo(1),
+   311→  },
+   312→  {
+   313→    id: "rr-6", requestId: "RES-2025-006", employeeCode: "EMP-1167", employeeName: "Divya Menon", avatarColor: "#f97316",
+   314→    department: "Engineering", designation: "Software Engineer", reportingManager: "Priya Patel",
+   315→    resignationDate: dateStr(18), requestedLwd: dateStr(-42), exitReason: "Work Culture",
+   316→    detailedReason: "Concerns about team dynamics and work culture.",
+   317→    status: "Rejected", managerDecision: "Rejected", managerRemarks: "Performance concerns. Recommend exit but with full notice period.",
+   318→    hrDecision: "Rejected", hrRemarks: "Rejected withdrawal request. Exit will proceed.",
+   319→    noticeShortfallDays: 0, regrettable: false, createdAt: daysAgo(18), updatedAt: daysAgo(10),
+   320→  },
+   321→]
+   322→
+   323→// ---------- Clearance Tasks ----------
+   324→export const CLEARANCE_TASKS: ClearanceTask[] = [
+   325→  // ec-1 Rahul Sharma — clearance in progress
+   326→  { id: "ct-1", exitCaseId: "ec-1", taskName: "Manager Clearance — Handover Complete", taskCode: "MGR_CLR_01", department: "Reporting Manager", ownerType: "Manager", owner: "Priya Patel", dueDate: dateStr(-33), slaDays: 3, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: true, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Completed", comment: "Handover document signed and uploaded.", completedAt: daysAgo(2), completedBy: "Priya Patel" },
+   327→  { id: "ct-2", exitCaseId: "ec-1", taskName: "HR Clearance — Exit Interview", taskCode: "HR_CLR_01", department: "HR", ownerType: "HR", owner: "Anita Desai", dueDate: dateStr(-32), slaDays: 5, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: false, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Completed", comment: "Exit interview completed. Employee cited better opportunity.", completedAt: daysAgo(1), completedBy: "Anita Desai" },
+   328→  { id: "ct-3", exitCaseId: "ec-1", taskName: "IT Clearance — Laptop & Access", taskCode: "IT_CLR_01", department: "IT", ownerType: "IT Admin", owner: "IT Team", dueDate: dateStr(-31), slaDays: 2, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: true, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "In Progress", comment: "Laptop pending return. Access scheduled for LWD." },
+   329→  { id: "ct-4", exitCaseId: "ec-1", taskName: "Admin Clearance — ID & Access Card", taskCode: "ADM_CLR_01", department: "Admin / Facilities", ownerType: "Admin", owner: "Admin Team", dueDate: dateStr(-30), slaDays: 1, mandatory: true, blocking: true, requiresComment: false, requiresAttachment: true, requiresApproval: false, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Pending" },
+   330→  { id: "ct-5", exitCaseId: "ec-1", taskName: "Finance Clearance — Outstanding Dues", taskCode: "FIN_CLR_01", department: "Finance", ownerType: "Finance", owner: "Rajesh Kumar", dueDate: dateStr(-29), slaDays: 3, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: false, requiresApproval: true, financialImpact: true, recoveryAmount: 0, waiverAllowed: true, stageMapping: "Clearance In Progress", status: "Pending" },
+   331→  { id: "ct-6", exitCaseId: "ec-1", taskName: "Payroll Clearance — Salary Hold", taskCode: "PAY_CLR_01", department: "Payroll", ownerType: "Payroll", owner: "Payroll Team", dueDate: dateStr(-28), slaDays: 2, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: false, requiresApproval: true, financialImpact: true, recoveryAmount: 0, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Pending" },
+   332→  { id: "ct-7", exitCaseId: "ec-1", taskName: "Knowledge Transfer — Project Docs", taskCode: "KT_CLR_01", department: "Project Manager", ownerType: "Manager", owner: "Priya Patel", dueDate: dateStr(-32), slaDays: 5, mandatory: true, blocking: false, requiresComment: true, requiresAttachment: true, requiresApproval: false, financialImpact: false, waiverAllowed: true, stageMapping: "Clearance In Progress", status: "Submitted", comment: "KT docs submitted for review." },
+   333→  // ec-4 Kavya — completed clearance
+   334→  { id: "ct-8", exitCaseId: "ec-4", taskName: "Manager Clearance", taskCode: "MGR_CLR_02", department: "Reporting Manager", ownerType: "Manager", owner: "Rajesh Kumar", dueDate: dateStr(-18), slaDays: 3, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: true, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Completed", comment: "All handover complete.", completedAt: daysAgo(18), completedBy: "Rajesh Kumar" },
+   335→  { id: "ct-9", exitCaseId: "ec-4", taskName: "HR Clearance", taskCode: "HR_CLR_02", department: "HR", ownerType: "HR", owner: "Anita Desai", dueDate: dateStr(-17), slaDays: 5, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: false, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Completed", comment: "Exit interview done.", completedAt: daysAgo(17), completedBy: "Anita Desai" },
+   336→  { id: "ct-10", exitCaseId: "ec-4", taskName: "IT Clearance", taskCode: "IT_CLR_02", department: "IT", ownerType: "IT Admin", owner: "IT Team", dueDate: dateStr(-16), slaDays: 2, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: true, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Completed", comment: "Laptop returned, access revoked.", completedAt: daysAgo(16), completedBy: "IT Team" },
+   337→  { id: "ct-11", exitCaseId: "ec-4", taskName: "Finance Clearance", taskCode: "FIN_CLR_02", department: "Finance", ownerType: "Finance", owner: "Rajesh Kumar", dueDate: dateStr(-15), slaDays: 3, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: false, requiresApproval: true, financialImpact: true, recoveryAmount: 0, waiverAllowed: true, stageMapping: "Clearance In Progress", status: "Completed", comment: "No outstanding dues.", completedAt: daysAgo(15), completedBy: "Rajesh Kumar" },
+   338→  // ec-8 Rohan — overdue
+   339→  { id: "ct-12", exitCaseId: "ec-8", taskName: "Manager Clearance", taskCode: "MGR_CLR_03", department: "Reporting Manager", ownerType: "Manager", owner: "Priya Patel", dueDate: dateStr(-10), slaDays: 3, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: true, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Overdue", comment: "Employee absconded. No handover." },
+   340→  { id: "ct-13", exitCaseId: "ec-8", taskName: "IT Clearance", taskCode: "IT_CLR_03", department: "IT", ownerType: "IT Admin", owner: "IT Team", dueDate: dateStr(-8), slaDays: 2, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: true, requiresApproval: true, financialImpact: true, recoveryAmount: 85000, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Overdue", comment: "Laptop not returned. Recovery amount raised." },
+   341→]
+   342→
+   343→// ---------- Asset Recovery ----------
+   344→export const ASSET_RECOVERY: AssetRecoveryItem[] = [
+   345→  { id: "ar-1", exitCaseId: "ec-1", assetCode: "AST-LT-0234", assetType: "Laptop", serialNumber: "MBP14-2023-0234", assignedDate: dateStr(400), expectedReturnDate: dateStr(-35), returnStatus: "Pending", damage: false, lost: false, pushToFnf: false },
+   346→  { id: "ar-2", exitCaseId: "ec-1", assetCode: "AST-ID-1042", assetType: "ID Card", assignedDate: dateStr(400), expectedReturnDate: dateStr(-35), returnStatus: "Pending", damage: false, lost: false, pushToFnf: false },
+   347→  { id: "ar-3", exitCaseId: "ec-1", assetCode: "AST-AC-1042", assetType: "Access Card", assignedDate: dateStr(400), expectedReturnDate: dateStr(-35), returnStatus: "Pending", damage: false, lost: false, pushToFnf: false },
+   348→  { id: "ar-4", exitCaseId: "ec-1", assetCode: "AST-PH-1042", assetType: "Mobile", serialNumber: "IPH14-0234", assignedDate: dateStr(300), expectedReturnDate: dateStr(-35), returnStatus: "Pending", damage: false, lost: false, pushToFnf: false },
+   349→  // ec-4 Kavya — returned
+   350→  { id: "ar-5", exitCaseId: "ec-4", assetCode: "AST-LT-0187", assetType: "Laptop", serialNumber: "MBP14-2022-0187", assignedDate: dateStr(600), expectedReturnDate: dateStr(-15), actualReturnDate: dateStr(-16), returnStatus: "Returned", conditionAtReturn: "Good", damage: false, lost: false, pushToFnf: false },
+   351→  { id: "ar-6", exitCaseId: "ec-4", assetCode: "AST-ID-0987", assetType: "ID Card", assignedDate: dateStr(600), expectedReturnDate: dateStr(-15), actualReturnDate: dateStr(-16), returnStatus: "Returned", damage: false, lost: false, pushToFnf: false },
+   352→  // ec-5 Vikram — terminated, returned
+   353→  { id: "ar-7", exitCaseId: "ec-5", assetCode: "AST-LT-0312", assetType: "Laptop", serialNumber: "MBP16-2023-0312", assignedDate: dateStr(200), expectedReturnDate: dateStr(0), actualReturnDate: dateStr(0), returnStatus: "Returned", conditionAtReturn: "Good", damage: false, lost: false, pushToFnf: false },
+   354→  { id: "ar-8", exitCaseId: "ec-5", assetCode: "AST-PH-1156", assetType: "Mobile", serialNumber: "IPH13-0312", assignedDate: dateStr(200), expectedReturnDate: dateStr(0), actualReturnDate: dateStr(0), returnStatus: "Returned", conditionAtReturn: "Damaged", damage: true, lost: false, damageAmount: 5000, recoveryAmount: 5000, pushToFnf: true },
+   355→  // ec-8 Rohan — absconded, lost
+   356→  { id: "ar-9", exitCaseId: "ec-8", assetCode: "AST-LT-0456", assetType: "Laptop", serialNumber: "MBP14-2023-0456", assignedDate: dateStr(180), expectedReturnDate: dateStr(-10), returnStatus: "Lost", damage: false, lost: true, recoveryAmount: 120000, pushToFnf: true },
+   357→  { id: "ar-10", exitCaseId: "ec-8", assetCode: "AST-ID-1102", assetType: "ID Card", assignedDate: dateStr(180), expectedReturnDate: dateStr(-10), returnStatus: "Lost", damage: false, lost: true, recoveryAmount: 200, pushToFnf: true },
+   358→]
+   359→
+   360→// ---------- IT Access ----------
+   361→export const IT_ACCESS: ITAccessItem[] = [
+   362→  { id: "ia-1", exitCaseId: "ec-1", systemName: "HRMS Login", accessType: "Web App", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: false, dataTransferRequired: false, licenseDeactivationRequired: false, revocationStatus: "Scheduled", remarks: "Scheduled for LWD EOD" },
+   363→  { id: "ia-2", exitCaseId: "ec-1", systemName: "Official Email", accessType: "Google Workspace", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: true, dataTransferRequired: true, newOwner: "Priya Patel", licenseDeactivationRequired: true, revocationStatus: "Pending", remarks: "Data backup in progress" },
+   364→  { id: "ia-3", exitCaseId: "ec-1", systemName: "SSO / Azure AD", accessType: "Identity", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: false, dataTransferRequired: false, licenseDeactivationRequired: true, revocationStatus: "Pending" },
+   365→  { id: "ia-4", exitCaseId: "ec-1", systemName: "VPN", accessType: "Network", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: false, dataTransferRequired: false, licenseDeactivationRequired: false, revocationStatus: "Pending" },
+   366→  { id: "ia-5", exitCaseId: "ec-1", systemName: "GitHub", accessType: "Code Repository", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: true, dataTransferRequired: true, newOwner: "Priya Patel", licenseDeactivationRequired: true, revocationStatus: "Pending" },
+   367→  { id: "ia-6", exitCaseId: "ec-1", systemName: "Slack", accessType: "Communication", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: false, dataTransferRequired: false, licenseDeactivationRequired: true, revocationStatus: "Pending" },
+   368→  { id: "ia-7", exitCaseId: "ec-1", systemName: "Jira", accessType: "Project Management", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: false, dataTransferRequired: true, newOwner: "Priya Patel", licenseDeactivationRequired: true, revocationStatus: "Pending" },
+   369→  // ec-5 Vikram — terminated, revoked immediately
+   370→  { id: "ia-8", exitCaseId: "ec-5", systemName: "HRMS Login", accessType: "Web App", ownerTeam: "IT", revokeTiming: "Immediately", revokeDate: dateStr(0), dataBackupRequired: false, dataTransferRequired: false, licenseDeactivationRequired: false, revocationStatus: "Revoked", verificationStatus: "Verified", remarks: "Revoked immediately on termination" },
+   371→  { id: "ia-9", exitCaseId: "ec-5", systemName: "Official Email", accessType: "Google Workspace", ownerTeam: "IT", revokeTiming: "Immediately", revokeDate: dateStr(0), dataBackupRequired: true, dataTransferRequired: true, newOwner: "Priya Patel", licenseDeactivationRequired: true, revocationStatus: "Revoked", verificationStatus: "Verified" },
+   372→  { id: "ia-10", exitCaseId: "ec-5", systemName: "GitHub", accessType: "Code Repository", ownerTeam: "IT", revokeTiming: "Immediately", revokeDate: dateStr(0), dataBackupRequired: true, dataTransferRequired: true, newOwner: "Priya Patel", licenseDeactivationRequired: true, revocationStatus: "Revoked", verificationStatus: "Verified" },
+   373→  { id: "ia-11", exitCaseId: "ec-5", systemName: "VPN", accessType: "Network", ownerTeam: "IT", revokeTiming: "Immediately", revokeDate: dateStr(0), dataBackupRequired: false, dataTransferRequired: false, licenseDeactivationRequired: false, revocationStatus: "Revoked", verificationStatus: "Verified" },
+   374→]
+   375→
+   376→// ---------- FnF ----------
+   377→const fnfEntries = (exitCaseId: string): FnFEntry[] => [
+   378→  { id: `${exitCaseId}-e1`, exitCaseId, type: "earning", category: "Salary till LWD", description: "Salary for days worked till last working day", amount: 65000, source: "auto", status: "confirmed" },
+   379→  { id: `${exitCaseId}-e2`, exitCaseId, type: "earning", category: "Leave Encashment", description: "Encashment of 18 unused earned leaves", amount: 42000, source: "auto", status: "confirmed" },
+   380→  { id: `${exitCaseId}-e3`, exitCaseId, type: "earning", category: "Gratuity", description: "Gratuity as per Payment of Gratuity Act", amount: 85000, source: "auto", status: "confirmed" },
+   381→  { id: `${exitCaseId}-e4`, exitCaseId, type: "earning", category: "Bonus", description: "Performance bonus Q3", amount: 15000, source: "manual", status: "confirmed" },
+   382→  { id: `${exitCaseId}-e5`, exitCaseId, type: "earning", category: "Reimbursement Payable", description: "Pending expense reimbursements", amount: 8500, source: "auto", status: "confirmed" },
+   383→  { id: `${exitCaseId}-d1`, exitCaseId, type: "deduction", category: "Notice Recovery", description: "Notice period shortfall recovery", amount: 0, source: "auto", status: "confirmed" },
+   384→  { id: `${exitCaseId}-d2`, exitCaseId, type: "deduction", category: "Tax / TDS", description: "TDS deduction on FnF", amount: 28000, source: "auto", status: "confirmed" },
+   385→  { id: `${exitCaseId}-d3`, exitCaseId, type: "deduction", category: "PF / ESI / Statutory", description: "Provident fund deduction", amount: 7800, source: "auto", status: "confirmed" },
+   386→  { id: `${exitCaseId}-d4`, exitCaseId, type: "deduction", category: "Loan Recovery", description: "Salary advance recovery", amount: 10000, source: "auto", status: "confirmed" },
+   387→]
+   388→
+   389→const sumEarnings = (entries: FnFEntry[]) => entries.filter(e => e.type === "earning").reduce((s, e) => s + e.amount, 0)
+   390→const sumDeductions = (entries: FnFEntry[]) => entries.filter(e => e.type === "deduction").reduce((s, e) => s + e.amount, 0)
+   391→
+   392→export const FNF_RECORDS: FnFRecord[] = [
+   393→  { exitCaseId: "ec-4", status: "Approved", entries: fnfEntries("ec-4"), totalEarnings: 0, totalDeductions: 0, netPayable: 0, calculatedAt: daysAgo(3), approvedBy: "Rajesh Kumar", approvedAt: daysAgo(2) },
+   394→  { exitCaseId: "ec-5", status: "Paid", entries: [...fnfEntries("ec-5"), { id: "ec-5-d5", exitCaseId: "ec-5", type: "deduction", category: "Asset Damage Recovery", description: "Mobile phone damage", amount: 5000, source: "auto", status: "confirmed" }, { id: "ec-5-d6", exitCaseId: "ec-5", type: "deduction", category: "Notice Recovery", description: "Notice period not served (60 days)", amount: 130000, source: "manual", status: "confirmed" }], totalEarnings: 0, totalDeductions: 0, netPayable: 0, calculatedAt: daysAgo(3), approvedBy: "Anita Desai", approvedAt: daysAgo(2), paidAt: daysAgo(1) },
+   395→  { exitCaseId: "ec-6", status: "Closed", entries: fnfEntries("ec-6"), totalEarnings: 0, totalDeductions: 0, netPayable: 0, calculatedAt: daysAgo(5), approvedBy: "Anita Desai", approvedAt: daysAgo(4), paidAt: daysAgo(3) },
+   396→  { exitCaseId: "ec-8", status: "On Hold", entries: [...fnfEntries("ec-8"), { id: "ec-8-d5", exitCaseId: "ec-8", type: "deduction", category: "Asset Damage Recovery", description: "Laptop not returned (lost)", amount: 120000, source: "auto", status: "confirmed" }, { id: "ec-8-d6", exitCaseId: "ec-8", type: "deduction", category: "Notice Recovery", description: "Notice period not served", amount: 130000, source: "manual", status: "draft" }], totalEarnings: 0, totalDeductions: 0, netPayable: 0, calculatedAt: daysAgo(8) },
+   397→]
+   398→
+   399→// Compute totals
+   400→FNF_RECORDS.forEach(r => {
+
+[showing lines 1-400 of 795; use offset=401 with limit to continue reading]

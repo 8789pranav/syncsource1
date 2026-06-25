@@ -1,0 +1,1464 @@
+     1→"use client"
+     2→
+     3→// =============================================================
+     4→// Onboarding Kanban Board
+     5→// Task ID: 6 — workflow-driven candidate pipeline view
+     6→// =============================================================
+     7→
+     8→import * as React from "react"
+     9→import { useState, useMemo, useEffect, useCallback } from "react"
+    10→import { motion, AnimatePresence } from "framer-motion"
+    11→import { toast } from "sonner"
+    12→import {
+    13→  KanbanSquare, Clock, AlertTriangle, CheckCircle2, Users,
+    14→  Calendar, Flag, Phone, Mail, Building2,
+    15→  Circle, PlayCircle, ShieldCheck, Search, Inbox, X,
+    16→  StickyNote, Send, ListChecks, ChevronRight, UserCircle2,
+    17→  Hash, Briefcase, Loader2, Lock, ArrowRight, UserCog,
+    18→  FlagTriangleRight, Inbox as InboxIcon,
+    19→} from "lucide-react"
+    20→
+    21→import { Button } from "@/components/ui/button"
+    22→import { Input } from "@/components/ui/input"
+    23→import { Textarea } from "@/components/ui/textarea"
+    24→import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+    25→import {
+    26→  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+    27→} from "@/components/ui/sheet"
+    28→import {
+    29→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    30→} from "@/components/ui/select"
+    31→import {
+    32→  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+    33→  DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
+    34→} from "@/components/ui/dropdown-menu"
+    35→import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+    36→import { Skeleton } from "@/components/ui/skeleton"
+    37→import { cn } from "@/lib/utils"
+    38→import { EmptyState } from "@/components/hrms/ui"
+    39→
+    40→import {
+    41→  type OnboardingWorkflow, type OnboardingStage, type OnboardingCandidate,
+    42→  STAGE_TYPE_META, PRIORITY_COLORS, PRIORITIES,
+    43→  useFetch, apiPost, apiPatch, safeParseJson, initials, slaStatus,
+    44→  timeAgo, formatDate, formatDateTime,
+    45→} from "@/components/hrms/onboarding/shared"
+    46→
+    47→// ---------- helpers ----------
+    48→
+    49→/** Convert a hex color to an rgba string with the given alpha. */
+    50→function hexToRgba(hex: string | null | undefined, alpha: number): string {
+    51→  let h = (hex || "#64748b").replace("#", "").trim()
+    52→  if (h.length === 3) h = h.split("").map((c) => c + c).join("")
+    53→  if (h.length !== 6) return `rgba(100,116,139,${alpha})`
+    54→  const r = parseInt(h.slice(0, 2), 16) || 0
+    55→  const g = parseInt(h.slice(2, 4), 16) || 0
+    56→  const b = parseInt(h.slice(4, 6), 16) || 0
+    57→  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+    58→}
+    59→
+    60→const STAGE_TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+    61→  start: PlayCircle,
+    62→  standard: Circle,
+    63→  gate: ShieldCheck,
+    64→  end: CheckCircle2,
+    65→}
+    66→
+    67→function StageTypeIcon({ stageType, className }: { stageType: string; className?: string }) {
+    68→  const Icon = STAGE_TYPE_ICON[stageType] || Circle
+    69→  return <Icon className={className} />
+    70→}
+    71→
+    72→/** Compute completed/total tasks from a candidate instance. */
+    73→function taskProgress(instance?: OnboardingCandidate["instance"]) {
+    74→  if (!instance?.tasks || instance.tasks.length === 0) {
+    75→    return { completed: 0, total: 0, percent: 0 }
+    76→  }
+    77→  const total = instance.tasks.length
+    78→  const completed = instance.tasks.filter((t: any) => t.status === "Completed").length
+    79→  return { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 }
+    80→}
+    81→
+    82→const SLA_PILL_CLASS: Record<string, string> = {
+    83→  none: "bg-muted/60 text-muted-foreground",
+    84→  ok: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+    85→  warning: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+    86→  breached: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+    87→}
+    88→
+    89→const STATUS_OPTIONS = ["Active", "OnHold", "Withdrawn", "Completed"] as const
+    90→const STATUS_BADGE_CLASS: Record<string, string> = {
+    91→  Active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+    92→  OnHold: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+    93→  Withdrawn: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+    94→  Completed: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
+    95→}
+    96→
+    97→const PRIORITY_BADGE_CLASS: Record<string, string> = {
+    98→  Low: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300",
+    99→  Medium: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
+   100→  High: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+   101→  Critical: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+   102→}
+   103→
+   104→// ---------- main component ----------
+   105→
+   106→export function KanbanSection() {
+   107→  // Workflows list
+   108→  const workflowsFetch = useFetch<{ items: OnboardingWorkflow[] }>("/api/onboarding-workflows")
+   109→  const workflows = workflowsFetch.data?.items ?? []
+   110→
+   111→  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null)
+   112→
+   113→  // Auto-select default workflow once data is available
+   114→  useEffect(() => {
+   115→    if (workflows.length > 0 && !selectedWorkflowId) {
+   116→      const def = workflows.find((w) => w.isDefault) || workflows[0]
+   117→      setSelectedWorkflowId(def.id)
+   118→    }
+   119→  }, [workflows, selectedWorkflowId])
+   120→
+   121→  // Reset selection if it no longer exists
+   122→  useEffect(() => {
+   123→    if (selectedWorkflowId && workflows.length > 0 && !workflows.some((w) => w.id === selectedWorkflowId)) {
+   124→      setSelectedWorkflowId(workflows[0].id)
+   125→    }
+   126→  }, [workflows, selectedWorkflowId])
+   127→
+   128→  // Candidates list (depends on selected workflow)
+   129→  const candidatesFetch = useFetch<{ items: OnboardingCandidate[] }>(
+   130→    selectedWorkflowId ? `/api/onboarding-candidates?workflowId=${selectedWorkflowId}` : null
+   131→  )
+   132→  const candidates = candidatesFetch.data?.items ?? []
+   133→
+   134→  // Full workflow detail (for stage metadata — slaDays, wipLimit, blockOnOverflow, etc.)
+   135→  const detailWfFetch = useFetch<OnboardingWorkflow & { stages: OnboardingStage[] }>(
+   136→    selectedWorkflowId ? `/api/onboarding-workflows/${selectedWorkflowId}` : null
+   137→  )
+   138→  const stages = detailWfFetch.data?.stages ?? []
+   139→  const workflowMeta = detailWfFetch.data
+   140→
+   141→  // Filters
+   142→  const [search, setSearch] = useState("")
+   143→  const [priorityFilter, setPriorityFilter] = useState<string>("all")
+   144→
+   145→  // Drag & drop state
+   146→  const [draggingId, setDraggingId] = useState<string | null>(null)
+   147→  const [dragOverStageId, setDragOverStageId] = useState<string | null>(null)
+   148→  const [moving, setMoving] = useState(false)
+   149→
+   150→  // Detail sheet
+   151→  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
+   152→
+   153→  // Client-side filtering
+   154→  const filteredCandidates = useMemo(() => {
+   155→    const q = search.trim().toLowerCase()
+   156→    return candidates.filter((c) => {
+   157→      if (priorityFilter !== "all" && c.priority !== priorityFilter) return false
+   158→      if (!q) return true
+   159→      return (
+   160→        c.candidateName?.toLowerCase().includes(q) ||
+   161→        c.email?.toLowerCase().includes(q) ||
+   162→        c.employeeCode?.toLowerCase().includes(q) ||
+   163→        c.designation?.toLowerCase().includes(q)
+   164→      )
+   165→    })
+   166→  }, [candidates, search, priorityFilter])
+   167→
+   168→  // Group by current stage
+   169→  const byStage = useMemo(() => {
+   170→    const map = new Map<string, OnboardingCandidate[]>()
+   171→    for (const c of filteredCandidates) {
+   172→      const k = c.currentStageId || "__none__"
+   173→      if (!map.has(k)) map.set(k, [])
+   174→      map.get(k)!.push(c)
+   175→    }
+   176→    return map
+   177→  }, [filteredCandidates])
+   178→
+   179→  // Drag-and-drop move handler
+   180→  const handleDrop = useCallback(
+   181→    async (candidateId: string, targetStageId: string) => {
+   182→      if (moving) return
+   183→      const candidate = candidates.find((c) => c.id === candidateId)
+   184→      if (!candidate) return
+   185→      // No-op drop on same stage
+   186→      if (candidate.currentStageId === targetStageId) {
+   187→        setDraggingId(null)
+   188→        setDragOverStageId(null)
+   189→        return
+   190→      }
+   191→      setMoving(true)
+   192→      try {
+   193→        const res: any = await apiPatch(
+   194→          `/api/onboarding-candidates/${candidateId}/move`,
+   195→          { targetStageId }
+   196→        )
+   197→        const stageName = res?.currentStage?.name || "new stage"
+   198→        toast.success(`Moved "${candidate.candidateName}" to ${stageName}`)
+   199→        candidatesFetch.reload()
+   200→        if (selectedCandidateId === candidateId) detailFetch.reload()
+   201→      } catch (e: any) {
+   202→        toast.error(e?.message || "Failed to move candidate")
+   203→      } finally {
+   204→        setMoving(false)
+   205→        setDraggingId(null)
+   206→        setDragOverStageId(null)
+   207→      }
+   208→    },
+   209→    [moving, candidates, selectedCandidateId, candidatesFetch]
+   210→  )
+   211→
+   212→  // Detail candidate fetch (parent-owned so DnD move can refresh it)
+   213→  const detailFetch = useFetch<any>(
+   214→    selectedCandidateId ? `/api/onboarding-candidates/${selectedCandidateId}` : null
+   215→  )
+   216→
+   217→  // Board-level stats
+   218→  const totalCandidates = candidates.length
+   219→  const breachedCount = candidates.filter((c) => {
+   220→    const s = slaStatus(c.enteredAt, c.currentStage?.slaDays ?? null)
+   221→    return s.status === "breached"
+   222→  }).length
+   223→  const completedCount = candidates.filter((c) => c.status === "Completed").length
+   224→
+   225→  // ---------- Render ----------
+   226→
+   227→  if (workflowsFetch.loading && workflows.length === 0) {
+   228→    return <BoardSkeleton />
+   229→  }
+   230→
+   231→  if (workflowsFetch.error) {
+   232→    return (
+   233→      <EmptyState
+   234→        icon={AlertTriangle}
+   235→        title="Failed to load onboarding boards"
+   236→        description={workflowsFetch.error}
+   237→      />
+   238→    )
+   239→  }
+   240→
+   241→  if (workflows.length === 0) {
+   242→    return (
+   243→      <EmptyState
+   244→        icon={KanbanSquare}
+   245→        title="No onboarding boards yet"
+   246→        description="Create a workflow in the Workflows tab first. Once a workflow has stages, candidates will flow through them on this board."
+   247→      />
+   248→    )
+   249→  }
+   250→
+   251→  return (
+   252→    <div className="flex flex-col h-full min-h-0">
+   253→      {/* ---------- Board selector + filters ---------- */}
+   254→      <div className="flex flex-col gap-3 pb-3 border-b border-border/60">
+   255→        {/* Board tabs */}
+   256→        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+   257→          {workflows.map((w) => {
+   258→            const active = w.id === selectedWorkflowId
+   259→            const count = w._count?.candidates ?? 0
+   260→            return (
+   261→              <button
+   262→                key={w.id}
+   263→                type="button"
+   264→                onClick={() => setSelectedWorkflowId(w.id)}
+   265→                className={cn(
+   266→                  "group inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+   267→                  active
+   268→                    ? "border-foreground/20 bg-foreground text-background shadow-sm"
+   269→                    : "border-border/60 bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+   270→                )}
+   271→              >
+   272→                <span
+   273→                  className="h-2.5 w-2.5 rounded-full"
+   274→                  style={{ backgroundColor: w.color || "#10b981" }}
+   275→                />
+   276→                <span>{w.name}</span>
+   277→                <span
+   278→                  className={cn(
+   279→                    "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold",
+   280→                    active ? "bg-background/20 text-background" : "bg-muted text-muted-foreground"
+   281→                  )}
+   282→                >
+   283→                  {count}
+   284→                </span>
+   285→              </button>
+   286→            )
+   287→          })}
+   288→        </div>
+   289→
+   290→        {/* Search + filters + stats */}
+   291→        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+   292→          <div className="flex flex-1 flex-wrap items-center gap-2">
+   293→            <div className="relative w-full sm:max-w-xs">
+   294→              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   295→              <Input
+   296→                value={search}
+   297→                onChange={(e) => setSearch(e.target.value)}
+   298→                placeholder="Search candidate, email, code..."
+   299→                className="h-9 pl-9 bg-background"
+   300→              />
+   301→              {search && (
+   302→                <button
+   303→                  type="button"
+   304→                  onClick={() => setSearch("")}
+   305→                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:bg-muted"
+   306→                >
+   307→                  <X className="h-3.5 w-3.5" />
+   308→                </button>
+   309→              )}
+   310→            </div>
+   311→            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+   312→              <SelectTrigger className="h-9 w-[150px] bg-background">
+   313→                <Flag className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
+   314→                <SelectValue placeholder="Priority" />
+   315→              </SelectTrigger>
+   316→              <SelectContent>
+   317→                <SelectItem value="all">All priorities</SelectItem>
+   318→                {PRIORITIES.map((p) => (
+   319→                  <SelectItem key={p} value={p}>
+   320→                    <span className="inline-flex items-center gap-2">
+   321→                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[p] }} />
+   322→                      {p}
+   323→                    </span>
+   324→                  </SelectItem>
+   325→                ))}
+   326→              </SelectContent>
+   327→            </Select>
+   328→          </div>
+   329→
+   330→          {/* Mini stats */}
+   331→          <div className="flex items-center gap-3 text-xs">
+   332→            <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+   333→              <Users className="h-3.5 w-3.5" />
+   334→              <span className="font-semibold text-foreground">{totalCandidates}</span> candidates
+   335→            </span>
+   336→            {breachedCount > 0 && (
+   337→              <span className="inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
+   338→                <AlertTriangle className="h-3.5 w-3.5" />
+   339→                <span className="font-semibold">{breachedCount}</span> SLA breached
+   340→              </span>
+   341→            )}
+   342→            {completedCount > 0 && (
+   343→              <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+   344→                <CheckCircle2 className="h-3.5 w-3.5" />
+   345→                <span className="font-semibold">{completedCount}</span> done
+   346→              </span>
+   347→            )}
+   348→          </div>
+   349→        </div>
+   350→      </div>
+   351→
+   352→      {/* ---------- Kanban board ---------- */}
+   353→      <div className="flex-1 min-h-0 mt-3">
+   354→        {stages.length === 0 && detailWfFetch.loading ? (
+   355→          <BoardColumnsSkeleton />
+   356→        ) : stages.length === 0 ? (
+   357→          <EmptyState
+   358→            icon={KanbanSquare}
+   359→            title="This workflow has no stages"
+   360→            description="Add stages in the Workflows tab to see the kanban board."
+   361→          />
+   362→        ) : candidates.length === 0 && !search && priorityFilter === "all" ? (
+   363→          <EmptyState
+   364→            icon={Inbox}
+   365→            title="No candidates on this board yet"
+   366→            description="Add candidates in the Initiate tab. They will appear here in the first stage."
+   367→          />
+   368→        ) : filteredCandidates.length === 0 ? (
+   369→          <EmptyState
+   370→            icon={Search}
+   371→            title="No candidates match your filters"
+   372→            description="Try adjusting your search or priority filter."
+   373→            action={
+   374→              <Button
+   375→                variant="outline"
+   376→                size="sm"
+   377→                onClick={() => {
+   378→                  setSearch("")
+   379→                  setPriorityFilter("all")
+   380→                }}
+   381→              >
+   382→                Clear filters
+   383→              </Button>
+   384→            }
+   385→          />
+   386→        ) : (
+   387→          <div className="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 kanban-scroll h-full">
+   388→            {stages.map((stage) => {
+   389→              const cards = byStage.get(stage.id) ?? []
+   390→              return (
+   391→                <KanbanColumn
+   392→                  key={stage.id}
+   393→                  stage={stage}
+   394→                  cards={cards}
+   395→                  allowBackward={workflowMeta?.allowBackward ?? false}
+   396→                  draggingId={draggingId}
+   397→                  dragOverStageId={dragOverStageId}
+   398→                  onCardDragStart={(id) => setDraggingId(id)}
+   399→                  onCardDragEnd={() => {
+   400→                    setDraggingId(null)
+   401→                    setDragOverStageId(null)
+   402→                  }}
+   403→                  onColumnDragEnter={(stageId) => setDragOverStageId(stageId)}
+   404→                  onColumnDragLeave={(stageId) => {
+   405→                    setDragOverStageId((cur) => (cur === stageId ? null : cur))
+   406→                  }}
+   407→                  onDrop={(candidateId, stageId) => handleDrop(candidateId, stageId)}
+   408→                  onCardClick={(id) => setSelectedCandidateId(id)}
+   409→                  moving={moving}
+   410→                />
+   411→              )
+   412→            })}
+   413→          </div>
+   414→        )}
+   415→      </div>
+   416→
+   417→      {/* ---------- Candidate detail sheet ---------- */}
+   418→      <CandidateDetailSheet
+   419→        open={!!selectedCandidateId}
+   420→        onOpenChange={(o) => {
+   421→          if (!o) setSelectedCandidateId(null)
+   422→        }}
+   423→        candidate={detailFetch.data}
+   424→        loading={detailFetch.loading}
+   425→        stages={stages}
+   426→        onReload={detailFetch.reload}
+   427→        onBoardMutated={candidatesFetch.reload}
+   428→      />
+   429→    </div>
+   430→  )
+   431→}
+   432→
+   433→// =============================================================
+   434→// Kanban Column
+   435→// =============================================================
+   436→
+   437→interface KanbanColumnProps {
+   438→  stage: OnboardingStage
+   439→  cards: OnboardingCandidate[]
+   440→  allowBackward: boolean
+   441→  draggingId: string | null
+   442→  dragOverStageId: string | null
+   443→  moving: boolean
+   444→  onCardDragStart: (id: string) => void
+   445→  onCardDragEnd: () => void
+   446→  onColumnDragEnter: (stageId: string) => void
+   447→  onColumnDragLeave: (stageId: string) => void
+   448→  onDrop: (candidateId: string, stageId: string) => void
+   449→  onCardClick: (id: string) => void
+   450→}
+   451→
+   452→const KanbanColumn = React.memo(function KanbanColumn({
+   453→  stage, cards, allowBackward, draggingId, dragOverStageId, moving,
+   454→  onCardDragStart, onCardDragEnd, onColumnDragEnter, onColumnDragLeave, onDrop, onCardClick,
+   455→}: KanbanColumnProps) {
+   456→  const meta = STAGE_TYPE_META[stage.stageType] || STAGE_TYPE_META.standard
+   457→  const isOver = dragOverStageId === stage.id && draggingId !== null
+   458→  const wipCount = cards.length
+   459→  const wipExceeded = stage.wipLimit ? wipCount > stage.wipLimit : false
+   460→  const wipWarn = stage.wipLimit ? wipCount >= stage.wipLimit : false
+   461→
+   462→  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+   463→    if (!draggingId) return
+   464→    e.preventDefault()
+   465→    e.dataTransfer.dropEffect = "move"
+   466→  }
+   467→
+   468→  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+   469→    if (!draggingId) return
+   470→    e.preventDefault()
+   471→    onColumnDragEnter(stage.id)
+   472→  }
+   473→
+   474→  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+   475→    // Only fire when leaving the column entirely (not entering a child)
+   476→    if (!draggingId) return
+   477→    const related = e.relatedTarget as Node | null
+   478→    if (!e.currentTarget.contains(related)) {
+   479→      onColumnDragLeave(stage.id)
+   480→    }
+   481→  }
+   482→
+   483→  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+   484→    if (!draggingId) return
+   485→    e.preventDefault()
+   486→    const candidateId = e.dataTransfer.getData("text/plain") || draggingId
+   487→    onDrop(candidateId, stage.id)
+   488→  }
+   489→
+   490→  return (
+   491→    <div
+   492→      className="min-w-[300px] w-[300px] bg-muted/30 rounded-xl flex flex-col max-h-full"
+   493→      style={{ borderTopColor: stage.color || "#64748b" }}
+   494→    >
+   495→      {/* Color stripe */}
+   496→      <div
+   497→        className="h-1 rounded-t-xl"
+   498→        style={{ backgroundColor: stage.color || "#64748b" }}
+   499→      />
+   500→
+   501→      {/* Column header (sticky) */}
+   502→      <div className="sticky top-0 z-10 px-3 pt-2.5 pb-2 bg-muted/30 backdrop-blur-sm rounded-t-xl">
+   503→        <div className="flex items-start justify-between gap-2">
+   504→          <div className="flex items-center gap-2 min-w-0">
+   505→            <span
+   506→              className="grid h-6 w-6 shrink-0 place-items-center rounded-md"
+   507→              style={{ backgroundColor: hexToRgba(stage.color, 0.15), color: stage.color }}
+   508→            >
+   509→              <StageTypeIcon stageType={stage.stageType} className="h-3.5 w-3.5" />
+   510→            </span>
+   511→            <div className="min-w-0">
+   512→              <div className="flex items-center gap-1.5">
+   513→                <h3 className="text-sm font-semibold text-foreground truncate">{stage.name}</h3>
+   514→              </div>
+   515→              <div className="flex items-center gap-1.5 mt-0.5">
+   516→                <span
+   517→                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
+   518→                  style={{ backgroundColor: hexToRgba(meta.color, 0.15), color: meta.color }}
+   519→                >
+   520→                  {meta.label}
+   521→                </span>
+   522→                {stage.isMilestone && (
+   523→                  <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+   524→                    <FlagTriangleRight className="h-2.5 w-2.5" /> Milestone
+   525→                  </span>
+   526→                )}
+   527→              </div>
+   528→            </div>
+   529→          </div>
+   530→          <div className="flex items-center gap-1 shrink-0">
+   531→            <span
+   532→              className={cn(
+   533→                "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold",
+   534→                wipExceeded
+   535→                  ? "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300"
+   536→                  : wipWarn
+   537→                    ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+   538→                    : "bg-background text-muted-foreground border border-border/60"
+   539→              )}
+   540→              title={stage.wipLimit ? `WIP limit: ${stage.wipLimit}` : `${wipCount} candidates`}
+   541→            >
+   542→              {stage.wipLimit ? `${wipCount}/${stage.wipLimit}` : wipCount}
+   543→            </span>
+   544→          </div>
+   545→        </div>
+   546→
+   547→        {/* Stage meta row: SLA + WIP warning */}
+   548→        <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+   549→          {stage.slaDays ? (
+   550→            <span className="inline-flex items-center gap-1">
+   551→              <Clock className="h-3 w-3" />
+   552→              SLA {stage.slaDays}d
+   553→            </span>
+   554→          ) : (
+   555→            <span className="inline-flex items-center gap-1 opacity-60">
+   556→              <Clock className="h-3 w-3" /> No SLA
+   557→            </span>
+   558→          )}
+   559→          {stage.wipLimit && stage.blockOnOverflow && (
+   560→            <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+   561→              <Lock className="h-3 w-3" /> WIP lock
+   562→            </span>
+   563→          )}
+   564→          {!allowBackward && (
+   565→            <span className="inline-flex items-center gap-1 opacity-60 ml-auto">
+   566→              <ArrowRight className="h-3 w-3" /> forward only
+   567→            </span>
+   568→          )}
+   569→        </div>
+   570→      </div>
+   571→
+   572→      {/* Column body — drop zone + scrollable card list */}
+   573→      <div
+   574→        onDragOver={handleDragOver}
+   575→        onDragEnter={handleDragEnter}
+   576→        onDragLeave={handleDragLeave}
+   577→        onDrop={handleDrop}
+   578→        className={cn(
+   579→          "flex-1 min-h-0 m-2 mt-1 rounded-lg p-1 transition-colors overflow-y-auto",
+   580→          isOver
+   581→            ? "bg-background/80 outline-dashed outline-2 outline-offset-[-2px]"
+   582→            : "outline-transparent"
+   583→        )}
+   584→        style={
+   585→          isOver
+   586→            ? ({ "--tw-outline-color": stage.color || "#64748b" } as React.CSSProperties)
+   587→            : undefined
+   588→        }
+   589→      >
+   590→        {moving && (
+   591→          <div className="flex items-center justify-center py-2 text-xs text-muted-foreground">
+   592→            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+   593→            Moving...
+   594→          </div>
+   595→        )}
+   596→
+   597→        {cards.length === 0 && !moving ? (
+   598→          <div
+   599→            className={cn(
+   600→              "flex flex-col items-center justify-center py-10 text-center rounded-lg border border-dashed",
+   601→              isOver
+   602→                ? "border-transparent"
+   603→                : "border-border/50"
+   604→            )}
+   605→          >
+   606→            <InboxIcon className="h-5 w-5 text-muted-foreground/50 mb-1.5" />
+   607→            <p className="text-xs text-muted-foreground/70">
+   608→              {isOver ? "Drop here" : "Drop candidates here"}
+   609→            </p>
+   610→          </div>
+   611→        ) : (
+   612→          <div className="flex flex-col gap-2 px-1 pb-2">
+   613→            <AnimatePresence initial={false}>
+   614→              {cards.map((c) => (
+   615→                <motion.div
+   616→                  key={c.id}
+   617→                  layout
+   618→                  initial={{ opacity: 0, y: -6 }}
+   619→                  animate={{ opacity: 1, y: 0 }}
+   620→                  exit={{ opacity: 0, scale: 0.97 }}
+   621→                  transition={{ duration: 0.16, ease: "easeOut" }}
+   622→                >
+   623→                  <CandidateCard
+   624→                    candidate={c}
+   625→                    isDragging={draggingId === c.id}
+   626→                    onDragStart={() => onCardDragStart(c.id)}
+   627→                    onDragEnd={onCardDragEnd}
+   628→                    onClick={() => onCardClick(c.id)}
+   629→                  />
+   630→                </motion.div>
+   631→              ))}
+   632→            </AnimatePresence>
+   633→          </div>
+   634→        )}
+   635→      </div>
+   636→    </div>
+   637→  )
+   638→})
+   639→
+   640→// =============================================================
+   641→// Candidate Card
+   642→// =============================================================
+   643→
+   644→interface CandidateCardProps {
+   645→  candidate: OnboardingCandidate
+   646→  isDragging: boolean
+   647→  onDragStart: () => void
+   648→  onDragEnd: () => void
+   649→  onClick: () => void
+   650→}
+   651→
+   652→const CandidateCard = React.memo(function CandidateCard({
+   653→  candidate, isDragging, onDragStart, onDragEnd, onClick,
+   654→}: CandidateCardProps) {
+   655→  const priorityColor = PRIORITY_COLORS[candidate.priority] || PRIORITY_COLORS.Medium
+   656→  const tags = safeParseJson<string[]>(candidate.tags, [])
+   657→  const progress = taskProgress(candidate.instance)
+   658→  const sla = slaStatus(candidate.enteredAt, candidate.currentStage?.slaDays ?? null)
+   659→
+   660→  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+   661→    e.dataTransfer.setData("text/plain", candidate.id)
+   662→    e.dataTransfer.effectAllowed = "move"
+   663→    onDragStart()
+   664→  }
+   665→
+   666→  return (
+   667→    <div
+   668→      draggable
+   669→      onDragStart={handleDragStart}
+   670→      onDragEnd={onDragEnd}
+   671→      onClick={onClick}
+   672→      className={cn(
+   673→        "group relative bg-card border border-border/60 rounded-lg shadow-sm hover:shadow-md transition-shadow p-3 cursor-grab active:cursor-grabbing",
+   674→        isDragging && "opacity-50 ring-2 ring-foreground/20"
+   675→      )}
+   676→      style={{ borderLeftColor: priorityColor, borderLeftWidth: 3 }}
+   677→    >
+   678→      {/* Top row: name + avatar */}
+   679→      <div className="flex items-start justify-between gap-2">
+   680→        <div className="min-w-0 flex-1">
+   681→          <div className="flex items-center gap-1.5">
+   682→            <h4 className="text-sm font-semibold text-foreground truncate">{candidate.candidateName}</h4>
+   683→            {candidate.priority === "Critical" && (
+   684→              <span title="Critical priority">
+   685→                <AlertTriangle className="h-3 w-3 text-rose-500 shrink-0" />
+   686→              </span>
+   687→            )}
+   688→          </div>
+   689→          {candidate.designation && (
+   690→            <p className="text-xs text-muted-foreground truncate">{candidate.designation}</p>
+   691→          )}
+   692→          {candidate.department && (
+   693→            <p className="text-[11px] text-muted-foreground/70 truncate flex items-center gap-1 mt-0.5">
+   694→              <Building2 className="h-2.5 w-2.5" />
+   695→              {candidate.department}
+   696→            </p>
+   697→          )}
+   698→        </div>
+   699→        <Avatar className="h-8 w-8 shrink-0">
+   700→          <AvatarFallback
+   701→            className="text-[11px] font-semibold text-white"
+   702→            style={{ backgroundColor: candidate.avatarColor || "#10b981" }}
+   703→          >
+   704→            {initials(candidate.candidateName)}
+   705→          </AvatarFallback>
+   706→        </Avatar>
+   707→      </div>
+   708→
+   709→      {/* SLA + status row */}
+   710→      <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+   711→        {sla.status !== "none" && (
+   712→          <Tooltip>
+   713→            <TooltipTrigger asChild>
+   714→              <span
+   715→                className={cn(
+   716→                  "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+   717→                  SLA_PILL_CLASS[sla.status]
+   718→                )}
+   719→              >
+   720→                <Clock className="h-2.5 w-2.5" />
+   721→                {sla.label}
+   722→              </span>
+   723→            </TooltipTrigger>
+   724→            <TooltipContent side="top">
+   725→              {candidate.enteredAt
+   726→                ? `In stage since ${formatDateTime(candidate.enteredAt)}`
+   727→                : "No entry timestamp"}
+   728→              {candidate.currentStage?.slaDays ? ` • SLA ${candidate.currentStage.slaDays}d` : ""}
+   729→            </TooltipContent>
+   730→          </Tooltip>
+   731→        )}
+   732→        {candidate.status !== "Active" && (
+   733→          <span
+   734→            className={cn(
+   735→              "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+   736→              STATUS_BADGE_CLASS[candidate.status] || "bg-muted text-muted-foreground"
+   737→            )}
+   738→          >
+   739→            {candidate.status}
+   740→          </span>
+   741→        )}
+   742→        {candidate.employeeCode && (
+   743→          <span className="inline-flex items-center gap-0.5 rounded-full bg-muted/60 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+   744→            <Hash className="h-2.5 w-2.5" />
+   745→            {candidate.employeeCode}
+   746→          </span>
+   747→        )}
+   748→      </div>
+   749→
+   750→      {/* Tags */}
+   751→      {tags.length > 0 && (
+   752→        <div className="mt-1.5 flex items-center gap-1 flex-wrap">
+   753→          {tags.slice(0, 3).map((t, i) => (
+   754→            <span
+   755→              key={i}
+   756→              className="inline-flex items-center rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+   757→            >
+   758→              {t}
+   759→            </span>
+   760→          ))}
+   761→          {tags.length > 3 && (
+   762→            <span className="text-[10px] text-muted-foreground/70">+{tags.length - 3}</span>
+   763→          )}
+   764→        </div>
+   765→      )}
+   766→
+   767→      {/* Bottom row: task progress + owner + days in stage */}
+   768→      <div className="mt-2.5 pt-2 border-t border-border/40 flex items-center gap-2">
+   769→        <div className="flex-1 min-w-0">
+   770→          {progress.total > 0 ? (
+   771→            <Tooltip>
+   772→              <TooltipTrigger asChild>
+   773→                <div className="flex items-center gap-1.5">
+   774→                  <ListChecks className="h-3 w-3 text-muted-foreground shrink-0" />
+   775→                  <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
+   776→                    <div
+   777→                      className="h-full bg-emerald-500 rounded-full transition-all"
+   778→                      style={{ width: `${progress.percent}%` }}
+   779→                    />
+   780→                  </div>
+   781→                  <span className="text-[10px] text-muted-foreground tabular-nums">
+   782→                    {progress.completed}/{progress.total}
+   783→                  </span>
+   784→                </div>
+   785→              </TooltipTrigger>
+   786→              <TooltipContent side="top">
+   787→                {progress.completed} of {progress.total} tasks completed
+   788→              </TooltipContent>
+   789→            </Tooltip>
+   790→          ) : (
+   791→            <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
+   792→              <ListChecks className="h-3 w-3" /> No tasks
+   793→            </div>
+   794→          )}
+   795→        </div>
+   796→        {candidate.ownerId && (
+   797→          <Tooltip>
+   798→            <TooltipTrigger asChild>
+   799→              <span className="grid h-5 w-5 place-items-center rounded-full bg-muted text-[9px] font-semibold text-muted-foreground">
+   800→                <UserCircle2 className="h-3.5 w-3.5" />
+   801→              </span>
+   802→            </TooltipTrigger>
+   803→            <TooltipContent side="top">Owner assigned</TooltipContent>
+   804→          </Tooltip>
+   805→        )}
+   806→        <span className="text-[10px] text-muted-foreground/70 shrink-0">
+   807→          {candidate.enteredAt ? timeAgo(candidate.enteredAt) : "—"}
+   808→        </span>
+   809→      </div>
+   810→    </div>
+   811→  )
+   812→})
+   813→
+   814→// =============================================================
+   815→// Candidate Detail Sheet (right drawer)
+   816→// =============================================================
+   817→
+   818→interface CandidateDetailSheetProps {
+   819→  open: boolean
+   820→  onOpenChange: (o: boolean) => void
+   821→  candidate: any
+   822→  loading: boolean
+   823→  stages: OnboardingStage[]
+   824→  onReload: () => void
+   825→  onBoardMutated: () => void
+   826→}
+   827→
+   828→function CandidateDetailSheet({
+   829→  open, onOpenChange, candidate, loading, stages, onReload, onBoardMutated,
+   830→}: CandidateDetailSheetProps) {
+   831→  const [noteText, setNoteText] = useState("")
+   832→  const [savingNote, setSavingNote] = useState(false)
+   833→  const [actionLoading, setActionLoading] = useState(false)
+   834→
+   835→  // Reset note text when sheet closes / candidate changes
+   836→  useEffect(() => {
+   837→    if (!open) setNoteText("")
+   838→  }, [open])
+   839→
+   840→  const tags = safeParseJson<string[]>(candidate?.tags, [])
+   841→  const progress = taskProgress(candidate?.instance)
+   842→
+   843→  // Move candidate to a different stage
+   844→  const handleMoveStage = async (targetStageId: string) => {
+   845→    if (!candidate || actionLoading) return
+   846→    if (candidate.currentStageId === targetStageId) return
+   847→    setActionLoading(true)
+   848→    try {
+   849→      const res: any = await apiPatch(
+   850→        `/api/onboarding-candidates/${candidate.id}/move`,
+   851→        { targetStageId }
+   852→      )
+   853→      toast.success(`Moved to ${res?.currentStage?.name || "new stage"}`)
+   854→      onReload()
+   855→      onBoardMutated()
+   856→    } catch (e: any) {
+   857→      toast.error(e?.message || "Failed to move candidate")
+   858→    } finally {
+   859→      setActionLoading(false)
+   860→    }
+   861→  }
+   862→
+   863→  // Update candidate meta (priority / status)
+   864→  const handleUpdateMeta = async (patch: Record<string, any>) => {
+   865→    if (!candidate || actionLoading) return
+   866→    setActionLoading(true)
+   867→    try {
+   868→      await apiPatch(`/api/onboarding-candidates/${candidate.id}`, patch)
+   869→      toast.success("Candidate updated")
+   870→      onReload()
+   871→      onBoardMutated()
+   872→    } catch (e: any) {
+   873→      toast.error(e?.message || "Failed to update candidate")
+   874→    } finally {
+   875→      setActionLoading(false)
+   876→    }
+   877→  }
+   878→
+   879→  // Add note
+   880→  const handleAddNote = async () => {
+   881→    if (!candidate || !noteText.trim() || savingNote) return
+   882→    setSavingNote(true)
+   883→    try {
+   884→      await apiPost(`/api/onboarding-candidates/${candidate.id}/notes`, {
+   885→        body: noteText.trim(),
+   886→        stageId: candidate.currentStageId,
+   887→      })
+   888→      toast.success("Note added")
+   889→      setNoteText("")
+   890→      onReload()
+   891→    } catch (e: any) {
+   892→      toast.error(e?.message || "Failed to add note")
+   893→    } finally {
+   894→      setSavingNote(false)
+   895→    }
+   896→  }
+   897→
+   898→  // Pipeline stepper data: pair workflow stages with instance stage statuses
+   899→  const pipelineStages = useMemo(() => {
+   900→    if (!candidate) return []
+   901→    const wfStages: any[] = candidate.workflow?.stages || stages
+   902→    const instanceStages: any[] = candidate.instance?.stages || []
+   903→    return wfStages
+   904→      .slice()
+   905→      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+   906→      .map((s) => {
+   907→        const inst = instanceStages.find((is: any) => is.stageId === s.id)
+   908→        return {
+   909→          ...s,
+   910→          status: inst?.status || "Pending",
+   911→          enteredAt: inst?.enteredAt,
+   912→          completedAt: inst?.completedAt,
+   913→          slaDueAt: inst?.slaDueAt,
+   914→          isCurrent: candidate.currentStageId === s.id,
+   915→        }
+   916→      })
+   917→  }, [candidate, stages])
+   918→
+   919→  return (
+   920→    <Sheet open={open} onOpenChange={onOpenChange}>
+   921→      <SheetContent
+   922→        side="right"
+   923→        className="w-full sm:max-w-2xl p-0 flex flex-col gap-0"
+   924→      >
+   925→        {/* Header */}
+   926→        <SheetHeader className="p-5 pb-3 border-b border-border/60">
+   927→          <div className="flex items-start gap-3 pr-6">
+   928→            <Avatar className="h-12 w-12 shrink-0">
+   929→              <AvatarFallback
+   930→                className="text-sm font-semibold text-white"
+   931→                style={{ backgroundColor: candidate?.avatarColor || "#10b981" }}
+   932→              >
+   933→                {candidate ? initials(candidate.candidateName) : "?"}
+   934→              </AvatarFallback>
+   935→            </Avatar>
+   936→            <div className="min-w-0 flex-1">
+   937→              <SheetTitle className="text-lg">{candidate?.candidateName || "Loading..."}</SheetTitle>
+   938→              <SheetDescription className="flex items-center gap-2 flex-wrap mt-1">
+   939→                {candidate?.designation && <span>{candidate.designation}</span>}
+   940→                {candidate?.department && (
+   941→                  <span className="inline-flex items-center gap-1">
+   942→                    <Building2 className="h-3 w-3" /> {candidate.department}
+   943→                  </span>
+   944→                )}
+   945→              </SheetDescription>
+   946→              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+   947→                {candidate?.status && (
+   948→                  <span
+   949→                    className={cn(
+   950→                      "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+   951→                      STATUS_BADGE_CLASS[candidate.status] || "bg-muted text-muted-foreground"
+   952→                    )}
+   953→                  >
+   954→                    {candidate.status}
+   955→                  </span>
+   956→                )}
+   957→                {candidate?.priority && (
+   958→                  <span
+   959→                    className={cn(
+   960→                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+   961→                      PRIORITY_BADGE_CLASS[candidate.priority] || "bg-muted text-muted-foreground"
+   962→                    )}
+   963→                  >
+   964→                    <Flag className="h-3 w-3" /> {candidate.priority}
+   965→                  </span>
+   966→                )}
+   967→                {candidate?.employmentType && (
+   968→                  <span className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">
+   969→                    <Briefcase className="h-3 w-3" /> {candidate.employmentType}
+   970→                  </span>
+   971→                )}
+   972→                {tags.map((t, i) => (
+   973→                  <span
+   974→                    key={i}
+   975→                    className="inline-flex items-center rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground"
+   976→                  >
+   977→                    {t}
+   978→                  </span>
+   979→                ))}
+   980→              </div>
+   981→            </div>
+   982→          </div>
+   983→        </SheetHeader>
+   984→
+   985→        {/* Body */}
+   986→        <div className="flex-1 overflow-y-auto">
+   987→          {loading && !candidate ? (
+   988→            <div className="p-5 space-y-4">
+   989→              <Skeleton className="h-24 w-full" />
+   990→              <Skeleton className="h-32 w-full" />
+   991→              <Skeleton className="h-48 w-full" />
+   992→            </div>
+   993→          ) : !candidate ? (
+   994→            <EmptyState icon={Inbox} title="Candidate not found" />
+   995→          ) : (
+   996→            <div className="p-5 space-y-6">
+   997→              {/* Contact info */}
+   998→              <Section title="Contact" icon={UserCircle2}>
+   999→                <div className="grid grid-cols-2 gap-3 text-sm">
+  1000→                  <InfoField icon={Mail} label="Email" value={candidate.email} />
+  1001→                  <InfoField icon={Phone} label="Phone" value={candidate.phone} />
+  1002→                  <InfoField icon={Hash} label="Employee code" value={candidate.employeeCode} />
+  1003→                  <InfoField icon={Calendar} label="Join date" value={candidate.joinDate ? formatDate(candidate.joinDate) : null} />
+  1004→                  <InfoField icon={UserCog} label="Reports to" value={candidate.reportTo} />
+  1005→                  <InfoField icon={Building2} label="Grade" value={candidate.grade} />
+  1006→                </div>
+  1007→              </Section>
+  1008→
+  1009→              {/* Pipeline stepper */}
+  1010→              <Section title="Pipeline progress" icon={KanbanSquare} action={
+  1011→                <span className="text-xs text-muted-foreground">
+  1012→                  {progress.completed}/{progress.total} tasks • {candidate.instance?.overallProgress ?? candidate.progress ?? 0}% overall
+  1013→                </span>
+  1014→              }>
+  1015→                <PipelineStepper stages={pipelineStages} currentStageId={candidate.currentStageId} />
+  1016→              </Section>
+  1017→
+  1018→              {/* Tasks */}
+  1019→              <Section
+  1020→                title="Tasks"
+  1021→                icon={ListChecks}
+  1022→                action={
+  1023→                  <span className="text-xs text-muted-foreground">
+  1024→                    {progress.completed}/{progress.total} done
+  1025→                  </span>
+  1026→                }
+  1027→              >
+  1028→                <TasksList tasks={candidate.instance?.tasks || []} />
+  1029→              </Section>
+  1030→
+  1031→              {/* Notes */}
+  1032→              <Section title="Notes" icon={StickyNote}>
+  1033→                <NotesList notes={candidate.notes || []} />
+  1034→                <div className="mt-3 space-y-2">
+  1035→                  <Textarea
+  1036→                    value={noteText}
+  1037→                    onChange={(e) => setNoteText(e.target.value)}
+  1038→                    placeholder="Add a note about this candidate..."
+  1039→                    className="resize-none bg-background text-sm"
+  1040→                    rows={3}
+  1041→                  />
+  1042→                  <div className="flex justify-end">
+  1043→                    <Button
+  1044→                      size="sm"
+  1045→                      onClick={handleAddNote}
+  1046→                      disabled={!noteText.trim() || savingNote}
+  1047→                      className="gap-1.5"
+  1048→                    >
+  1049→                      {savingNote ? (
+  1050→                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+  1051→                      ) : (
+  1052→                        <Send className="h-3.5 w-3.5" />
+  1053→                      )}
+  1054→                      Add note
+  1055→                    </Button>
+  1056→                  </div>
+  1057→                </div>
+  1058→              </Section>
+  1059→            </div>
+  1060→          )}
+  1061→        </div>
+  1062→
+  1063→        {/* Footer actions */}
+  1064→        {candidate && (
+  1065→          <div className="border-t border-border/60 p-4 bg-muted/30">
+  1066→            <div className="flex items-center gap-2 flex-wrap">
+  1067→              {/* Priority */}
+  1068→              <DropdownMenu>
+  1069→                <DropdownMenuTrigger asChild>
+  1070→                  <Button variant="outline" size="sm" className="gap-1.5" disabled={actionLoading}>
+  1071→                    <Flag className="h-3.5 w-3.5" />
+  1072→                    Priority
+  1073→                    <ChevronRight className="h-3 w-3 rotate-90 opacity-60" />
+  1074→                  </Button>
+  1075→                </DropdownMenuTrigger>
+  1076→                <DropdownMenuContent align="start">
+  1077→                  <DropdownMenuLabel>Change priority</DropdownMenuLabel>
+  1078→                  <DropdownMenuSeparator />
+  1079→                  {PRIORITIES.map((p) => (
+  1080→                    <DropdownMenuItem
+  1081→                      key={p}
+  1082→                      onClick={() => handleUpdateMeta({ priority: p })}
+  1083→                      className={candidate.priority === p ? "bg-muted/60" : ""}
+  1084→                    >
+  1085→                      <span
+  1086→                        className="h-2 w-2 rounded-full mr-2"
+  1087→                        style={{ backgroundColor: PRIORITY_COLORS[p] }}
+  1088→                      />
+  1089→                      {p}
+  1090→                      {candidate.priority === p && <CheckCircle2 className="h-3.5 w-3.5 ml-auto" />}
+  1091→                    </DropdownMenuItem>
+  1092→                  ))}
+  1093→                </DropdownMenuContent>
+  1094→              </DropdownMenu>
+  1095→
+  1096→              {/* Status */}
+  1097→              <DropdownMenu>
+  1098→                <DropdownMenuTrigger asChild>
+  1099→                  <Button variant="outline" size="sm" className="gap-1.5" disabled={actionLoading}>
+  1100→                    <UserCog className="h-3.5 w-3.5" />
+  1101→                    Status
+  1102→                    <ChevronRight className="h-3 w-3 rotate-90 opacity-60" />
+  1103→                  </Button>
+  1104→                </DropdownMenuTrigger>
+  1105→                <DropdownMenuContent align="start">
+  1106→                  <DropdownMenuLabel>Change status</DropdownMenuLabel>
+  1107→                  <DropdownMenuSeparator />
+  1108→                  {STATUS_OPTIONS.map((s) => (
+  1109→                    <DropdownMenuItem
+  1110→                      key={s}
+  1111→                      onClick={() => handleUpdateMeta({ status: s })}
+  1112→                      className={candidate.status === s ? "bg-muted/60" : ""}
+  1113→                    >
+  1114→                      {s}
+  1115→                      {candidate.status === s && <CheckCircle2 className="h-3.5 w-3.5 ml-auto" />}
+  1116→                    </DropdownMenuItem>
+  1117→                  ))}
+  1118→                </DropdownMenuContent>
+  1119→              </DropdownMenu>
+  1120→
+  1121→              {/* Move to stage */}
+  1122→              <div className="ml-auto flex items-center gap-2 min-w-[200px]">
+  1123→                <Select
+  1124→                  value={candidate.currentStageId || ""}
+  1125→                  onValueChange={handleMoveStage}
+  1126→                  disabled={actionLoading}
+  1127→                >
+  1128→                  <SelectTrigger className="h-9 bg-background">
+  1129→                    <ArrowRight className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
+  1130→                    <SelectValue placeholder="Move to stage" />
+  1131→                  </SelectTrigger>
+  1132→                  <SelectContent>
+  1133→                    {pipelineStages.map((s: any) => (
+  1134→                      <SelectItem key={s.id} value={s.id} disabled={s.id === candidate.currentStageId}>
+  1135→                        <span className="inline-flex items-center gap-2">
+  1136→                          <span
+  1137→                            className="h-2 w-2 rounded-full"
+  1138→                            style={{ backgroundColor: s.color || "#64748b" }}
+  1139→                          />
+  1140→                          {s.name}
+  1141→                          {s.id === candidate.currentStageId && (
+  1142→                            <span className="text-xs text-muted-foreground">(current)</span>
+  1143→                          )}
+  1144→                        </span>
+  1145→                      </SelectItem>
+  1146→                    ))}
+  1147→                  </SelectContent>
+  1148→                </Select>
+  1149→              </div>
+  1150→            </div>
+  1151→          </div>
+  1152→        )}
+  1153→      </SheetContent>
+  1154→    </Sheet>
+  1155→  )
+  1156→}
+  1157→
+  1158→// ---------- sheet sub-components ----------
+  1159→
+  1160→function Section({
+  1161→  title, icon: Icon, action, children,
+  1162→}: {
+  1163→  title: string
+  1164→  icon: React.ComponentType<{ className?: string }>
+  1165→  action?: React.ReactNode
+  1166→  children: React.ReactNode
+  1167→}) {
+  1168→  return (
+  1169→    <div>
+  1170→      <div className="flex items-center justify-between mb-2">
+  1171→        <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+  1172→          <Icon className="h-4 w-4 text-muted-foreground" />
+  1173→          {title}
+  1174→        </h3>
+  1175→        {action}
+  1176→      </div>
+  1177→      {children}
+  1178→    </div>
+  1179→  )
+  1180→}
+  1181→
+  1182→function InfoField({
+  1183→  icon: Icon, label, value,
+  1184→}: {
+  1185→  icon: React.ComponentType<{ className?: string }>
+  1186→  label: string
+  1187→  value?: string | null
+  1188→}) {
+  1189→  return (
+  1190→    <div className="flex items-start gap-2 min-w-0">
+  1191→      <Icon className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+  1192→      <div className="min-w-0">
+  1193→        <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70">{label}</p>
+  1194→        <p className="text-sm text-foreground truncate">{value || "—"}</p>
+  1195→      </div>
+  1196→    </div>
+  1197→  )
+  1198→}
+  1199→
+  1200→function PipelineStepper({
+  1201→  stages, currentStageId,
+  1202→}: {
+  1203→  stages: any[]
+  1204→  currentStageId?: string | null
+  1205→}) {
+  1206→  if (stages.length === 0) {
+  1207→    return <p className="text-sm text-muted-foreground">No stages defined.</p>
+  1208→  }
+  1209→  return (
+  1210→    <div className="flex items-stretch gap-0 overflow-x-auto pb-2">
+  1211→      {stages.map((s, i) => {
+  1212→        const isDone = s.status === "Completed"
+  1213→        const isActive = s.isCurrent || s.status === "Active"
+  1214→        const isPending = !isDone && !isActive
+  1215→
+  1216→        // Compute SLA status from slaDueAt for active stages
+  1217→        let slaLabel: string | null = null
+  1218→        let slaStatus_: "ok" | "warning" | "breached" | null = null
+  1219→        if (s.slaDueAt && isActive) {
+  1220→          const daysLeft = Math.ceil((new Date(s.slaDueAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  1221→          if (daysLeft < 0) {
+  1222→            slaLabel = `${Math.abs(daysLeft)}d overdue`
+  1223→            slaStatus_ = "breached"
+  1224→          } else if (daysLeft <= 1) {
+  1225→            slaLabel = daysLeft === 0 ? "Due today" : "1d left"
+  1226→            slaStatus_ = "breached"
+  1227→          } else if (daysLeft <= 2) {
+  1228→            slaLabel = `${daysLeft}d left`
+  1229→            slaStatus_ = "warning"
+  1230→          } else {
+  1231→            slaLabel = `${daysLeft}d left`
+  1232→            slaStatus_ = "ok"
+  1233→          }
+  1234→        }
+  1235→
+  1236→        return (
+  1237→          <React.Fragment key={s.id}>
+  1238→            <div
+  1239→              className={cn(
+  1240→                "flex flex-col items-center gap-1 px-2 py-2 rounded-lg border min-w-[110px] max-w-[140px] flex-1",
+  1241→                isActive && "bg-foreground/[0.04] border-foreground/30",
+  1242→                isDone && "bg-emerald-500/[0.06] border-emerald-500/30",
+  1243→                isPending && "bg-muted/30 border-border/60"
+  1244→              )}
+  1245→              style={isActive ? { boxShadow: `inset 0 2px 0 0 ${s.color}` } : undefined}
+  1246→            >
+  1247→              <span
+  1248→                className="grid h-6 w-6 place-items-center rounded-full text-[10px] font-semibold shrink-0"
+  1249→                style={{
+  1250→                  backgroundColor: isDone
+  1251→                    ? "#10b981"
+  1252→                    : isActive
+  1253→                      ? s.color || "#64748b"
+  1254→                      : hexToRgba(s.color, 0.15),
+  1255→                  color: isDone || isActive ? "#fff" : s.color || "#64748b",
+  1256→                }}
+  1257→              >
+  1258→                {isDone ? (
+  1259→                  <CheckCircle2 className="h-3.5 w-3.5" />
+  1260→                ) : isActive ? (
+  1261→                  <span className="text-[10px]">{i + 1}</span>
+  1262→                ) : (
+  1263→                  <span className="text-[10px] opacity-60">{i + 1}</span>
+  1264→                )}
+  1265→              </span>
+  1266→              <p
+  1267→                className={cn(
+  1268→                  "text-[11px] font-medium text-center leading-tight",
+  1269→                  isPending ? "text-muted-foreground/70" : "text-foreground"
+  1270→                )}
+  1271→              >
+  1272→                {s.name}
+  1273→              </p>
+  1274→              {s.slaDays ? (
+  1275→                <p className="text-[9px] text-muted-foreground/70">SLA {s.slaDays}d</p>
+  1276→              ) : null}
+  1277→              {isActive && slaLabel && (
+  1278→                <p
+  1279→                  className={cn(
+  1280→                    "text-[9px] font-medium",
+  1281→                    slaStatus_ === "breached" && "text-rose-600 dark:text-rose-400",
+  1282→                    slaStatus_ === "warning" && "text-amber-600 dark:text-amber-400",
+  1283→                    slaStatus_ === "ok" && "text-emerald-600 dark:text-emerald-400"
+  1284→                  )}
+  1285→                >
+  1286→                  {slaLabel}
+  1287→                </p>
+  1288→              )}
+  1289→              {isDone && s.completedAt && (
+  1290→                <p className="text-[9px] text-emerald-600 dark:text-emerald-400">
+  1291→                  {formatDate(s.completedAt)}
+  1292→                </p>
+  1293→              )}
+  1294→            </div>
+  1295→            {i < stages.length - 1 && (
+  1296→              <div className="flex items-center self-start mt-5 px-0.5 shrink-0">
+  1297→                <ChevronRight
+  1298→                  className={cn(
+  1299→                    "h-3 w-3",
+  1300→                    isDone ? "text-emerald-500" : "text-muted-foreground/40"
+  1301→                  )}
+  1302→                />
+  1303→              </div>
+  1304→            )}
+  1305→          </React.Fragment>
+  1306→        )
+  1307→      })}
+  1308→    </div>
+  1309→  )
+  1310→}
+  1311→
+  1312→function TasksList({ tasks }: { tasks: any[] }) {
+  1313→  if (tasks.length === 0) {
+  1314→    return (
+  1315→      <div className="flex items-center justify-center py-6 text-sm text-muted-foreground/70">
+  1316→        <ListChecks className="mr-1.5 h-4 w-4" /> No tasks yet for this stage.
+  1317→      </div>
+  1318→    )
+  1319→  }
+  1320→  const TASK_STATUS_CLASS: Record<string, string> = {
+  1321→    Pending: "bg-muted text-muted-foreground",
+  1322→    InProgress: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+  1323→    Completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+  1324→    Skipped: "bg-slate-100 text-slate-500 dark:bg-slate-500/15 dark:text-slate-400",
+  1325→  }
+  1326→  return (
+  1327→    <div className="space-y-2">
+  1328→      {tasks.map((t) => (
+  1329→        <div
+  1330→          key={t.id}
+  1331→          className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/60 bg-background"
+  1332→        >
+  1333→          <span
+  1334→            className={cn(
+  1335→              "mt-0.5 grid h-4 w-4 place-items-center rounded shrink-0",
+  1336→              t.status === "Completed"
+  1337→                ? "bg-emerald-500 text-white"
+  1338→                : "border border-border"
+  1339→            )}
+  1340→          >
+  1341→            {t.status === "Completed" && <CheckCircle2 className="h-3 w-3" />}
+  1342→          </span>
+  1343→          <div className="min-w-0 flex-1">
+  1344→            <div className="flex items-center gap-2 flex-wrap">
+  1345→              <p className={cn(
+  1346→                "text-sm font-medium",
+  1347→                t.status === "Completed" ? "text-muted-foreground line-through" : "text-foreground"
+  1348→              )}>
+  1349→                {t.title}
+  1350→              </p>
+  1351→              {t.isBlocking && (
+  1352→                <span className="inline-flex items-center gap-0.5 rounded bg-rose-100 px-1 py-0.5 text-[9px] font-semibold text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+  1353→                  <Lock className="h-2.5 w-2.5" /> Blocking
+  1354→                </span>
+  1355→              )}
+  1356→            </div>
+  1357→            {t.description && (
+  1358→              <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
+  1359→            )}
+  1360→            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+  1361→              <span
+  1362→                className={cn(
+  1363→                  "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
+  1364→                  TASK_STATUS_CLASS[t.status] || TASK_STATUS_CLASS.Pending
+  1365→                )}
+  1366→              >
+  1367→                {t.status}
+  1368→              </span>
+  1369→              {t.priority && t.priority !== "Medium" && (
+  1370→                <span
+  1371→                  className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium"
+  1372→                  style={{
+  1373→                    backgroundColor: hexToRgba(PRIORITY_COLORS[t.priority], 0.15),
+  1374→                    color: PRIORITY_COLORS[t.priority],
+  1375→                  }}
+  1376→                >
+  1377→                  <Flag className="h-2.5 w-2.5" /> {t.priority}
+  1378→                </span>
+  1379→              )}
+  1380→              {t.dueDate && (
+  1381→                <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+  1382→                  <Calendar className="h-2.5 w-2.5" /> {formatDate(t.dueDate)}
+  1383→                </span>
+  1384→              )}
+  1385→            </div>
+  1386→          </div>
+  1387→        </div>
+  1388→      ))}
+  1389→    </div>
+  1390→  )
+  1391→}
+  1392→
+  1393→function NotesList({ notes }: { notes: any[] }) {
+  1394→  if (notes.length === 0) {
+  1395→    return (
+  1396→      <div className="flex items-center justify-center py-4 text-sm text-muted-foreground/70">
+  1397→        <StickyNote className="mr-1.5 h-4 w-4" /> No notes yet.
+  1398→      </div>
+  1399→    )
+  1400→  }
+  1401→  return (
+  1402→    <div className="space-y-2">
+  1403→      {notes.map((n) => (
+  1404→        <div
+  1405→          key={n.id}
+  1406→          className="rounded-lg border border-border/60 bg-muted/30 p-2.5"
+  1407→        >
+  1408→          <p className="text-sm text-foreground whitespace-pre-wrap">{n.body}</p>
+  1409→          <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+  1410→            {n.authorName && <span className="font-medium">{n.authorName}</span>}
+  1411→            {n.authorName && <span>•</span>}
+  1412→            <span>{formatDateTime(n.createdAt)}</span>
+  1413→          </div>
+  1414→        </div>
+  1415→      ))}
+  1416→    </div>
+  1417→  )
+  1418→}
+  1419→
+  1420→// =============================================================
+  1421→// Skeletons
+  1422→// =============================================================
+  1423→
+  1424→function BoardSkeleton() {
+  1425→  return (
+  1426→    <div className="flex flex-col gap-3">
+  1427→      <div className="flex gap-2 overflow-hidden">
+  1428→        {Array.from({ length: 3 }).map((_, i) => (
+  1429→          <Skeleton key={i} className="h-8 w-32 rounded-full" />
+  1430→        ))}
+  1431→      </div>
+  1432→      <div className="flex gap-4 overflow-hidden">
+  1433→        {Array.from({ length: 4 }).map((_, i) => (
+  1434→          <div key={i} className="min-w-[300px] w-[300px]">
+  1435→            <Skeleton className="h-16 w-full rounded-xl mb-2" />
+  1436→            <div className="space-y-2">
+  1437→              {Array.from({ length: 3 }).map((_, j) => (
+  1438→                <Skeleton key={j} className="h-24 w-full rounded-lg" />
+  1439→              ))}
+  1440→            </div>
+  1441→          </div>
+  1442→        ))}
+  1443→      </div>
+  1444→    </div>
+  1445→  )
+  1446→}
+  1447→
+  1448→function BoardColumnsSkeleton() {
+  1449→  return (
+  1450→    <div className="flex gap-4 overflow-hidden pb-4">
+  1451→      {Array.from({ length: 4 }).map((_, i) => (
+  1452→        <div key={i} className="min-w-[300px] w-[300px]">
+  1453→          <Skeleton className="h-16 w-full rounded-xl mb-2" />
+  1454→          <div className="space-y-2">
+  1455→            {Array.from({ length: 2 }).map((_, j) => (
+  1456→              <Skeleton key={j} className="h-24 w-full rounded-lg" />
+  1457→            ))}
+  1458→          </div>
+  1459→        </div>
+  1460→      ))}
+  1461→    </div>
+  1462→  )
+  1463→}
+  1464→

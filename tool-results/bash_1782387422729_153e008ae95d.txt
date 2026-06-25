@@ -1,0 +1,276 @@
+// ---------- Resignation Requests ----------
+export const RESIGNATION_REQUESTS: ResignationRequest[] = [
+  {
+    id: "rr-1", requestId: "RES-2025-009", employeeCode: "EMP-1201", employeeName: "Aditya Joshi", avatarColor: "#0ea5e9",
+    department: "Engineering", designation: "Senior Software Engineer", reportingManager: "Priya Patel",
+    resignationDate: dateStr(2), requestedLwd: dateStr(-58), exitReason: "Better Opportunity",
+    detailedReason: "Received an offer with better compensation and growth opportunities at a competitor.",
+    status: "Pending Manager Approval", managerDecision: "Pending",
+    noticeShortfallDays: 0, regrettable: true, createdAt: daysAgo(2), updatedAt: daysAgo(1),
+  },
+  {
+    id: "rr-2", requestId: "RES-2025-010", employeeCode: "EMP-1198", employeeName: "Meera Krishnan", avatarColor: "#8b5cf6",
+    department: "Design", designation: "UX Designer", reportingManager: "Sneha Reddy",
+    resignationDate: dateStr(4), requestedLwd: dateStr(-25), exitReason: "Career Growth",
+    detailedReason: "Looking for a role with more strategic design leadership.",
+    status: "Pending HR Approval", managerDecision: "Approved", managerRecommendedLwd: dateStr(-25),
+    managerRemarks: "Recommended approval. Meera has been a strong contributor. Suggest 30-day notice.",
+    hrDecision: "Pending", noticeShortfallDays: 30, regrettable: true, createdAt: daysAgo(4), updatedAt: daysAgo(1),
+  },
+  {
+    id: "rr-3", requestId: "RES-2025-008", employeeCode: "EMP-1185", employeeName: "Karthik Subramaniam", avatarColor: "#f59e0b",
+    department: "Engineering", designation: "DevOps Engineer", reportingManager: "Priya Patel",
+    resignationDate: dateStr(7), requestedLwd: dateStr(-53), exitReason: "Compensation",
+    detailedReason: "Current compensation below market rate for my skills and experience.",
+    status: "Approved", managerDecision: "Approved", managerRecommendedLwd: dateStr(-53),
+    managerRemarks: "Tried retention but couldn't match the offer. Approved for exit.",
+    hrDecision: "Approved", hrFinalLwd: dateStr(-53), hrRemarks: "Approved. Exit case EXIT-2025-006 initiated.",
+    noticeShortfallDays: 0, regrettable: false, createdAt: daysAgo(7), updatedAt: daysAgo(3),
+  },
+  {
+    id: "rr-4", requestId: "RES-2025-007", employeeCode: "EMP-1179", employeeName: "Ananya Bose", avatarColor: "#ec4899",
+    department: "Marketing", designation: "Marketing Manager", reportingManager: "Vikram Singh",
+    resignationDate: dateStr(12), requestedLwd: dateStr(-48), exitReason: "Relocation",
+    detailedReason: "Relocating to another city due to family commitments.",
+    status: "Withdrawn", managerDecision: "Approved", managerRecommendedLwd: dateStr(-48),
+    managerRemarks: "Approved. Understandable reason.",
+    hrDecision: "Approved", hrFinalLwd: dateStr(-48),
+    noticeShortfallDays: 0, regrettable: true, createdAt: daysAgo(12), updatedAt: daysAgo(5),
+  },
+  {
+    id: "rr-5", requestId: "RES-2025-011", employeeCode: "EMP-1210", employeeName: "Sanjay Pillai", avatarColor: "#14b8a6",
+    department: "Sales", designation: "Sales Executive", reportingManager: "Arjun Mehta",
+    resignationDate: dateStr(1), requestedLwd: dateStr(-59), exitReason: "Better Opportunity",
+    detailedReason: "Better package and role at another company.",
+    status: "Submitted", managerDecision: "Pending",
+    noticeShortfallDays: 0, regrettable: false, createdAt: daysAgo(1), updatedAt: daysAgo(1),
+  },
+  {
+    id: "rr-6", requestId: "RES-2025-006", employeeCode: "EMP-1167", employeeName: "Divya Menon", avatarColor: "#f97316",
+    department: "Engineering", designation: "Software Engineer", reportingManager: "Priya Patel",
+    resignationDate: dateStr(18), requestedLwd: dateStr(-42), exitReason: "Work Culture",
+    detailedReason: "Concerns about team dynamics and work culture.",
+    status: "Rejected", managerDecision: "Rejected", managerRemarks: "Performance concerns. Recommend exit but with full notice period.",
+    hrDecision: "Rejected", hrRemarks: "Rejected withdrawal request. Exit will proceed.",
+    noticeShortfallDays: 0, regrettable: false, createdAt: daysAgo(18), updatedAt: daysAgo(10),
+  },
+]
+
+// ---------- Clearance Tasks ----------
+export const CLEARANCE_TASKS: ClearanceTask[] = [
+  // ec-1 Rahul Sharma — clearance in progress
+  { id: "ct-1", exitCaseId: "ec-1", taskName: "Manager Clearance — Handover Complete", taskCode: "MGR_CLR_01", department: "Reporting Manager", ownerType: "Manager", owner: "Priya Patel", dueDate: dateStr(-33), slaDays: 3, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: true, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Completed", comment: "Handover document signed and uploaded.", completedAt: daysAgo(2), completedBy: "Priya Patel" },
+  { id: "ct-2", exitCaseId: "ec-1", taskName: "HR Clearance — Exit Interview", taskCode: "HR_CLR_01", department: "HR", ownerType: "HR", owner: "Anita Desai", dueDate: dateStr(-32), slaDays: 5, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: false, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Completed", comment: "Exit interview completed. Employee cited better opportunity.", completedAt: daysAgo(1), completedBy: "Anita Desai" },
+  { id: "ct-3", exitCaseId: "ec-1", taskName: "IT Clearance — Laptop & Access", taskCode: "IT_CLR_01", department: "IT", ownerType: "IT Admin", owner: "IT Team", dueDate: dateStr(-31), slaDays: 2, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: true, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "In Progress", comment: "Laptop pending return. Access scheduled for LWD." },
+  { id: "ct-4", exitCaseId: "ec-1", taskName: "Admin Clearance — ID & Access Card", taskCode: "ADM_CLR_01", department: "Admin / Facilities", ownerType: "Admin", owner: "Admin Team", dueDate: dateStr(-30), slaDays: 1, mandatory: true, blocking: true, requiresComment: false, requiresAttachment: true, requiresApproval: false, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Pending" },
+  { id: "ct-5", exitCaseId: "ec-1", taskName: "Finance Clearance — Outstanding Dues", taskCode: "FIN_CLR_01", department: "Finance", ownerType: "Finance", owner: "Rajesh Kumar", dueDate: dateStr(-29), slaDays: 3, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: false, requiresApproval: true, financialImpact: true, recoveryAmount: 0, waiverAllowed: true, stageMapping: "Clearance In Progress", status: "Pending" },
+  { id: "ct-6", exitCaseId: "ec-1", taskName: "Payroll Clearance — Salary Hold", taskCode: "PAY_CLR_01", department: "Payroll", ownerType: "Payroll", owner: "Payroll Team", dueDate: dateStr(-28), slaDays: 2, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: false, requiresApproval: true, financialImpact: true, recoveryAmount: 0, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Pending" },
+  { id: "ct-7", exitCaseId: "ec-1", taskName: "Knowledge Transfer — Project Docs", taskCode: "KT_CLR_01", department: "Project Manager", ownerType: "Manager", owner: "Priya Patel", dueDate: dateStr(-32), slaDays: 5, mandatory: true, blocking: false, requiresComment: true, requiresAttachment: true, requiresApproval: false, financialImpact: false, waiverAllowed: true, stageMapping: "Clearance In Progress", status: "Submitted", comment: "KT docs submitted for review." },
+  // ec-4 Kavya — completed clearance
+  { id: "ct-8", exitCaseId: "ec-4", taskName: "Manager Clearance", taskCode: "MGR_CLR_02", department: "Reporting Manager", ownerType: "Manager", owner: "Rajesh Kumar", dueDate: dateStr(-18), slaDays: 3, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: true, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Completed", comment: "All handover complete.", completedAt: daysAgo(18), completedBy: "Rajesh Kumar" },
+  { id: "ct-9", exitCaseId: "ec-4", taskName: "HR Clearance", taskCode: "HR_CLR_02", department: "HR", ownerType: "HR", owner: "Anita Desai", dueDate: dateStr(-17), slaDays: 5, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: false, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Completed", comment: "Exit interview done.", completedAt: daysAgo(17), completedBy: "Anita Desai" },
+  { id: "ct-10", exitCaseId: "ec-4", taskName: "IT Clearance", taskCode: "IT_CLR_02", department: "IT", ownerType: "IT Admin", owner: "IT Team", dueDate: dateStr(-16), slaDays: 2, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: true, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Completed", comment: "Laptop returned, access revoked.", completedAt: daysAgo(16), completedBy: "IT Team" },
+  { id: "ct-11", exitCaseId: "ec-4", taskName: "Finance Clearance", taskCode: "FIN_CLR_02", department: "Finance", ownerType: "Finance", owner: "Rajesh Kumar", dueDate: dateStr(-15), slaDays: 3, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: false, requiresApproval: true, financialImpact: true, recoveryAmount: 0, waiverAllowed: true, stageMapping: "Clearance In Progress", status: "Completed", comment: "No outstanding dues.", completedAt: daysAgo(15), completedBy: "Rajesh Kumar" },
+  // ec-8 Rohan — overdue
+  { id: "ct-12", exitCaseId: "ec-8", taskName: "Manager Clearance", taskCode: "MGR_CLR_03", department: "Reporting Manager", ownerType: "Manager", owner: "Priya Patel", dueDate: dateStr(-10), slaDays: 3, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: true, requiresApproval: true, financialImpact: false, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Overdue", comment: "Employee absconded. No handover." },
+  { id: "ct-13", exitCaseId: "ec-8", taskName: "IT Clearance", taskCode: "IT_CLR_03", department: "IT", ownerType: "IT Admin", owner: "IT Team", dueDate: dateStr(-8), slaDays: 2, mandatory: true, blocking: true, requiresComment: true, requiresAttachment: true, requiresApproval: true, financialImpact: true, recoveryAmount: 85000, waiverAllowed: false, stageMapping: "Clearance In Progress", status: "Overdue", comment: "Laptop not returned. Recovery amount raised." },
+]
+
+// ---------- Asset Recovery ----------
+export const ASSET_RECOVERY: AssetRecoveryItem[] = [
+  { id: "ar-1", exitCaseId: "ec-1", assetCode: "AST-LT-0234", assetType: "Laptop", serialNumber: "MBP14-2023-0234", assignedDate: dateStr(400), expectedReturnDate: dateStr(-35), returnStatus: "Pending", damage: false, lost: false, pushToFnf: false },
+  { id: "ar-2", exitCaseId: "ec-1", assetCode: "AST-ID-1042", assetType: "ID Card", assignedDate: dateStr(400), expectedReturnDate: dateStr(-35), returnStatus: "Pending", damage: false, lost: false, pushToFnf: false },
+  { id: "ar-3", exitCaseId: "ec-1", assetCode: "AST-AC-1042", assetType: "Access Card", assignedDate: dateStr(400), expectedReturnDate: dateStr(-35), returnStatus: "Pending", damage: false, lost: false, pushToFnf: false },
+  { id: "ar-4", exitCaseId: "ec-1", assetCode: "AST-PH-1042", assetType: "Mobile", serialNumber: "IPH14-0234", assignedDate: dateStr(300), expectedReturnDate: dateStr(-35), returnStatus: "Pending", damage: false, lost: false, pushToFnf: false },
+  // ec-4 Kavya — returned
+  { id: "ar-5", exitCaseId: "ec-4", assetCode: "AST-LT-0187", assetType: "Laptop", serialNumber: "MBP14-2022-0187", assignedDate: dateStr(600), expectedReturnDate: dateStr(-15), actualReturnDate: dateStr(-16), returnStatus: "Returned", conditionAtReturn: "Good", damage: false, lost: false, pushToFnf: false },
+  { id: "ar-6", exitCaseId: "ec-4", assetCode: "AST-ID-0987", assetType: "ID Card", assignedDate: dateStr(600), expectedReturnDate: dateStr(-15), actualReturnDate: dateStr(-16), returnStatus: "Returned", damage: false, lost: false, pushToFnf: false },
+  // ec-5 Vikram — terminated, returned
+  { id: "ar-7", exitCaseId: "ec-5", assetCode: "AST-LT-0312", assetType: "Laptop", serialNumber: "MBP16-2023-0312", assignedDate: dateStr(200), expectedReturnDate: dateStr(0), actualReturnDate: dateStr(0), returnStatus: "Returned", conditionAtReturn: "Good", damage: false, lost: false, pushToFnf: false },
+  { id: "ar-8", exitCaseId: "ec-5", assetCode: "AST-PH-1156", assetType: "Mobile", serialNumber: "IPH13-0312", assignedDate: dateStr(200), expectedReturnDate: dateStr(0), actualReturnDate: dateStr(0), returnStatus: "Returned", conditionAtReturn: "Damaged", damage: true, lost: false, damageAmount: 5000, recoveryAmount: 5000, pushToFnf: true },
+  // ec-8 Rohan — absconded, lost
+  { id: "ar-9", exitCaseId: "ec-8", assetCode: "AST-LT-0456", assetType: "Laptop", serialNumber: "MBP14-2023-0456", assignedDate: dateStr(180), expectedReturnDate: dateStr(-10), returnStatus: "Lost", damage: false, lost: true, recoveryAmount: 120000, pushToFnf: true },
+  { id: "ar-10", exitCaseId: "ec-8", assetCode: "AST-ID-1102", assetType: "ID Card", assignedDate: dateStr(180), expectedReturnDate: dateStr(-10), returnStatus: "Lost", damage: false, lost: true, recoveryAmount: 200, pushToFnf: true },
+]
+
+// ---------- IT Access ----------
+export const IT_ACCESS: ITAccessItem[] = [
+  { id: "ia-1", exitCaseId: "ec-1", systemName: "HRMS Login", accessType: "Web App", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: false, dataTransferRequired: false, licenseDeactivationRequired: false, revocationStatus: "Scheduled", remarks: "Scheduled for LWD EOD" },
+  { id: "ia-2", exitCaseId: "ec-1", systemName: "Official Email", accessType: "Google Workspace", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: true, dataTransferRequired: true, newOwner: "Priya Patel", licenseDeactivationRequired: true, revocationStatus: "Pending", remarks: "Data backup in progress" },
+  { id: "ia-3", exitCaseId: "ec-1", systemName: "SSO / Azure AD", accessType: "Identity", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: false, dataTransferRequired: false, licenseDeactivationRequired: true, revocationStatus: "Pending" },
+  { id: "ia-4", exitCaseId: "ec-1", systemName: "VPN", accessType: "Network", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: false, dataTransferRequired: false, licenseDeactivationRequired: false, revocationStatus: "Pending" },
+  { id: "ia-5", exitCaseId: "ec-1", systemName: "GitHub", accessType: "Code Repository", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: true, dataTransferRequired: true, newOwner: "Priya Patel", licenseDeactivationRequired: true, revocationStatus: "Pending" },
+  { id: "ia-6", exitCaseId: "ec-1", systemName: "Slack", accessType: "Communication", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: false, dataTransferRequired: false, licenseDeactivationRequired: true, revocationStatus: "Pending" },
+  { id: "ia-7", exitCaseId: "ec-1", systemName: "Jira", accessType: "Project Management", ownerTeam: "IT", revokeTiming: "On LWD End of Day", dataBackupRequired: false, dataTransferRequired: true, newOwner: "Priya Patel", licenseDeactivationRequired: true, revocationStatus: "Pending" },
+  // ec-5 Vikram — terminated, revoked immediately
+  { id: "ia-8", exitCaseId: "ec-5", systemName: "HRMS Login", accessType: "Web App", ownerTeam: "IT", revokeTiming: "Immediately", revokeDate: dateStr(0), dataBackupRequired: false, dataTransferRequired: false, licenseDeactivationRequired: false, revocationStatus: "Revoked", verificationStatus: "Verified", remarks: "Revoked immediately on termination" },
+  { id: "ia-9", exitCaseId: "ec-5", systemName: "Official Email", accessType: "Google Workspace", ownerTeam: "IT", revokeTiming: "Immediately", revokeDate: dateStr(0), dataBackupRequired: true, dataTransferRequired: true, newOwner: "Priya Patel", licenseDeactivationRequired: true, revocationStatus: "Revoked", verificationStatus: "Verified" },
+  { id: "ia-10", exitCaseId: "ec-5", systemName: "GitHub", accessType: "Code Repository", ownerTeam: "IT", revokeTiming: "Immediately", revokeDate: dateStr(0), dataBackupRequired: true, dataTransferRequired: true, newOwner: "Priya Patel", licenseDeactivationRequired: true, revocationStatus: "Revoked", verificationStatus: "Verified" },
+  { id: "ia-11", exitCaseId: "ec-5", systemName: "VPN", accessType: "Network", ownerTeam: "IT", revokeTiming: "Immediately", revokeDate: dateStr(0), dataBackupRequired: false, dataTransferRequired: false, licenseDeactivationRequired: false, revocationStatus: "Revoked", verificationStatus: "Verified" },
+]
+
+// ---------- FnF ----------
+const fnfEntries = (exitCaseId: string): FnFEntry[] => [
+  { id: `${exitCaseId}-e1`, exitCaseId, type: "earning", category: "Salary till LWD", description: "Salary for days worked till last working day", amount: 65000, source: "auto", status: "confirmed" },
+  { id: `${exitCaseId}-e2`, exitCaseId, type: "earning", category: "Leave Encashment", description: "Encashment of 18 unused earned leaves", amount: 42000, source: "auto", status: "confirmed" },
+  { id: `${exitCaseId}-e3`, exitCaseId, type: "earning", category: "Gratuity", description: "Gratuity as per Payment of Gratuity Act", amount: 85000, source: "auto", status: "confirmed" },
+  { id: `${exitCaseId}-e4`, exitCaseId, type: "earning", category: "Bonus", description: "Performance bonus Q3", amount: 15000, source: "manual", status: "confirmed" },
+  { id: `${exitCaseId}-e5`, exitCaseId, type: "earning", category: "Reimbursement Payable", description: "Pending expense reimbursements", amount: 8500, source: "auto", status: "confirmed" },
+  { id: `${exitCaseId}-d1`, exitCaseId, type: "deduction", category: "Notice Recovery", description: "Notice period shortfall recovery", amount: 0, source: "auto", status: "confirmed" },
+  { id: `${exitCaseId}-d2`, exitCaseId, type: "deduction", category: "Tax / TDS", description: "TDS deduction on FnF", amount: 28000, source: "auto", status: "confirmed" },
+  { id: `${exitCaseId}-d3`, exitCaseId, type: "deduction", category: "PF / ESI / Statutory", description: "Provident fund deduction", amount: 7800, source: "auto", status: "confirmed" },
+  { id: `${exitCaseId}-d4`, exitCaseId, type: "deduction", category: "Loan Recovery", description: "Salary advance recovery", amount: 10000, source: "auto", status: "confirmed" },
+]
+
+const sumEarnings = (entries: FnFEntry[]) => entries.filter(e => e.type === "earning").reduce((s, e) => s + e.amount, 0)
+const sumDeductions = (entries: FnFEntry[]) => entries.filter(e => e.type === "deduction").reduce((s, e) => s + e.amount, 0)
+
+export const FNF_RECORDS: FnFRecord[] = [
+  { exitCaseId: "ec-4", status: "Approved", entries: fnfEntries("ec-4"), totalEarnings: 0, totalDeductions: 0, netPayable: 0, calculatedAt: daysAgo(3), approvedBy: "Rajesh Kumar", approvedAt: daysAgo(2) },
+  { exitCaseId: "ec-5", status: "Paid", entries: [...fnfEntries("ec-5"), { id: "ec-5-d5", exitCaseId: "ec-5", type: "deduction", category: "Asset Damage Recovery", description: "Mobile phone damage", amount: 5000, source: "auto", status: "confirmed" }, { id: "ec-5-d6", exitCaseId: "ec-5", type: "deduction", category: "Notice Recovery", description: "Notice period not served (60 days)", amount: 130000, source: "manual", status: "confirmed" }], totalEarnings: 0, totalDeductions: 0, netPayable: 0, calculatedAt: daysAgo(3), approvedBy: "Anita Desai", approvedAt: daysAgo(2), paidAt: daysAgo(1) },
+  { exitCaseId: "ec-6", status: "Closed", entries: fnfEntries("ec-6"), totalEarnings: 0, totalDeductions: 0, netPayable: 0, calculatedAt: daysAgo(5), approvedBy: "Anita Desai", approvedAt: daysAgo(4), paidAt: daysAgo(3) },
+  { exitCaseId: "ec-8", status: "On Hold", entries: [...fnfEntries("ec-8"), { id: "ec-8-d5", exitCaseId: "ec-8", type: "deduction", category: "Asset Damage Recovery", description: "Laptop not returned (lost)", amount: 120000, source: "auto", status: "confirmed" }, { id: "ec-8-d6", exitCaseId: "ec-8", type: "deduction", category: "Notice Recovery", description: "Notice period not served", amount: 130000, source: "manual", status: "draft" }], totalEarnings: 0, totalDeductions: 0, netPayable: 0, calculatedAt: daysAgo(8) },
+]
+
+// Compute totals
+FNF_RECORDS.forEach(r => {
+  r.totalEarnings = sumEarnings(r.entries)
+  r.totalDeductions = sumDeductions(r.entries)
+  r.netPayable = r.totalEarnings - r.totalDeductions
+})
+
+// ---------- Document Templates ----------
+export const EXIT_DOCUMENT_TEMPLATES: ExitDocumentTemplate[] = [
+  {
+    id: "dt-1", name: "Standard Relieving Letter", code: "RELIEVE_STD", documentType: "Relieving Letter",
+    scopeType: "Tenant Default", language: "English", version: 2, status: "Published", isDefault: true,
+    headerHtml: "<div style='text-align:center; padding:16px;'><img src='{{CompanyLogo}}' alt='logo' height='40' /></div>",
+    bodyHtml: "<p style='text-align:right;'>Date: {{LetterDate}}</p><h2 style='text-align:center;'>Relieving Letter</h2><p>Dear {{EmployeeName}},</p><p>This is to formally confirm that you have been relieved from your duties as <strong>{{Designation}}</strong> in the <strong>{{Department}}</strong> department at <strong>{{CompanyName}}</strong>, with effect from <strong>{{LastWorkingDay}}</strong>.</p><p>We thank you for your contributions during your tenure from {{DateOfJoining}} to {{LastWorkingDay}} and wish you success in your future endeavors.</p><p>Yours sincerely,<br/><strong>{{AuthorizedSignatory}}</strong><br/>{{CompanyName}}</p>",
+    footerHtml: "<p style='color:#888; font-size:11px; margin-top:24px; border-top:1px solid #eee; padding-top:8px;'>This is a system-generated document. {{CompanyName}} · {{EntityName}}</p>",
+    createdAt: daysAgo(90), updatedAt: daysAgo(10),
+  },
+  {
+    id: "dt-2", name: "Standard Experience Letter", code: "EXP_STD", documentType: "Experience Letter",
+    scopeType: "Tenant Default", language: "English", version: 1, status: "Published", isDefault: true,
+    headerHtml: "<div style='text-align:center; padding:16px;'><img src='{{CompanyLogo}}' alt='logo' height='40' /></div>",
+    bodyHtml: "<p style='text-align:right;'>Date: {{LetterDate}}</p><h2 style='text-align:center;'>Certificate of Experience</h2><p>To Whom It May Concern,</p><p>This is to certify that <strong>{{EmployeeName}}</strong> (Employee Code: {{EmployeeCode}}) was employed with <strong>{{CompanyName}}</strong> from <strong>{{DateOfJoining}}</strong> to <strong>{{LastWorkingDay}}</strong>, holding the position of <strong>{{Designation}}</strong> in the <strong>{{Department}}</strong> department.</p><p>During the employment, we found {{EmployeeName}} to be diligent and professional. We wish {{EmployeeName}} all the best in future pursuits.</p><p>For {{CompanyName}},<br/><strong>{{AuthorizedSignatory}}</strong></p>",
+    footerHtml: "<p style='color:#888; font-size:11px; margin-top:24px; border-top:1px solid #eee; padding-top:8px;'>{{CompanyName}} · {{EntityName}}</p>",
+    createdAt: daysAgo(85), updatedAt: daysAgo(12),
+  },
+  {
+    id: "dt-3", name: "Resignation Acceptance Letter", code: "RESIG_ACCEPT", documentType: "Resignation Acceptance Letter",
+    scopeType: "Tenant Default", language: "English", version: 1, status: "Published", isDefault: false,
+    bodyHtml: "<p>Dear {{EmployeeName}},</p><p>We acknowledge receipt of your resignation dated {{ResignationDate}}. Your resignation has been accepted and your last working day will be <strong>{{LastWorkingDay}}</strong>.</p><p>Please complete the clearance process as per company policy.</p><p>Regards,<br/>{{HRName}}<br/>{{CompanyName}}</p>",
+    createdAt: daysAgo(70), updatedAt: daysAgo(15),
+  },
+  {
+    id: "dt-4", name: "No Dues Certificate", code: "NDC_STD", documentType: "No Dues Certificate",
+    scopeType: "Tenant Default", language: "English", version: 1, status: "Published", isDefault: true,
+    bodyHtml: "<h2 style='text-align:center;'>No Dues Certificate</h2><p>This is to certify that <strong>{{EmployeeName}}</strong> ({{EmployeeCode}}) has cleared all dues payable to <strong>{{CompanyName}}</strong> as on {{LetterDate}}.</p><p>No dues are outstanding from the employee's side as of the last working day {{LastWorkingDay}}.</p><p>For {{CompanyName}},<br/><strong>{{AuthorizedSignatory}}</strong></p>",
+    createdAt: daysAgo(60), updatedAt: daysAgo(8),
+  },
+  {
+    id: "dt-5", name: "FnF Settlement Letter", code: "FNF_LETTER", documentType: "FnF Settlement Letter",
+    scopeType: "Tenant Default", language: "English", version: 1, status: "Published", isDefault: true,
+    bodyHtml: "<p>Dear {{EmployeeName}},</p><p>Your Full & Final settlement has been processed. The details are as follows:</p><p><strong>Net Payable:</strong> {{FnFAmount}}</p><p><strong>Recovery Amount:</strong> {{RecoveryAmount}}</p><p>The settlement amount will be credited to your registered bank account within 7 working days.</p><p>Regards,<br/>{{HRName}}<br/>{{CompanyName}}</p>",
+    createdAt: daysAgo(55), updatedAt: daysAgo(6),
+  },
+  {
+    id: "dt-6", name: "India Relieving Letter", code: "RELIEVE_INDIA", documentType: "Relieving Letter",
+    scopeType: "Entity", entity: "ACME India Pvt Ltd", language: "English", version: 1, status: "Published", isDefault: false,
+    bodyHtml: "<p>Dear {{EmployeeName}},</p><p>This is to formally confirm that you have been relieved from your duties as {{Designation}} at {{CompanyName}} ({{EntityName}}), effective {{LastWorkingDay}}.</p><p>For {{CompanyName}},<br/>{{AuthorizedSignatory}}</p>",
+    createdAt: daysAgo(40), updatedAt: daysAgo(5),
+  },
+  {
+    id: "dt-7", name: "Termination Letter", code: "TERM_LETTER", documentType: "Termination Letter",
+    scopeType: "Tenant Default", language: "English", version: 1, status: "Draft", isDefault: false,
+    bodyHtml: "<p>Dear {{EmployeeName}},</p><p>This letter is to inform you that your employment with {{CompanyName}} is being terminated effective {{LastWorkingDay}} due to {{ExitReason}}.</p><p>Please return all company property and complete the clearance process.</p><p>Regards,<br/>{{HRName}}</p>",
+    createdAt: daysAgo(20), updatedAt: daysAgo(3),
+  },
+]
+
+// ---------- Email Templates ----------
+export const EXIT_EMAIL_TEMPLATES: ExitEmailTemplate[] = [
+  {
+    id: "et-1", name: "Resignation Submitted Notification", code: "EMAIL_RESIG_SUB", eventType: "Resignation Submitted",
+    scopeType: "Tenant Default", language: "English", isDefault: true, status: "Active", version: 1,
+    subject: "Resignation Submitted — {{EmployeeName}}",
+    headerHtml: "<div style='padding:12px; background:#f0fdf4; border-radius:8px;'>Resignation Notification</div>",
+    bodyHtml: "<p>Dear {{ManagerName}},</p><p>This is to inform you that <strong>{{EmployeeName}}</strong> ({{EmployeeCode}}) has submitted their resignation.</p><p><strong>Requested Last Working Day:</strong> {{LastWorkingDay}}</p><p><strong>Reason:</strong> {{ExitReason}}</p><p>Please review and recommend a final LWD.</p><p>Regards,<br/>{{HRName}}</p>",
+    footerHtml: "<p style='color:#888; font-size:11px;'>{{CompanyName}} HRMS · Do not reply</p>",
+    recipients: ["Reporting Manager"], cc: ["HR Owner"], createdAt: daysAgo(80), updatedAt: daysAgo(10),
+  },
+  {
+    id: "et-2", name: "Manager Approval Pending", code: "EMAIL_MGR_PEND", eventType: "Manager Approval Pending",
+    scopeType: "Tenant Default", language: "English", isDefault: true, status: "Active", version: 1,
+    subject: "Action Required: Resignation Approval — {{EmployeeName}}",
+    bodyHtml: "<p>Dear {{ManagerName}},</p><p>The resignation of <strong>{{EmployeeName}}</strong> is pending your approval.</p><p>Please review and approve/reject at: {{ApprovalLink}}</p>",
+    footerHtml: "<p style='color:#888; font-size:11px;'>{{CompanyName}} HRMS</p>",
+    recipients: ["Reporting Manager"], cc: ["HR Owner"], createdAt: daysAgo(78), updatedAt: daysAgo(8),
+  },
+  {
+    id: "et-3", name: "Resignation Approved", code: "EMAIL_RESIG_APPR", eventType: "Resignation Approved",
+    scopeType: "Tenant Default", language: "English", isDefault: true, status: "Active", version: 1,
+    subject: "Resignation Approved — Last Working Day: {{LastWorkingDay}}",
+    bodyHtml: "<p>Dear {{EmployeeName}},</p><p>Your resignation has been approved. Your last working day is <strong>{{LastWorkingDay}}</strong>.</p><p>Please complete the clearance process before your exit.</p><p>Regards,<br/>{{HRName}}</p>",
+    footerHtml: "<p style='color:#888; font-size:11px;'>{{CompanyName}}</p>",
+    recipients: ["Employee"], cc: ["Reporting Manager", "HR Owner"], createdAt: daysAgo(75), updatedAt: daysAgo(7),
+  },
+  {
+    id: "et-4", name: "Clearance Task Assigned", code: "EMAIL_CLR_TASK", eventType: "Clearance Task Assigned",
+    scopeType: "Tenant Default", language: "English", isDefault: true, status: "Active", version: 1,
+    subject: "Clearance Task Assigned: {{TaskName}} — {{EmployeeName}}",
+    bodyHtml: "<p>A clearance task has been assigned to you for the exit of <strong>{{EmployeeName}}</strong>.</p><p><strong>Task:</strong> {{TaskName}}<br/><strong>Due Date:</strong> {{DueDate}}</p><p>Please complete the task at: {{PortalLink}}</p>",
+    footerHtml: "<p style='color:#888; font-size:11px;'>{{CompanyName}} HRMS</p>",
+    recipients: ["Specific Role"], cc: ["HR Owner"], createdAt: daysAgo(70), updatedAt: daysAgo(6),
+  },
+  {
+    id: "et-5", name: "Asset Return Pending", code: "EMAIL_ASSET_PEND", eventType: "Asset Return Pending",
+    scopeType: "Tenant Default", language: "English", isDefault: true, status: "Active", version: 1,
+    subject: "Reminder: Asset Return Pending — {{EmployeeName}}",
+    bodyHtml: "<p>Dear {{EmployeeName}},</p><p>The following assets are pending return: {{PendingTasks}}</p><p>Please return them before {{LastWorkingDay}}.</p>",
+    footerHtml: "<p style='color:#888; font-size:11px;'>{{CompanyName}}</p>",
+    recipients: ["Employee"], cc: ["HR Owner", "Asset Owner"], createdAt: daysAgo(65), updatedAt: daysAgo(5),
+  },
+  {
+    id: "et-6", name: "Exit Interview Request", code: "EMAIL_EXIT_INT", eventType: "Exit Interview Request",
+    scopeType: "Tenant Default", language: "English", isDefault: true, status: "Active", version: 1,
+    subject: "Exit Interview Request — {{EmployeeName}}",
+    bodyHtml: "<p>Dear {{EmployeeName}},</p><p>We'd like to invite you to complete an exit interview. Your feedback helps us improve.</p><p>Please complete the form at: {{PortalLink}}</p>",
+    footerHtml: "<p style='color:#888; font-size:11px;'>{{CompanyName}}</p>",
+    recipients: ["Employee"], cc: ["HR Owner"], createdAt: daysAgo(60), updatedAt: daysAgo(4),
+  },
+  {
+    id: "et-7", name: "FnF Calculated", code: "EMAIL_FNF_CALC", eventType: "FnF Calculated",
+    scopeType: "Tenant Default", language: "English", isDefault: true, status: "Active", version: 1,
+    subject: "FnF Settlement Calculated — {{EmployeeName}}",
+    bodyHtml: "<p>Dear {{EmployeeName}},</p><p>Your Full & Final settlement has been calculated. Status: {{FnFStatus}}</p><p>Please review the details in your portal.</p>",
+    footerHtml: "<p style='color:#888; font-size:11px;'>{{CompanyName}}</p>",
+    recipients: ["Employee"], cc: ["HR Owner", "Payroll Admin"], createdAt: daysAgo(55), updatedAt: daysAgo(3),
+  },
+  {
+    id: "et-8", name: "Relieving Letter Generated", code: "EMAIL_RELIEVE_GEN", eventType: "Relieving Letter Generated",
+    scopeType: "Tenant Default", language: "English", isDefault: true, status: "Active", version: 1,
+    subject: "Relieving Letter Generated — {{EmployeeName}}",
+    bodyHtml: "<p>Dear {{EmployeeName}},</p><p>Your relieving letter has been generated. Please download it from: {{RelievingLetterLink}}</p>",
+    footerHtml: "<p style='color:#888; font-size:11px;'>{{CompanyName}}</p>",
+    recipients: ["Employee"], cc: ["HR Owner"], createdAt: daysAgo(50), updatedAt: daysAgo(2),
+  },
+]
+
+// ---------- Checklists ----------
+export const EXIT_CHECKLISTS: ExitChecklist[] = [
+  {
+    id: "cl-1", name: "Standard Employee Exit Checklist", code: "EXIT_CHK_STD", category: "Employee Exit Checklist",
+    scopeType: "Tenant Default", status: "Active", isDefault: true, version: 2,
+    tasks: [
+      { id: "ct-1", name: "Submit resignation letter", code: "TASK_RESIG", description: "Formal resignation letter submission", ownerType: "Employee", dueDateRule: "On Exit Initiation", priority: "High", mandatory: true, blocking: true, requiresAttachment: true, requiresComment: false, requiresApproval: false, financialImpact: false, recoveryAllowed: false, stageMapping: "Resignation Submitted" },
+      { id: "ct-2", name: "Complete knowledge transfer", code: "TASK_KT", description: "Document and transfer project knowledge", ownerType: "Employee", dueDateRule: "Before LWD - 7 Days", priority: "High", mandatory: true, blocking: true, requiresAttachment: true, requiresComment: true, requiresApproval: true, financialImpact: false, recoveryAllowed: false, stageMapping: "Notice Period" },
+      { id: "ct-3", name: "Return company assets", code: "TASK_ASSET", description: "Return laptop, ID card, access card", ownerType: "Employee", dueDateRule: "On LWD", priority: "Critical", mandatory: true, blocking: true, requiresAttachment: true, requiresComment: false, requiresApproval: true, financialImpact: true, recoveryAllowed: true, stageMapping: "Asset Recovery" },
+      { id: "ct-4", name: "Complete exit interview", code: "TASK_INTERVIEW", description: "Fill exit interview form", ownerType: "Employee", dueDateRule: "Before LWD - 3 Days", priority: "Medium", mandatory: true, blocking: false, requiresAttachment: false, requiresComment: true, requiresApproval: false, financialImpact: false, recoveryAllowed: false, stageMapping: "Exit Letters" },
+      { id: "ct-5", name: "Submit handover document", code: "TASK_HANDOVER", description: "Signed handover document", ownerType: "Employee", dueDateRule: "On LWD", priority: "High", mandatory: true, blocking: true, requiresAttachment: true, requiresComment: false, requiresApproval: true, financialImpact: false, recoveryAllowed: false, stageMapping: "Clearance In Progress" },
+    ],
+    createdAt: daysAgo(100), updatedAt: daysAgo(10),
+  },
+  {
+    id: "cl-2", name: "Manager Clearance Checklist", code: "MGR_CLR_CHK", category: "Manager Clearance Checklist",

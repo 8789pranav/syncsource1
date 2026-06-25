@@ -1,0 +1,710 @@
+     1→"use client"
+     2→
+     3→// =============================================================
+     4→// Onboarding Dashboard (spec section #3)
+     5→// Task ID: 8-A — tracking & summary view (no operations)
+     6→// =============================================================
+     7→
+     8→import * as React from "react"
+     9→import { motion } from "framer-motion"
+    10→import {
+    11→  ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area,
+    12→  XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+    13→} from "recharts"
+    14→import {
+    15→  LayoutDashboard, Users, UserPlus, PlayCircle, Send, AlertTriangle,
+    16→  ClipboardList, CheckCircle2, UserMinus, CalendarDays, CalendarRange,
+    17→  Workflow as WorkflowIcon, FileText, ListChecks, Mail, RefreshCw,
+    18→  ArrowRightLeft, ShieldCheck, Settings, UserCheck, Inbox, Activity,
+    19→  CircleAlert, Gauge,
+    20→} from "lucide-react"
+    21→
+    22→import { Card, CardContent } from "@/components/ui/card"
+    23→import { Button } from "@/components/ui/button"
+    24→import { Skeleton } from "@/components/ui/skeleton"
+    25→import { cn } from "@/lib/utils"
+    26→import {
+    27→  PageHeader, EmptyState, SectionCard,
+    28→} from "@/components/hrms/ui"
+    29→import {
+    30→  useFetch, timeAgo, slaStatus,
+    31→} from "@/components/hrms/onboarding/shared"
+    32→
+    33→// ---------- Types (API contract) ----------
+    34→interface DashboardCards {
+    35→  totalCandidates: number
+    36→  candidatesToday: number
+    37→  onboardingInitiated: number
+    38→  inviteSent: number
+    39→  completedOnboarding: number
+    40→  droppedCandidates: number
+    41→  joiningToday: number
+    42→  joiningThisWeek: number
+    43→  slaBreached: number
+    44→  overdueTasks: number
+    45→  activeWorkflows: number
+    46→  totalStages: number
+    47→  documentsCount: number
+    48→  checklistsCount: number
+    49→  emailsCount: number
+    50→}
+    51→interface SlaBreach {
+    52→  id: string
+    53→  candidateName: string
+    54→  designation?: string | null
+    55→  stageName?: string | null
+    56→  stageColor?: string | null
+    57→  enteredAt?: string | null
+    58→  slaDays?: number | null
+    59→}
+    60→interface StageDistItem {
+    61→  id: string
+    62→  name: string
+    63→  color: string
+    64→  order: number
+    65→  stageType: string
+    66→  count: number
+    67→}
+    68→interface TrendItem { date: string; label: string; count: number }
+    69→interface WorkflowDistItem {
+    70→  id: string
+    71→  name: string
+    72→  color: string
+    73→  count: number
+    74→}
+    75→interface PriorityDistItem { priority: string; count: number }
+    76→interface ActivityLog {
+    77→  id: string
+    78→  logType: string
+    79→  candidateName?: string | null
+    80→  actionType: string
+    81→  performedByName?: string | null
+    82→  role?: string | null
+    83→  status: string
+    84→  createdAt: string
+    85→  remarks?: string | null
+    86→}
+    87→interface DashboardData {
+    88→  cards: DashboardCards
+    89→  slaBreaches: SlaBreach[]
+    90→  stageDistribution: StageDistItem[]
+    91→  trend7d: TrendItem[]
+    92→  workflowDistribution: WorkflowDistItem[]
+    93→  priorityDistribution: PriorityDistItem[]
+    94→  recentActivity: ActivityLog[]
+    95→  logsToday: number
+    96→}
+    97→
+    98→// ---------- Color helpers ----------
+    99→/** Allowed-palette accent map for the 14 stat cards. NO indigo/blue. */
+   100→const ACCENT_MAP: Record<string, { grad: string; text: string; ring: string }> = {
+   101→  emerald: { grad: "from-emerald-500/15 to-emerald-500/5", text: "text-emerald-600 dark:text-emerald-400", ring: "ring-emerald-500/20" },
+   102→  teal: { grad: "from-teal-500/15 to-teal-500/5", text: "text-teal-600 dark:text-teal-400", ring: "ring-teal-500/20" },
+   103→  cyan: { grad: "from-cyan-500/15 to-cyan-500/5", text: "text-cyan-600 dark:text-cyan-400", ring: "ring-cyan-500/20" },
+   104→  amber: { grad: "from-amber-500/15 to-amber-500/5", text: "text-amber-600 dark:text-amber-400", ring: "ring-amber-500/20" },
+   105→  rose: { grad: "from-rose-500/15 to-rose-500/5", text: "text-rose-600 dark:text-rose-400", ring: "ring-rose-500/20" },
+   106→  slate: { grad: "from-slate-500/15 to-slate-500/5", text: "text-slate-600 dark:text-slate-400", ring: "ring-slate-500/20" },
+   107→  fuchsia: { grad: "from-fuchsia-500/15 to-fuchsia-500/5", text: "text-fuchsia-600 dark:text-fuchsia-400", ring: "ring-fuchsia-500/20" },
+   108→  lime: { grad: "from-lime-500/15 to-lime-500/5", text: "text-lime-600 dark:text-lime-400", ring: "ring-lime-500/20" },
+   109→  orange: { grad: "from-orange-500/15 to-orange-500/5", text: "text-orange-600 dark:text-orange-400", ring: "ring-orange-500/20" },
+   110→  violet: { grad: "from-violet-500/15 to-violet-500/5", text: "text-violet-600 dark:text-violet-400", ring: "ring-violet-500/20" },
+   111→  pink: { grad: "from-pink-500/15 to-pink-500/5", text: "text-pink-600 dark:text-pink-400", ring: "ring-pink-500/20" },
+   112→}
+   113→
+   114→/** Convert hex to rgba with alpha — used for stage/workflow bar fills & glows. */
+   115→function hexToRgba(hex: string | null | undefined, alpha: number): string {
+   116→  let h = (hex || "#64748b").replace("#", "").trim()
+   117→  if (h.length === 3) h = h.split("").map((c) => c + c).join("")
+   118→  if (h.length !== 6) return `rgba(100,116,139,${alpha})`
+   119→  const r = parseInt(h.slice(0, 2), 16) || 0
+   120→  const g = parseInt(h.slice(2, 4), 16) || 0
+   121→  const b = parseInt(h.slice(4, 6), 16) || 0
+   122→  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+   123→}
+   124→
+   125→// ---------- Stat card (local, mirrors hrms/ui StatCard but supports full palette) ----------
+   126→function DashboardStatCard({
+   127→  label, value, icon: Icon, accent, sub,
+   128→}: {
+   129→  label: string
+   130→  value: React.ReactNode
+   131→  icon: React.ComponentType<{ className?: string }>
+   132→  accent: keyof typeof ACCENT_MAP
+   133→  sub?: string
+   134→}) {
+   135→  const a = ACCENT_MAP[accent] || ACCENT_MAP.emerald
+   136→  return (
+   137→    <Card className={cn(
+   138→      "relative overflow-hidden border border-border/60 rounded-xl shadow-soft hover:shadow-card transition-all duration-200",
+   139→      "bg-gradient-to-br", a.grad,
+   140→    )}>
+   141→      <CardContent className="p-4 sm:p-5">
+   142→        <div className="flex items-start justify-between gap-2">
+   143→          <div className="min-w-0">
+   144→            <p className="text-[11px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">{label}</p>
+   145→            <p className="text-2xl sm:text-3xl font-semibold mt-1 text-foreground tabular-nums leading-none">{value}</p>
+   146→            {sub && <p className="text-[11px] text-muted-foreground mt-1.5 truncate">{sub}</p>}
+   147→          </div>
+   148→          <div className={cn(
+   149→            "grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-background/70 ring-1 backdrop-blur-sm",
+   150→            a.ring, a.text,
+   151→          )}>
+   152→            <Icon className="h-5 w-5" />
+   153→          </div>
+   154→        </div>
+   155→      </CardContent>
+   156→    </Card>
+   157→  )
+   158→}
+   159→
+   160→// ---------- Framer-motion stagger ----------
+   161→const gridContainer = {
+   162→  hidden: { opacity: 0 },
+   163→  show: { opacity: 1, transition: { staggerChildren: 0.04 } },
+   164→}
+   165→const gridItem = {
+   166→  hidden: { opacity: 0, y: 10 },
+   167→  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 220, damping: 22 } },
+   168→}
+   169→
+   170→// ---------- Chart tooltip ----------
+   171→function ChartTooltip({ active, payload, label }: any) {
+   172→  if (!active || !payload?.length) return null
+   173→  return (
+   174→    <div className="rounded-lg border border-border/60 bg-popover px-3 py-2 text-xs shadow-card">
+   175→      {label && <p className="font-medium text-foreground mb-1">{label}</p>}
+   176→      {payload.map((p: any, i: number) => (
+   177→        <div key={i} className="flex items-center gap-2">
+   178→          <span className="h-2 w-2 rounded-full" style={{ background: p.color || p.payload?.fill || p.fill }} />
+   179→          <span className="text-muted-foreground">{p.name}:</span>
+   180→          <span className="font-medium text-foreground tabular-nums">{p.value}</span>
+   181→        </div>
+   182→      ))}
+   183→    </div>
+   184→  )
+   185→}
+   186→
+   187→// ---------- Activity log icon mapping ----------
+   188→const LOG_TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+   189→  "Candidate Activity": UserPlus,
+   190→  "Workflow": WorkflowIcon,
+   191→  "Stage Movement": ArrowRightLeft,
+   192→  "Document": FileText,
+   193→  "Email": Mail,
+   194→  "Checklist": ListChecks,
+   195→  "Approval": ShieldCheck,
+   196→  "Verification": ShieldCheck,
+   197→  "Employee Conversion": UserCheck,
+   198→  "System": Settings,
+   199→  "Error": CircleAlert,
+   200→}
+   201→function logIcon(logType: string) {
+   202→  return LOG_TYPE_ICON[logType] || Activity
+   203→}
+   204→
+   205→const LOG_STATUS_STYLES: Record<string, string> = {
+   206→  Success: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+   207→  Warning: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+   208→  Failed: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
+   209→  Error: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
+   210→}
+   211→
+   212→// ---------- Priority donut config ----------
+   213→const PRIORITY_META: { key: string; color: string }[] = [
+   214→  { key: "Low", color: "#64748b" },
+   215→  { key: "Medium", color: "#06b6d4" },
+   216→  { key: "High", color: "#f59e0b" },
+   217→  { key: "Critical", color: "#f43f5e" },
+   218→]
+   219→
+   220→// ---------- Component ----------
+   221→export function DashboardSection() {
+   222→  const { data, loading, error, reload } = useFetch<DashboardData>("/api/onboarding-dashboard")
+   223→
+   224→  if (loading) return <DashboardSkeleton />
+   225→  if (error || !data) {
+   226→    return (
+   227→      <EmptyState
+   228→        icon={AlertTriangle}
+   229→        title="Couldn't load dashboard"
+   230→        description={error || "Something went wrong while fetching onboarding analytics."}
+   231→        action={
+   232→          <Button size="sm" variant="outline" onClick={reload} className="gap-1.5">
+   233→            <RefreshCw className="h-4 w-4" /> Retry
+   234→          </Button>
+   235→        }
+   236→      />
+   237→    )
+   238→  }
+   239→
+   240→  const c = data.cards
+   241→
+   242→  // Stat cards config (14) — accent from allowed palette only (NO indigo/blue)
+   243→  const statCards: { label: string; value: number; icon: any; accent: keyof typeof ACCENT_MAP; sub?: string }[] = [
+   244→    { label: "Total Candidates", value: c.totalCandidates, icon: Users, accent: "emerald", sub: "All-time added" },
+   245→    { label: "Added Today", value: c.candidatesToday, icon: UserPlus, accent: "cyan", sub: "New today" },
+   246→    { label: "Onboarding Initiated", value: c.onboardingInitiated, icon: PlayCircle, accent: "teal", sub: "Active pipeline" },
+   247→    { label: "Invite Sent", value: c.inviteSent, icon: Send, accent: "cyan", sub: "Emails dispatched" },
+   248→    { label: "SLA Breached", value: c.slaBreached, icon: AlertTriangle, accent: "rose", sub: "Overdue stages" },
+   249→    { label: "Overdue Tasks", value: c.overdueTasks, icon: ClipboardList, accent: "amber", sub: "Past due date" },
+   250→    { label: "Completed Onboarding", value: c.completedOnboarding, icon: CheckCircle2, accent: "emerald", sub: "Fully onboarded" },
+   251→    { label: "Dropped Candidates", value: c.droppedCandidates, icon: UserMinus, accent: "slate", sub: "Withdrawn" },
+   252→    { label: "Joining Today", value: c.joiningToday, icon: CalendarDays, accent: "teal", sub: "Day-1 joiners" },
+   253→    { label: "Joining This Week", value: c.joiningThisWeek, icon: CalendarRange, accent: "emerald", sub: "Current week" },
+   254→    { label: "Active Workflows", value: c.activeWorkflows, icon: WorkflowIcon, accent: "violet", sub: `${c.totalStages} stages total` },
+   255→    { label: "Documents", value: c.documentsCount, icon: FileText, accent: "orange", sub: "Templates" },
+   256→    { label: "Checklists", value: c.checklistsCount, icon: ListChecks, accent: "fuchsia", sub: "Templates" },
+   257→    { label: "Emails", value: c.emailsCount, icon: Mail, accent: "pink", sub: "Templates" },
+   258→  ]
+   259→
+   260→  // Priority donut data — ensure all 4 priorities present
+   261→  const priorityData = PRIORITY_META.map((p) => ({
+   262→    name: p.key,
+   263→    value: data.priorityDistribution.find((d) => d.priority === p.key)?.count ?? 0,
+   264→    color: p.color,
+   265→  }))
+   266→  const priorityTotal = priorityData.reduce((s, p) => s + p.value, 0)
+   267→
+   268→  // Stage distribution sorted by order
+   269→  const stageData = [...data.stageDistribution].sort((a, b) => a.order - b.order)
+   270→  const maxStageCount = Math.max(1, ...stageData.map((s) => s.count))
+   271→
+   272→  // Workflow distribution sorted by count desc
+   273→  const workflowData = [...data.workflowDistribution].sort((a, b) => b.count - a.count)
+   274→  const maxWorkflowCount = Math.max(1, ...workflowData.map((w) => w.count))
+   275→
+   276→  return (
+   277→    <div className="flex flex-col gap-5">
+   278→      {/* Header */}
+   279→      <PageHeader
+   280→        title="Onboarding Dashboard"
+   281→        description="Real-time tracking of candidate onboarding pipeline, SLAs, and activity."
+   282→        icon={LayoutDashboard}
+   283→        actions={
+   284→          <Button size="sm" variant="outline" onClick={reload} className="gap-1.5">
+   285→            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+   286→          </Button>
+   287→        }
+   288→      />
+   289→
+   290→      {/* Stat cards grid — 2 / 4 / 5 cols */}
+   291→      <motion.div
+   292→        className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4"
+   293→        variants={gridContainer}
+   294→        initial="hidden"
+   295→        animate="show"
+   296→      >
+   297→        {statCards.map((s) => (
+   298→          <motion.div key={s.label} variants={gridItem}>
+   299→            <DashboardStatCard
+   300→              label={s.label}
+   301→              value={s.value}
+   302→              icon={s.icon}
+   303→              accent={s.accent}
+   304→              sub={s.sub}
+   305→            />
+   306→          </motion.div>
+   307→        ))}
+   308→      </motion.div>
+   309→
+   310→      {/* Row: Pipeline by Stage (2/3) + Priority donut (1/3) */}
+   311→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   312→        <SectionCard
+   313→          title="Pipeline by Stage"
+   314→          description="Candidate count currently sitting in each stage"
+   315→          className="lg:col-span-2"
+   316→        >
+   317→          {stageData.length === 0 ? (
+   318→            <EmptyState icon={WorkflowIcon} title="No stages yet" description="Configure workflows & stages to see the pipeline distribution." />
+   319→          ) : (
+   320→            <div className="space-y-3 py-1">
+   321→              {stageData.map((stage) => {
+   322→                const pct = (stage.count / maxStageCount) * 100
+   323→                return (
+   324→                  <div key={stage.id} className="group">
+   325→                    <div className="flex items-center justify-between gap-3 mb-1.5">
+   326→                      <div className="flex items-center gap-2 min-w-0">
+   327→                        <span
+   328→                          className="h-2.5 w-2.5 rounded-full shrink-0"
+   329→                          style={{ background: stage.color }}
+   330→                        />
+   331→                        <span className="text-sm font-medium text-foreground truncate">{stage.name}</span>
+   332→                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70 shrink-0">
+   333→                          {stage.stageType}
+   334→                        </span>
+   335→                      </div>
+   336→                      <span className="text-sm font-semibold text-foreground tabular-nums shrink-0">
+   337→                        {stage.count}
+   338→                      </span>
+   339→                    </div>
+   340→                    <div className="h-2.5 w-full rounded-full bg-muted/60 overflow-hidden">
+   341→                      <motion.div
+   342→                        className="h-full rounded-full"
+   343→                        style={{ background: stage.color }}
+   344→                        initial={{ width: 0 }}
+   345→                        animate={{ width: `${pct}%` }}
+   346→                        transition={{ duration: 0.5, ease: "easeOut" }}
+   347→                      />
+   348→                    </div>
+   349→                  </div>
+   350→                )
+   351→              })}
+   352→            </div>
+   353→          )}
+   354→        </SectionCard>
+   355→
+   356→        <SectionCard
+   357→          title="Candidates by Priority"
+   358→          description="Distribution across priority levels"
+   359→        >
+   360→          {priorityTotal === 0 ? (
+   361→            <EmptyState icon={Gauge} title="No candidates" description="Add candidates to see the priority breakdown." />
+   362→          ) : (
+   363→            <div className="flex flex-col items-center">
+   364→              <div className="h-56 w-full relative">
+   365→                <ResponsiveContainer width="100%" height="100%">
+   366→                  <PieChart>
+   367→                    <Pie
+   368→                      data={priorityData}
+   369→                      dataKey="value"
+   370→                      nameKey="name"
+   371→                      cx="50%"
+   372→                      cy="50%"
+   373→                      innerRadius={58}
+   374→                      outerRadius={88}
+   375→                      paddingAngle={2}
+   376→                      stroke="none"
+   377→                    >
+   378→                      {priorityData.map((p) => (
+   379→                        <Cell key={p.name} fill={p.color} />
+   380→                      ))}
+   381→                    </Pie>
+   382→                    <RechartsTooltip content={<ChartTooltip />} />
+   383→                  </PieChart>
+   384→                </ResponsiveContainer>
+   385→                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+   386→                  <span className="text-2xl font-bold tabular-nums text-foreground">{priorityTotal}</span>
+   387→                  <span className="text-[11px] text-muted-foreground">Total</span>
+   388→                </div>
+   389→              </div>
+   390→              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 w-full mt-2">
+   391→                {priorityData.map((p) => (
+   392→                  <div key={p.name} className="flex items-center gap-2 text-xs">
+   393→                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: p.color }} />
+   394→                    <span className="text-muted-foreground">{p.name}</span>
+   395→                    <span className="ml-auto font-semibold text-foreground tabular-nums">{p.value}</span>
+   396→                  </div>
+   397→                ))}
+   398→              </div>
+   399→            </div>
+   400→          )}
+   401→        </SectionCard>
+   402→      </div>
+   403→
+   404→      {/* 7-Day Trend — full width */}
+   405→      <SectionCard
+   406→        title="7-Day Candidate Trend"
+   407→        description="New candidates added per day over the last week"
+   408→      >
+   409→        <div className="h-64 w-full">
+   410→          <ResponsiveContainer width="100%" height="100%">
+   411→            <AreaChart data={data.trend7d} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+   412→              <defs>
+   413→                <linearGradient id="trendEmerald" x1="0" y1="0" x2="0" y2="1">
+   414→                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
+   415→                  <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
+   416→                </linearGradient>
+   417→              </defs>
+   418→              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="color-mix(in oklch, var(--border) 70%, transparent)" />
+   419→              <XAxis
+   420→                dataKey="label"
+   421→                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+   422→                axisLine={false}
+   423→                tickLine={false}
+   424→              />
+   425→              <YAxis
+   426→                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+   427→                axisLine={false}
+   428→                tickLine={false}
+   429→                allowDecimals={false}
+   430→                width={28}
+   431→              />
+   432→              <RechartsTooltip content={<ChartTooltip />} cursor={{ stroke: "#10b981", strokeWidth: 1, strokeDasharray: "4 4" }} />
+   433→              <Area
+   434→                type="monotone"
+   435→                dataKey="count"
+   436→                name="Candidates"
+   437→                stroke="#10b981"
+   438→                strokeWidth={2.5}
+   439→                fill="url(#trendEmerald)"
+   440→                dot={{ r: 3, fill: "#10b981", strokeWidth: 0 }}
+   441→                activeDot={{ r: 5, fill: "#10b981", stroke: "var(--background)", strokeWidth: 2 }}
+   442→              />
+   443→            </AreaChart>
+   444→          </ResponsiveContainer>
+   445→        </div>
+   446→      </SectionCard>
+   447→
+   448→      {/* Row: SLA Breaches + Recent Activity */}
+   449→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   450→        {/* SLA Breaches */}
+   451→        <SectionCard
+   452→          title="SLA Breaches"
+   453→          description="Candidates whose current stage SLA is overdue"
+   454→          action={
+   455→            data.slaBreaches.length > 0 ? (
+   456→              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-400 px-2.5 py-1 text-xs font-semibold">
+   457→                <AlertTriangle className="h-3 w-3" /> {data.slaBreaches.length}
+   458→              </span>
+   459→            ) : undefined
+   460→          }
+   461→        >
+   462→          {data.slaBreaches.length === 0 ? (
+   463→            <EmptyState icon={CheckCircle2} title="No SLA breaches 🎉" description="Every active candidate is within their stage SLA." />
+   464→          ) : (
+   465→            <div className="space-y-2 max-h-96 overflow-y-auto scrollbar-thin pr-1">
+   466→              {data.slaBreaches.map((b) => {
+   467→                const sla = slaStatus(b.enteredAt, b.slaDays)
+   468→                return (
+   469→                  <div
+   470→                    key={b.id}
+   471→                    className="flex items-center gap-3 rounded-lg border border-rose-200/60 dark:border-rose-500/20 bg-rose-50/50 dark:bg-rose-500/5 px-3 py-2.5"
+   472→                  >
+   473→                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-rose-100 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400">
+   474→                      <AlertTriangle className="h-4 w-4" />
+   475→                    </div>
+   476→                    <div className="min-w-0 flex-1">
+   477→                      <div className="flex items-center gap-2 flex-wrap">
+   478→                        <p className="text-sm font-semibold text-foreground truncate">{b.candidateName}</p>
+   479→                        {b.designation && (
+   480→                          <span className="text-xs text-muted-foreground truncate">· {b.designation}</span>
+   481→                        )}
+   482→                      </div>
+   483→                      <div className="flex items-center gap-1.5 mt-0.5">
+   484→                        {b.stageName && (
+   485→                          <>
+   486→                            <span
+   487→                              className="h-2 w-2 rounded-full shrink-0"
+   488→                              style={{ background: b.stageColor || "#64748b" }}
+   489→                            />
+   490→                            <span className="text-xs text-muted-foreground truncate">{b.stageName}</span>
+   491→                          </>
+   492→                        )}
+   493→                      </div>
+   494→                    </div>
+   495→                    <div className="shrink-0 text-right">
+   496→                      <span className="inline-flex items-center rounded-full bg-rose-600 text-white px-2 py-0.5 text-[11px] font-semibold tabular-nums">
+   497→                        {sla.label}
+   498→                      </span>
+   499→                    </div>
+   500→                  </div>
+   501→                )
+   502→              })}
+   503→            </div>
+   504→          )}
+   505→        </SectionCard>
+   506→
+   507→        {/* Recent Activity */}
+   508→        <SectionCard
+   509→          title="Recent Activity"
+   510→          description="Latest onboarding events & log entries"
+   511→          action={
+   512→            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-2.5 py-1 text-xs font-semibold">
+   513→              <Activity className="h-3 w-3" /> {data.logsToday} today
+   514→            </span>
+   515→          }
+   516→        >
+   517→          {data.recentActivity.length === 0 ? (
+   518→            <EmptyState icon={Inbox} title="No activity yet" description="Onboarding actions will appear here as they happen." />
+   519→          ) : (
+   520→            <div className="relative max-h-96 overflow-y-auto scrollbar-thin pr-1">
+   521→              <ol className="relative space-y-3 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-px before:bg-border/60">
+   522→                {data.recentActivity.map((log) => {
+   523→                  const Icon = logIcon(log.logType)
+   524→                  const statusCls = LOG_STATUS_STYLES[log.status] || "bg-muted text-muted-foreground"
+   525→                  return (
+   526→                    <li key={log.id} className="relative flex gap-3 pl-0">
+   527→                      <div className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-background border border-border/60 shadow-soft">
+   528→                        <Icon className="h-4 w-4 text-muted-foreground" />
+   529→                      </div>
+   530→                      <div className="min-w-0 flex-1 pt-0.5">
+   531→                        <div className="flex items-start justify-between gap-2 flex-wrap">
+   532→                          <p className="text-sm font-medium text-foreground">
+   533→                            <span className="text-muted-foreground">{log.logType}:</span>{" "}
+   534→                            <span className="text-foreground">{log.actionType}</span>
+   535→                          </p>
+   536→                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+   537→                            {timeAgo(log.createdAt)}
+   538→                          </span>
+   539→                        </div>
+   540→                        <div className="flex items-center gap-2 flex-wrap mt-1">
+   541→                          {log.candidateName && (
+   542→                            <span className="text-xs text-muted-foreground truncate">
+   543→                              · {log.candidateName}
+   544→                            </span>
+   545→                          )}
+   546→                          {log.performedByName && (
+   547→                            <span className="text-xs text-muted-foreground truncate">
+   548→                              by <span className="font-medium text-foreground/80">{log.performedByName}</span>
+   549→                              {log.role && <span className="opacity-70"> ({log.role})</span>}
+   550→                            </span>
+   551→                          )}
+   552→                          {log.status && (
+   553→                            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold", statusCls)}>
+   554→                              {log.status}
+   555→                            </span>
+   556→                          )}
+   557→                        </div>
+   558→                        {log.remarks && (
+   559→                          <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-2">{log.remarks}</p>
+   560→                        )}
+   561→                      </div>
+   562→                    </li>
+   563→                  )
+   564→                })}
+   565→              </ol>
+   566→            </div>
+   567→          )}
+   568→        </SectionCard>
+   569→      </div>
+   570→
+   571→      {/* Workflow Distribution — full width */}
+   572→      <SectionCard
+   573→        title="Workflow Distribution"
+   574→        description="Candidate count per onboarding workflow"
+   575→      >
+   576→        {workflowData.length === 0 ? (
+   577→          <EmptyState icon={WorkflowIcon} title="No workflows" description="Create onboarding workflows to see candidate distribution." />
+   578→        ) : (
+   579→          <div className="space-y-3 py-1">
+   580→            {workflowData.map((w) => {
+   581→              const pct = (w.count / maxWorkflowCount) * 100
+   582→              return (
+   583→                <div key={w.id} className="group">
+   584→                  <div className="flex items-center justify-between gap-3 mb-1.5">
+   585→                    <div className="flex items-center gap-2 min-w-0">
+   586→                      <span
+   587→                        className="h-2.5 w-2.5 rounded-full shrink-0"
+   588→                        style={{ background: w.color }}
+   589→                      />
+   590→                      <span className="text-sm font-medium text-foreground truncate">{w.name}</span>
+   591→                    </div>
+   592→                    <span className="text-sm font-semibold text-foreground tabular-nums shrink-0">
+   593→                      {w.count} <span className="text-muted-foreground font-normal text-xs">candidates</span>
+   594→                    </span>
+   595→                  </div>
+   596→                  <div className="h-2.5 w-full rounded-full bg-muted/60 overflow-hidden">
+   597→                    <motion.div
+   598→                      className="h-full rounded-full"
+   599→                      style={{ background: w.color }}
+   600→                      initial={{ width: 0 }}
+   601→                      animate={{ width: `${pct}%` }}
+   602→                      transition={{ duration: 0.5, ease: "easeOut" }}
+   603→                    />
+   604→                  </div>
+   605→                </div>
+   606→              )
+   607→            })}
+   608→          </div>
+   609→        )}
+   610→      </SectionCard>
+   611→    </div>
+   612→  )
+   613→}
+   614→
+   615→// ---------- Skeleton ----------
+   616→function DashboardSkeleton() {
+   617→  return (
+   618→    <div className="flex flex-col gap-5">
+   619→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-border/60">
+   620→        <div className="flex items-start gap-3">
+   621→          <Skeleton className="h-10 w-10 rounded-xl" />
+   622→          <div className="space-y-2">
+   623→            <Skeleton className="h-5 w-56" />
+   624→            <Skeleton className="h-4 w-80" />
+   625→          </div>
+   626→        </div>
+   627→        <Skeleton className="h-8 w-24" />
+   628→      </div>
+   629→
+   630→      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+   631→        {Array.from({ length: 14 }).map((_, i) => (
+   632→          <Card key={i} className="border border-border/60 rounded-xl">
+   633→            <CardContent className="p-4 sm:p-5">
+   634→              <div className="flex items-start justify-between gap-2">
+   635→                <div className="space-y-2 flex-1">
+   636→                  <Skeleton className="h-3 w-20" />
+   637→                  <Skeleton className="h-7 w-12" />
+   638→                  <Skeleton className="h-2.5 w-16" />
+   639→                </div>
+   640→                <Skeleton className="h-10 w-10 rounded-xl" />
+   641→              </div>
+   642→            </CardContent>
+   643→          </Card>
+   644→        ))}
+   645→      </div>
+   646→
+   647→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   648→        <Card className="lg:col-span-2 border border-border/60 rounded-xl">
+   649→          <CardContent className="p-5 space-y-4">
+   650→            <Skeleton className="h-5 w-40" />
+   651→            {Array.from({ length: 5 }).map((_, i) => (
+   652→              <div key={i} className="space-y-2">
+   653→                <Skeleton className="h-3 w-32" />
+   654→                <Skeleton className="h-2.5 w-full rounded-full" />
+   655→              </div>
+   656→            ))}
+   657→          </CardContent>
+   658→        </Card>
+   659→        <Card className="border border-border/60 rounded-xl">
+   660→          <CardContent className="p-5 space-y-4">
+   661→            <Skeleton className="h-5 w-40" />
+   662→            <div className="h-48 flex items-center justify-center">
+   663→              <Skeleton className="h-40 w-40 rounded-full" />
+   664→            </div>
+   665→            <div className="grid grid-cols-2 gap-2">
+   666→              {Array.from({ length: 4 }).map((_, i) => (
+   667→                <Skeleton key={i} className="h-3 w-full" />
+   668→              ))}
+   669→            </div>
+   670→          </CardContent>
+   671→        </Card>
+   672→      </div>
+   673→
+   674→      <Card className="border border-border/60 rounded-xl">
+   675→        <CardContent className="p-5 space-y-3">
+   676→          <Skeleton className="h-5 w-44" />
+   677→          <Skeleton className="h-56 w-full" />
+   678→        </CardContent>
+   679→      </Card>
+   680→
+   681→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   682→        {Array.from({ length: 2 }).map((_, i) => (
+   683→          <Card key={i} className="border border-border/60 rounded-xl">
+   684→            <CardContent className="p-5 space-y-3">
+   685→              <Skeleton className="h-5 w-40" />
+   686→              {Array.from({ length: 4 }).map((_, j) => (
+   687→                <Skeleton key={j} className="h-14 w-full rounded-lg" />
+   688→              ))}
+   689→            </CardContent>
+   690→          </Card>
+   691→        ))}
+   692→      </div>
+   693→
+   694→      <Card className="border border-border/60 rounded-xl">
+   695→        <CardContent className="p-5 space-y-3">
+   696→          <Skeleton className="h-5 w-44" />
+   697→          {Array.from({ length: 4 }).map((_, i) => (
+   698→            <div key={i} className="space-y-2">
+   699→              <Skeleton className="h-3 w-40" />
+   700→              <Skeleton className="h-2.5 w-full rounded-full" />
+   701→            </div>
+   702→          ))}
+   703→        </CardContent>
+   704→      </Card>
+   705→    </div>
+   706→  )
+   707→}
+   708→
+   709→export default DashboardSection
+   710→

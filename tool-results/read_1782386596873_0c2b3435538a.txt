@@ -1,0 +1,2002 @@
+     1→Yes. Offboarding should be refactored in the **same style as onboarding**:
+     2→
+     3→```text
+     4→Settings define what is allowed.
+     5→Libraries create reusable templates.
+     6→Entity Configuration selects defaults per company/entity.
+     7→Workflow Configuration wires everything step-wise.
+     8→Employee Exit page runs the actual offboarding.
+     9→Kanban board tracks progress.
+    10→Logs track everything.
+    11→```
+    12→
+    13→Offboarding is not only resignation. It must handle **resignation, termination, retirement, contract end, absconding, layoff, death case, clearance, asset recovery, IT access removal, notice period, exit interview, FnF, exit letters, and alumni/ex-employee record**. Zoho People highlights exit interviews, paperwork, and exit records; greytHR highlights clearance tasks, reminders, and exit process control; Keka’s FnF guidance covers closing dues and deductions during exit. ([Zoho][1])
+    14→
+    15→# Final Offboarding Module Structure
+    16→
+    17→```text
+    18→Offboarding / Exit Management
+    19→ ├── Dashboard
+    20→ ├── Employees / Exit Cases
+    21→ │    ├── Initiate Exit
+    22→ │    ├── Bulk Exit Initiation
+    23→ │    └── Bulk Update
+    24→ ├── Resignation Requests
+    25→ ├── Kanban Board
+    26→ ├── Clearance
+    27→ ├── Asset Recovery
+    28→ ├── IT Access Revocation
+    29→ ├── Full & Final Settlement
+    30→ ├── Document Library
+    31→ ├── Workflow Configuration
+    32→ ├── Email Templates
+    33→ ├── Checklists
+    34→ ├── Exit Interview Forms
+    35→ ├── Alumni / Ex-Employees
+    36→ ├── Logs
+    37→ └── Settings
+    38→```
+    39→
+    40→The most important page is **Employees / Exit Cases**. That is like your onboarding **Candidates** page.
+    41→
+    42→# 1. Entity-Wise Configuration Concept
+    43→
+    44→Every company/entity should be able to use default offboarding setup or custom setup.
+    45→
+    46→## Common Scope Fields
+    47→
+    48→Every workflow, Kanban board, checklist, letter template, email template, clearance rule, FnF rule, and exit interview form should have this header:
+    49→
+    50→```text
+    51→Configuration Scope
+    52→- Tenant Default
+    53→- Entity / Company
+    54→- Branch
+    55→- Location
+    56→- Department
+    57→- Grade
+    58→- Employee Type
+    59→- Work Mode
+    60→- Exit Type
+    61→- Specific Employee
+    62→
+    63→Use Tenant Default: Yes / No
+    64→Override Default: Yes / No
+    65→Effective From
+    66→Effective To
+    67→Priority
+    68→Status
+    69→Version
+    70→```
+    71→
+    72→## Example
+    73→
+    74→```text
+    75→Tenant Default:
+    76→Workflow = Standard Exit Workflow
+    77→Kanban Board = Default Exit Kanban
+    78→Clearance Checklist = Default Clearance
+    79→Email Group = Default Exit Emails
+    80→Exit Letter Templates = Default Templates
+    81→FnF Rule = Standard FnF Rule
+    82→
+    83→Entity: ABC India:
+    84→Workflow = India Full-Time Exit Workflow
+    85→Kanban Board = India Exit Kanban
+    86→Clearance Checklist = India HR + IT + Payroll + Admin Clearance
+    87→Email Group = India Exit Emails
+    88→Exit Letters = India Relieving / Experience / FnF Letters
+    89→FnF Rule = India Payroll FnF Rule
+    90→
+    91→Entity: ABC UAE:
+    92→Workflow = UAE Exit Workflow
+    93→Kanban Board = UAE Exit Kanban
+    94→Clearance Checklist = Passport / Visa / Admin / Payroll Clearance
+    95→Email Group = UAE Exit Emails
+    96→Exit Letters = UAE Service Letter / Contract Closure Letter
+    97→FnF Rule = UAE Payroll Settlement Rule
+    98→```
+    99→
+   100→# 2. Configuration Fallback Priority
+   101→
+   102→When exit is initiated, system should resolve configuration like this:
+   103→
+   104→```text
+   105→1. Employee-specific exit configuration
+   106→2. Exit type + employee type + department + location configuration
+   107→3. Employee type configuration
+   108→4. Department configuration
+   109→5. Location configuration
+   110→6. Entity / Company configuration
+   111→7. Tenant default configuration
+   112→```
+   113→
+   114→Example:
+   115→
+   116→```text
+   117→Employee: Rahul
+   118→Entity: ABC India
+   119→Department: Engineering
+   120→Employee Type: Full-Time
+   121→Exit Type: Voluntary Resignation
+   122→
+   123→System checks:
+   124→- Is there Rahul-specific exit workflow?
+   125→- Is there Full-Time + Engineering + Resignation workflow?
+   126→- Is there Full-Time resignation workflow?
+   127→- Is there ABC India exit workflow?
+   128→- If not, use Tenant Default workflow.
+   129→```
+   130→
+   131→# 3. Dashboard
+   132→
+   133→## Where
+   134→
+   135→```text
+   136→Offboarding → Dashboard
+   137→```
+   138→
+   139→## Dashboard Cards
+   140→
+   141→```text
+   142→Total Active Exit Cases
+   143→Resignation Requests Pending
+   144→Manager Approval Pending
+   145→HR Approval Pending
+   146→Employees in Notice Period
+   147→Last Working Day Today
+   148→Last Working Day This Week
+   149→Clearance Pending
+   150→Asset Recovery Pending
+   151→IT Access Revocation Pending
+   152→Knowledge Transfer Pending
+   153→Exit Interview Pending
+   154→FnF Pending
+   155→Exit Letters Pending
+   156→Employees Exited This Month
+   157→Withdrawn Resignations
+   158→Terminated Employees
+   159→No-Dues Pending
+   160→```
+   161→
+   162→## Filters
+   163→
+   164→```text
+   165→Entity / Company
+   166→Branch
+   167→Location
+   168→Department
+   169→Designation
+   170→Grade
+   171→Employee Type
+   172→Exit Type
+   173→Exit Reason
+   174→Manager
+   175→HR Owner
+   176→Last Working Day Range
+   177→Exit Status
+   178→Clearance Status
+   179→FnF Status
+   180→```
+   181→
+   182→# 4. Employees / Exit Cases Page
+   183→
+   184→## Where
+   185→
+   186→```text
+   187→Offboarding → Employees / Exit Cases
+   188→```
+   189→
+   190→This is the main operational page.
+   191→
+   192→## Top Buttons
+   193→
+   194→```text
+   195→Initiate Exit
+   196→Bulk Exit Initiation
+   197→Bulk Update
+   198→Export
+   199→Import
+   200→Assign Workflow
+   201→Send Reminder
+   202→```
+   203→
+   204→## Table Columns
+   205→
+   206→```text
+   207→Checkbox
+   208→Exit Case ID
+   209→Employee Code
+   210→Employee Name
+   211→Entity / Company
+   212→Branch
+   213→Location
+   214→Department
+   215→Designation
+   216→Grade
+   217→Employee Type
+   218→Reporting Manager
+   219→HR Owner
+   220→Exit Type
+   221→Exit Reason
+   222→Resignation Date
+   223→Notice Start Date
+   224→Requested LWD
+   225→Approved LWD
+   226→Actual LWD
+   227→Workflow
+   228→Current Stage
+   229→Clearance Status
+   230→Asset Status
+   231→IT Access Status
+   232→FnF Status
+   233→Letter Status
+   234→Exit Status
+   235→Action
+   236→```
+   237→
+   238→## Row Actions
+   239→
+   240→```text
+   241→View Exit Case
+   242→Edit Exit Details
+   243→Assign / Change Workflow
+   244→Move Stage
+   245→Approve Resignation
+   246→Reject Resignation
+   247→Change LWD
+   248→Start Clearance
+   249→Assign Checklist
+   250→Send Reminder
+   251→Initiate FnF
+   252→Generate Relieving Letter
+   253→Generate Experience Letter
+   254→Mark Exited
+   255→Cancel Exit
+   256→Withdraw Resignation
+   257→View Logs
+   258→```
+   259→
+   260→## Bulk Actions
+   261→
+   262→```text
+   263→Assign Workflow
+   264→Change Stage
+   265→Assign HR Owner
+   266→Send Reminder
+   267→Start Clearance
+   268→Assign Checklist
+   269→Initiate FnF
+   270→Generate Letters
+   271→Bulk Update LWD
+   272→Bulk Update Exit Status
+   273→Put On Hold
+   274→Export Selected
+   275→```
+   276→
+   277→# 5. Initiate Exit Form
+   278→
+   279→## Where
+   280→
+   281→```text
+   282→Offboarding → Employees / Exit Cases → Initiate Exit
+   283→```
+   284→
+   285→Use stepper UI.
+   286→
+   287→```text
+   288→Step 1: Employee Selection
+   289→Step 2: Exit Details
+   290→Step 3: Workflow Selection
+   291→Step 4: Clearance & Checklist Preview
+   292→Step 5: Notice / FnF Preview
+   293→Step 6: Email / Notification
+   294→Step 7: Review & Initiate
+   295→```
+   296→
+   297→## Step 1: Employee Selection
+   298→
+   299→```text
+   300→Employee
+   301→Employee Code
+   302→Entity
+   303→Department
+   304→Designation
+   305→Location
+   306→Reporting Manager
+   307→Date of Joining
+   308→Employment Type
+   309→Employee Status
+   310→```
+   311→
+   312→Auto-filled after selecting employee.
+   313→
+   314→## Step 2: Exit Details
+   315→
+   316→```text
+   317→Exit Type
+   318→Exit Category
+   319→Exit Reason
+   320→Sub Reason
+   321→Detailed Reason
+   322→Resignation Date
+   323→Notice Start Date
+   324→Requested Last Working Day
+   325→Approved Last Working Day
+   326→Actual Last Working Day
+   327→Notice Period Required
+   328→Notice Served Days
+   329→Notice Shortfall Days
+   330→Notice Waiver Required
+   331→Notice Buyout Required
+   332→Notice Recovery Required
+   333→Employee Remarks
+   334→Manager Remarks
+   335→HR Remarks
+   336→Attachment
+   337→Legal Hold: Yes / No
+   338→Regrettable Attrition: Yes / No
+   339→Eligible for Rehire: Yes / No
+   340→Confidential Exit: Yes / No
+   341→```
+   342→
+   343→## Exit Types
+   344→
+   345→```text
+   346→Voluntary Resignation
+   347→Involuntary Termination
+   348→Retirement
+   349→End of Contract
+   350→Absconding
+   351→Layoff
+   352→Death
+   353→Mutual Separation
+   354→Internship End
+   355→Probation Failure
+   356→Transfer to Another Entity
+   357→```
+   358→
+   359→Keka’s exit initiation flow captures reason, resignation/termination reason, notice date, last working day, and discussion summary, so your Initiate Exit form should capture these details clearly. ([Keka Help][2])
+   360→
+   361→## Step 3: Workflow Selection
+   362→
+   363→```text
+   364→Workflow Selection Mode
+   365→- Auto Select
+   366→- Manual Select
+   367→
+   368→Selected Exit Workflow
+   369→Workflow Version
+   370→Kanban Board
+   371→Clearance Checklist
+   372→Email Template Group
+   373→Exit Interview Form
+   374→FnF Rule
+   375→Approval Workflow
+   376→Exit Letter Template Group
+   377→IT Revocation Rule
+   378→Asset Recovery Rule
+   379→```
+   380→
+   381→Auto selection should use:
+   382→
+   383→```text
+   384→Entity
+   385→Location
+   386→Department
+   387→Grade
+   388→Employee Type
+   389→Exit Type
+   390→Exit Reason
+   391→Notice Period Policy
+   392→```
+   393→
+   394→## Step 4: Clearance & Checklist Preview
+   395→
+   396→Show all clearance tasks from selected workflow:
+   397→
+   398→```text
+   399→Manager Clearance
+   400→HR Clearance
+   401→IT Clearance
+   402→Admin / Facility Clearance
+   403→Finance Clearance
+   404→Payroll Clearance
+   405→Asset Clearance
+   406→Legal Clearance
+   407→Knowledge Transfer Checklist
+   408→Exit Interview Checklist
+   409→```
+   410→
+   411→HR can override if workflow allows:
+   412→
+   413→```text
+   414→Add extra task
+   415→Remove optional task
+   416→Make task mandatory
+   417→Change task owner
+   418→Change due date
+   419→Mark financial impact
+   420→Mark blocking task
+   421→```
+   422→
+   423→## Step 5: Notice / FnF Preview
+   424→
+   425→```text
+   426→Notice Period Required
+   427→Notice Served
+   428→Notice Shortfall
+   429→Notice Recovery
+   430→Notice Buyout
+   431→Leave Encashment Eligibility
+   432→Pending Salary
+   433→Pending Reimbursements
+   434→Loan / Advance Recovery
+   435→Asset Damage Recovery
+   436→FnF Rule
+   437→Payroll Cut-Off
+   438→FnF Approval Required
+   439→```
+   440→
+   441→Keka explains FnF as closing all dues and deductions accurately during exit; its FnF policy content also includes deductions, encashments, provident fund, gratuity, incentives, benefits, and bonuses. ([Keka Help][2])
+   442→
+   443→## Step 6: Email / Notification
+   444→
+   445→```text
+   446→Send Resignation Accepted Email
+   447→Send Clearance Task Emails
+   448→Send Manager Approval Email
+   449→Send HR Approval Email
+   450→Send Exit Interview Email
+   451→Send FnF Notification
+   452→Use Email Template Group
+   453→CC To HR
+   454→CC To Manager
+   455→CC To Payroll
+   456→```
+   457→
+   458→## Step 7: Review & Initiate
+   459→
+   460→Actions:
+   461→
+   462→```text
+   463→Save as Draft
+   464→Initiate Exit
+   465→Initiate & Notify
+   466→Initiate & Start Clearance
+   467→```
+   468→
+   469→# 6. Resignation Requests
+   470→
+   471→## Where
+   472→
+   473→```text
+   474→Offboarding → Resignation Requests
+   475→```
+   476→
+   477→Employee side:
+   478→
+   479→```text
+   480→Employee Portal → Resignation
+   481→```
+   482→
+   483→Manager side:
+   484→
+   485→```text
+   486→Manager Portal → Approvals → Resignation
+   487→```
+   488→
+   489→## Employee Resignation Form
+   490→
+   491→```text
+   492→Resignation Date
+   493→Requested Last Working Day
+   494→Exit Reason
+   495→Detailed Reason
+   496→Attachment
+   497→Notice Period Auto Calculation
+   498→Notice Shortfall Preview
+   499→Employee Remarks
+   500→Submit
+   501→```
+   502→
+   503→## Manager Review Fields
+   504→
+   505→```text
+   506→Manager Decision
+   507→Recommended Last Working Day
+   508→Retention Discussion Done
+   509→Discussion Summary
+   510→Regrettable Attrition
+   511→Manager Remarks
+   512→Forward to HR
+   513→```
+   514→
+   515→## HR Review Fields
+   516→
+   517→```text
+   518→Final Last Working Day
+   519→Notice Waiver
+   520→Notice Buyout
+   521→Notice Recovery
+   522→Exit Workflow
+   523→Clearance Checklist
+   524→HR Remarks
+   525→Approve / Reject / Send Back
+   526→```
+   527→
+   528→## Request Status
+   529→
+   530→```text
+   531→Draft
+   532→Submitted
+   533→Pending Manager Approval
+   534→Pending HR Approval
+   535→Approved
+   536→Rejected
+   537→Withdrawn
+   538→Cancelled
+   539→Exit Initiated
+   540→```
+   541→
+   542→# 7. Kanban Board
+   543→
+   544→## Where
+   545→
+   546→```text
+   547→Offboarding → Kanban Board
+   548→```
+   549→
+   550→The board should be dynamic based on selected exit workflow.
+   551→
+   552→## Default Exit Kanban Stages
+   553→
+   554→```text
+   555→Draft
+   556→Resignation Submitted
+   557→Manager Review
+   558→HR Review
+   559→Notice Period
+   560→Clearance In Progress
+   561→Asset Recovery
+   562→IT Revocation
+   563→FnF Settlement
+   564→Exit Letters
+   565→Exited
+   566→Alumni
+   567→On Hold
+   568→Withdrawn / Cancelled
+   569→```
+   570→
+   571→For UI, you can also use a shorter board:
+   572→
+   573→```text
+   574→Submitted
+   575→Manager Review
+   576→HR Review
+   577→Notice Period
+   578→Clearance
+   579→FnF Settlement
+   580→Exit Letters
+   581→Exited
+   582→On Hold
+   583→Cancelled
+   584→```
+   585→
+   586→## Kanban Card Fields
+   587→
+   588→```text
+   589→Employee Name
+   590→Employee Code
+   591→Photo
+   592→Entity
+   593→Department
+   594→Designation
+   595→Location
+   596→Manager
+   597→HR Owner
+   598→Exit Type
+   599→Exit Reason
+   600→Last Working Day
+   601→Days Remaining
+   602→Current Stage
+   603→Clearance %
+   604→Asset Pending Count
+   605→IT Access Pending Count
+   606→FnF Status
+   607→Letter Status
+   608→Risk Flag
+   609→Pending With
+   610→Last Activity
+   611→```
+   612→
+   613→## Card Badges
+   614→
+   615→```text
+   616→LWD Today
+   617→LWD This Week
+   618→Clearance Overdue
+   619→Asset Pending
+   620→IT Pending
+   621→FnF Pending
+   622→Legal Hold
+   623→High Risk Exit
+   624→Notice Shortfall
+   625→No-Dues Pending
+   626→Letter Pending
+   627→```
+   628→
+   629→## Card Actions
+   630→
+   631→```text
+   632→View Exit Case
+   633→Move Stage
+   634→Approve Resignation
+   635→Reject Resignation
+   636→Change LWD
+   637→Start Clearance
+   638→Assign Task
+   639→Send Reminder
+   640→Initiate FnF
+   641→Generate Letter
+   642→Mark Exited
+   643→Cancel Exit
+   644→View Timeline
+   645→```
+   646→
+   647→# 8. Kanban Board Configuration
+   648→
+   649→## Where
+   650→
+   651→```text
+   652→Offboarding → Workflow Configuration → Kanban Boards
+   653→```
+   654→
+   655→## Board List Columns
+   656→
+   657→```text
+   658→Board Name
+   659→Board Code
+   660→Scope Type
+   661→Entity / Company
+   662→Workflow
+   663→No. of Stages
+   664→Default Board
+   665→Status
+   666→Version
+   667→Created By
+   668→Updated At
+   669→Action
+   670→```
+   671→
+   672→## Create Board Fields
+   673→
+   674→```text
+   675→Board Name
+   676→Board Code
+   677→Description
+   678→Scope Type
+   679→Entity / Company
+   680→Default Board
+   681→Use Tenant Default
+   682→Effective From
+   683→Effective To
+   684→Status
+   685→Version
+   686→```
+   687→
+   688→## Stage Fields
+   689→
+   690→```text
+   691→Stage Name
+   692→Stage Code
+   693→Description
+   694→Color
+   695→Icon
+   696→Sort Order
+   697→Is Initial Stage
+   698→Is Final Stage
+   699→Is Mandatory Stage
+   700→Allow Manual Move
+   701→Allow Auto Move
+   702→Allow Skip
+   703→Requires Approval To Enter
+   704→Requires Approval To Exit
+   705→SLA Days
+   706→Reminder Rule
+   707→Escalation Rule
+   708→Status
+   709→```
+   710→
+   711→## Stage Entry Conditions
+   712→
+   713→```text
+   714→Resignation submitted
+   715→Manager approval completed
+   716→HR approval completed
+   717→Notice period started
+   718→Clearance initiated
+   719→All required documents generated
+   720→FnF initiated
+   721→```
+   722→
+   723→## Stage Exit Conditions
+   724→
+   725→```text
+   726→Manager approval completed
+   727→HR approval completed
+   728→Mandatory clearance completed
+   729→Assets recovered or waived
+   730→IT access revoked or scheduled
+   731→Exit interview completed or waived
+   732→FnF approved or marked not required
+   733→Exit letters generated
+   734→Employee marked exited
+   735→```
+   736→
+   737→# 9. Exit Case Profile Page
+   738→
+   739→## Where
+   740→
+   741→```text
+   742→Offboarding → Employees / Exit Cases → View Exit Case
+   743→```
+   744→
+   745→## Tabs
+   746→
+   747→```text
+   748→Overview
+   749→Resignation / Separation Details
+   750→Notice Period
+   751→Workflow
+   752→Clearance
+   753→Tasks
+   754→Assets
+   755→IT Access
+   756→Knowledge Transfer
+   757→Exit Interview
+   758→Payroll / FnF
+   759→Letters
+   760→Approvals
+   761→Timeline
+   762→Logs
+   763→Notes
+   764→```
+   765→
+   766→## Overview Tab
+   767→
+   768→```text
+   769→Employee details
+   770→Current workflow
+   771→Current stage
+   772→Exit type
+   773→Exit reason
+   774→Resignation date
+   775→Approved LWD
+   776→Days remaining
+   777→Clearance %
+   778→Asset status
+   779→IT status
+   780→FnF status
+   781→Letter status
+   782→Pending tasks
+   783→Overdue tasks
+   784→Next action
+   785→```
+   786→
+   787→# 10. Clearance
+   788→
+   789→## Where
+   790→
+   791→```text
+   792→Offboarding → Clearance
+   793→```
+   794→
+   795→and inside:
+   796→
+   797→```text
+   798→Exit Case → Clearance
+   799→```
+   800→
+   801→greytHR describes the exit process around open clearance tasks, completing tasks, sending reminders, post-clearance, and marking the employee exited. That is exactly why Clearance must be a first-class page, not hidden inside comments. ([greythr][3])
+   802→
+   803→## Clearance Departments
+   804→
+   805→```text
+   806→Reporting Manager
+   807→HR
+   808→IT
+   809→Admin / Facilities
+   810→Finance
+   811→Payroll
+   812→Legal
+   813→Compliance
+   814→Security
+   815→Project Manager
+   816→Training / L&D
+   817→Asset Team
+   818→Travel Desk
+   819→Library / Store
+   820→```
+   821→
+   822→## Clearance Task Fields
+   823→
+   824→```text
+   825→Task Name
+   826→Task Code
+   827→Department
+   828→Owner Type
+   829→Owner
+   830→Due Date Rule
+   831→SLA Days
+   832→Mandatory
+   833→Blocking
+   834→Requires Comment
+   835→Requires Attachment
+   836→Requires Approval
+   837→Financial Impact
+   838→Recovery Amount
+   839→Waiver Allowed
+   840→Reminder Rule
+   841→Escalation Rule
+   842→Stage Mapping
+   843→Status
+   844→```
+   845→
+   846→## Clearance Status
+   847→
+   848→```text
+   849→Not Started
+   850→Pending
+   851→In Progress
+   852→Submitted
+   853→Approved
+   854→Rejected
+   855→Needs Correction
+   856→Completed
+   857→Overdue
+   858→Waived
+   859→Not Applicable
+   860→```
+   861→
+   862→## Clearance Actions
+   863→
+   864→```text
+   865→Start Task
+   866→Submit Task
+   867→Approve Task
+   868→Reject Task
+   869→Send Back
+   870→Mark Complete
+   871→Waive Task
+   872→Add Recovery Amount
+   873→Add Comment
+   874→Upload Attachment
+   875→Reassign Owner
+   876→Send Reminder
+   877→```
+   878→
+   879→# 11. Asset Recovery
+   880→
+   881→## Where
+   882→
+   883→```text
+   884→Offboarding → Asset Recovery
+   885→```
+   886→
+   887→## Asset Types
+   888→
+   889→```text
+   890→Laptop
+   891→Desktop
+   892→Monitor
+   893→Keyboard
+   894→Mouse
+   895→Mobile
+   896→SIM Card
+   897→ID Card
+   898→Access Card
+   899→Uniform
+   900→Vehicle
+   901→Tools
+   902→Software License
+   903→Company Documents
+   904→Accommodation Items
+   905→Office Keys
+   906→```
+   907→
+   908→## Asset Recovery Fields
+   909→
+   910→```text
+   911→Asset Code
+   912→Asset Type
+   913→Serial Number
+   914→Assigned Date
+   915→Expected Return Date
+   916→Actual Return Date
+   917→Return Status
+   918→Condition at Return
+   919→Damage: Yes / No
+   920→Lost: Yes / No
+   921→Damage Amount
+   922→Recovery Amount
+   923→Waiver Approved
+   924→Remarks
+   925→Attachment
+   926→Push Recovery to FnF
+   927→```
+   928→
+   929→## Actions
+   930→
+   931→```text
+   932→Mark Returned
+   933→Mark Damaged
+   934→Mark Lost
+   935→Add Recovery Amount
+   936→Waive Recovery
+   937→Send Reminder
+   938→Generate Asset No-Dues
+   939→Push to FnF
+   940→```
+   941→
+   942→# 12. IT Access Revocation
+   943→
+   944→## Where
+   945→
+   946→```text
+   947→Offboarding → IT Access Revocation
+   948→```
+   949→
+   950→## Access Items
+   951→
+   952→```text
+   953→HRMS Login
+   954→Official Email
+   955→SSO / Azure AD / Google Workspace
+   956→VPN
+   957→Wi-Fi
+   958→Slack / Teams
+   959→GitHub / GitLab
+   960→Jira / Azure DevOps
+   961→CRM
+   962→ERP
+   963→Payroll System
+   964→Cloud Storage
+   965→Shared Drives
+   966→Biometric Device
+   967→Access Control System
+   968→Project Management Tools
+   969→Finance Tools
+   970→Admin Tools
+   971→```
+   972→
+   973→## IT Revocation Fields
+   974→
+   975→```text
+   976→System Name
+   977→Access Type
+   978→Owner Team
+   979→Revoke Timing
+   980→- Immediately
+   981→- On LWD End of Day
+   982→- After Clearance
+   983→- Manual
+   984→
+   985→Revoke Date
+   986→Revoke Time
+   987→Data Backup Required
+   988→Data Transfer Required
+   989→New Owner
+   990→License Deactivation Required
+   991→Revocation Status
+   992→Verification Status
+   993→Remarks
+   994→```
+   995→
+   996→## Important Rules
+   997→
+   998→```text
+   999→Termination / high-risk exit: revoke immediately.
+  1000→Normal resignation: revoke on LWD end of day.
+  1001→Garden leave: revoke on garden leave start.
+  1002→HRMS employee self-service: keep limited access until FnF/letters if configured.
+  1003→```
+  1004→
+  1005→# 13. Full & Final Settlement
+  1006→
+  1007→## Where
+  1008→
+  1009→```text
+  1010→Offboarding → Full & Final Settlement
+  1011→```
+  1012→
+  1013→## FnF Input Sections
+  1014→
+  1015→```text
+  1016→Employee & Exit Details
+  1017→Attendance & Paid Days
+  1018→Leave Encashment
+  1019→Notice Recovery / Buyout
+  1020→Salary Hold
+  1021→Pending Salary
+  1022→Bonus / Incentive
+  1023→Arrears
+  1024→Expense Reimbursements
+  1025→Loans / Advances
+  1026→Asset Recovery
+  1027→Tax / Statutory Deductions
+  1028→Gratuity
+  1029→Other Earnings
+  1030→Other Deductions
+  1031→Net Payable / Recoverable
+  1032→```
+  1033→
+  1034→## FnF Earnings
+  1035→
+  1036→```text
+  1037→Salary till LWD
+  1038→Bonus
+  1039→Incentive
+  1040→Arrears
+  1041→Leave Encashment
+  1042→Gratuity
+  1043→Reimbursement Payable
+  1044→Other Earnings
+  1045→```
+  1046→
+  1047→## FnF Deductions
+  1048→
+  1049→```text
+  1050→LWP / LOP
+  1051→Notice Recovery
+  1052→Loan Recovery
+  1053→Advance Recovery
+  1054→Asset Damage Recovery
+  1055→Tax / TDS
+  1056→PF / ESI / Statutory Deductions
+  1057→Other Deductions
+  1058→```
+  1059→
+  1060→## FnF Status
+  1061→
+  1062→```text
+  1063→Not Started
+  1064→Draft
+  1065→Inputs Pending
+  1066→Calculated
+  1067→Under Review
+  1068→Approved
+  1069→Rejected
+  1070→Paid
+  1071→Closed
+  1072→On Hold
+  1073→```
+  1074→
+  1075→## FnF Actions
+  1076→
+  1077→```text
+  1078→Fetch Payroll Inputs
+  1079→Fetch Leave Encashment
+  1080→Fetch Asset Recovery
+  1081→Fetch Loan Balance
+  1082→Calculate FnF
+  1083→Add Manual Earning
+  1084→Add Manual Deduction
+  1085→Send for Approval
+  1086→Approve
+  1087→Reject
+  1088→Mark Paid
+  1089→Generate Settlement Letter
+  1090→Export
+  1091→```
+  1092→
+  1093→# 14. Document Library
+  1094→
+  1095→## Where
+  1096→
+  1097→```text
+  1098→Offboarding → Document Library
+  1099→```
+  1100→
+  1101→## Document Categories
+  1102→
+  1103→```text
+  1104→Resignation Acceptance Letter
+  1105→Relieving Letter
+  1106→Experience Letter
+  1107→Service Certificate
+  1108→Termination Letter
+  1109→No Dues Certificate
+  1110→FnF Settlement Letter
+  1111→Recovery Letter
+  1112→Exit Interview Form
+  1113→Alumni Welcome Letter
+  1114→Custom Exit Document
+  1115→```
+  1116→
+  1117→Zoho People highlights generating exit documents like relieving and experience letters and emailing/downloading them, so these templates should be part of Offboarding Document Library. ([Zoho][1])
+  1118→
+  1119→## Template List Columns
+  1120→
+  1121→```text
+  1122→Template Name
+  1123→Template Code
+  1124→Document Type
+  1125→Scope Type
+  1126→Entity / Company
+  1127→Department
+  1128→Employee Type
+  1129→Language
+  1130→Version
+  1131→Default Template
+  1132→Status
+  1133→Created By
+  1134→Updated At
+  1135→Action
+  1136→```
+  1137→
+  1138→## Template Editor
+  1139→
+  1140→Same editor as onboarding:
+  1141→
+  1142→```text
+  1143→Header
+  1144→Body
+  1145→Footer
+  1146→```
+  1147→
+  1148→Formatting:
+  1149→
+  1150→```text
+  1151→Bold
+  1152→Italic
+  1153→Underline
+  1154→Font Family
+  1155→Font Size
+  1156→Text Color
+  1157→Alignment
+  1158→Table
+  1159→Logo
+  1160→Signature Block
+  1161→Watermark
+  1162→Page Break
+  1163→Preview
+  1164→Generate PDF
+  1165→Version History
+  1166→```
+  1167→
+  1168→## Exit Document Variables
+  1169→
+  1170→```text
+  1171→{{EmployeeName}}
+  1172→{{EmployeeCode}}
+  1173→{{EntityName}}
+  1174→{{CompanyName}}
+  1175→{{Department}}
+  1176→{{Designation}}
+  1177→{{Location}}
+  1178→{{DateOfJoining}}
+  1179→{{ResignationDate}}
+  1180→{{NoticeDate}}
+  1181→{{LastWorkingDay}}
+  1182→{{ExitType}}
+  1183→{{ExitReason}}
+  1184→{{ManagerName}}
+  1185→{{HRName}}
+  1186→{{FnFAmount}}
+  1187→{{RecoveryAmount}}
+  1188→{{LetterDate}}
+  1189→{{CompanyLogo}}
+  1190→{{AuthorizedSignatory}}
+  1191→```
+  1192→
+  1193→# 15. Email Templates
+  1194→
+  1195→## Where
+  1196→
+  1197→```text
+  1198→Offboarding → Email Templates
+  1199→```
+  1200→
+  1201→## Email Template Categories
+  1202→
+  1203→```text
+  1204→Resignation Submitted
+  1205→Manager Approval Pending
+  1206→HR Approval Pending
+  1207→Resignation Approved
+  1208→Resignation Rejected
+  1209→Resignation Withdrawn
+  1210→Exit Process Initiated
+  1211→Notice Period Started
+  1212→LWD Changed
+  1213→Clearance Task Assigned
+  1214→Clearance Task Reminder
+  1215→Clearance Task Overdue
+  1216→Asset Return Pending
+  1217→IT Revocation Pending
+  1218→Exit Interview Request
+  1219→Exit Interview Reminder
+  1220→FnF Inputs Pending
+  1221→FnF Calculated
+  1222→FnF Approved
+  1223→FnF Paid
+  1224→Relieving Letter Generated
+  1225→Experience Letter Generated
+  1226→Employee Marked Exited
+  1227→Alumni Profile Created
+  1228→```
+  1229→
+  1230→## Email Template Fields
+  1231→
+  1232→```text
+  1233→Template Name
+  1234→Template Code
+  1235→Event Type
+  1236→Scope Type
+  1237→Entity / Company
+  1238→Workflow
+  1239→Language
+  1240→Subject
+  1241→Header
+  1242→Body
+  1243→Footer
+  1244→Default Template
+  1245→Status
+  1246→Version
+  1247→```
+  1248→
+  1249→## Recipient Options
+  1250→
+  1251→```text
+  1252→Employee
+  1253→Reporting Manager
+  1254→Manager of Manager
+  1255→HR Owner
+  1256→Department Head
+  1257→IT Admin
+  1258→Admin Team
+  1259→Finance Admin
+  1260→Payroll Admin
+  1261→Asset Owner
+  1262→Legal Team
+  1263→Specific Role
+  1264→Specific Employee
+  1265→Specific Email
+  1266→CC
+  1267→BCC
+  1268→```
+  1269→
+  1270→## Email Variables
+  1271→
+  1272→```text
+  1273→{{EmployeeName}}
+  1274→{{EmployeeCode}}
+  1275→{{EntityName}}
+  1276→{{CompanyName}}
+  1277→{{Department}}
+  1278→{{Designation}}
+  1279→{{ManagerName}}
+  1280→{{HRName}}
+  1281→{{ResignationDate}}
+  1282→{{NoticeDate}}
+  1283→{{LastWorkingDay}}
+  1284→{{ExitReason}}
+  1285→{{TaskName}}
+  1286→{{DueDate}}
+  1287→{{PendingTasks}}
+  1288→{{ClearanceStatus}}
+  1289→{{FnFStatus}}
+  1290→{{ApprovalLink}}
+  1291→{{PortalLink}}
+  1292→{{RelievingLetterLink}}
+  1293→```
+  1294→
+  1295→# 16. Checklists
+  1296→
+  1297→## Where
+  1298→
+  1299→```text
+  1300→Offboarding → Checklists
+  1301→```
+  1302→
+  1303→## Checklist Categories
+  1304→
+  1305→```text
+  1306→Employee Exit Checklist
+  1307→Manager Clearance Checklist
+  1308→HR Checklist
+  1309→IT Checklist
+  1310→Admin Checklist
+  1311→Payroll Checklist
+  1312→Finance Checklist
+  1313→Asset Checklist
+  1314→Legal Checklist
+  1315→Knowledge Transfer Checklist
+  1316→Exit Interview Checklist
+  1317→```
+  1318→
+  1319→## Checklist Fields
+  1320→
+  1321→```text
+  1322→Checklist Name
+  1323→Checklist Code
+  1324→Category
+  1325→Scope Type
+  1326→Entity / Company
+  1327→Department
+  1328→Employee Type
+  1329→Exit Type
+  1330→No. of Tasks
+  1331→Default Checklist
+  1332→Status
+  1333→Version
+  1334→```
+  1335→
+  1336→## Task Fields
+  1337→
+  1338→```text
+  1339→Task Name
+  1340→Task Code
+  1341→Description
+  1342→Owner Type
+  1343→Owner
+  1344→Due Date Rule
+  1345→Priority
+  1346→Mandatory
+  1347→Blocking
+  1348→Requires Attachment
+  1349→Requires Comment
+  1350→Requires Approval
+  1351→Financial Impact
+  1352→Recovery Allowed
+  1353→Auto Complete Condition
+  1354→Reminder Rule
+  1355→Escalation Rule
+  1356→Stage Mapping
+  1357→Status
+  1358→```
+  1359→
+  1360→## Due Date Rules
+  1361→
+  1362→```text
+  1363→On Exit Initiation
+  1364→On Resignation Approval
+  1365→Before LWD - X Days
+  1366→On LWD
+  1367→After LWD + X Days
+  1368→After Previous Task Completion + X Days
+  1369→Manual Date
+  1370→```
+  1371→
+  1372→# 17. Exit Interview Forms
+  1373→
+  1374→## Where
+  1375→
+  1376→```text
+  1377→Offboarding → Exit Interview Forms
+  1378→```
+  1379→
+  1380→Zoho states exit interviews help gather constructive feedback and understand pain points, so exit interviews should support custom forms, scoring, and analytics. ([Zoho][1])
+  1381→
+  1382→## Form Categories
+  1383→
+  1384→```text
+  1385→HR Exit Interview
+  1386→Manager Exit Discussion
+  1387→Anonymous Exit Survey
+  1388→Department Exit Feedback
+  1389→Final HR Call
+  1390→```
+  1391→
+  1392→## Form Fields
+  1393→
+  1394→```text
+  1395→Primary Reason for Leaving
+  1396→Secondary Reason
+  1397→New Company, optional
+  1398→New Role, optional
+  1399→Compensation Satisfaction
+  1400→Manager Relationship Rating
+  1401→Work Culture Rating
+  1402→Career Growth Rating
+  1403→Workload Rating
+  1404→Would You Rejoin?
+  1405→Would You Recommend Company?
+  1406→Suggestions
+  1407→Final Remarks
+  1408→```
+  1409→
+  1410→## Form Settings
+  1411→
+  1412→```text
+  1413→Anonymous Allowed
+  1414→Mandatory / Optional
+  1415→Visible To Manager
+  1416→Visible To HR
+  1417→Allow Employee Edit After Submit
+  1418→Requires HR Review
+  1419→Map Answers to Analytics
+  1420→```
+  1421→
+  1422→# 18. Workflow Configuration
+  1423→
+  1424→## Where
+  1425→
+  1426→```text
+  1427→Offboarding → Workflow Configuration
+  1428→```
+  1429→
+  1430→This is the brain of offboarding.
+  1431→
+  1432→## Workflow List Columns
+  1433→
+  1434→```text
+  1435→Workflow Name
+  1436→Workflow Code
+  1437→Scope Type
+  1438→Entity / Company
+  1439→Department
+  1440→Employee Type
+  1441→Exit Type
+  1442→Kanban Board
+  1443→Clearance Checklist
+  1444→Email Group
+  1445→FnF Rule
+  1446→Default Workflow
+  1447→Priority
+  1448→Status
+  1449→Version
+  1450→Action
+  1451→```
+  1452→
+  1453→## Workflow Actions
+  1454→
+  1455→```text
+  1456→Create Workflow
+  1457→Edit Draft
+  1458→Clone
+  1459→Preview
+  1460→Validate
+  1461→Publish
+  1462→Deactivate
+  1463→Archive
+  1464→Create New Version
+  1465→Delete, only if unused
+  1466→View Assigned Exit Cases
+  1467→View Version History
+  1468→```
+  1469→
+  1470→# 19. Create Workflow Wizard
+  1471→
+  1472→```text
+  1473→Step 1: Basic Details
+  1474→Step 2: Applicability
+  1475→Step 3: Kanban Board
+  1476→Step 4: Exit Request / Resignation Rules
+  1477→Step 5: Clearance & Checklists
+  1478→Step 6: Asset Recovery Rules
+  1479→Step 7: IT Revocation Rules
+  1480→Step 8: Exit Interview Rules
+  1481→Step 9: FnF Rules
+  1482→Step 10: Document / Letter Rules
+  1483→Step 11: Approval Rules
+  1484→Step 12: Email Rules
+  1485→Step 13: Employee Status / Alumni Rules
+  1486→Step 14: Review & Publish
+  1487→```
+  1488→
+  1489→## Step 1: Basic Details
+  1490→
+  1491→```text
+  1492→Workflow Name
+  1493→Workflow Code
+  1494→Description
+  1495→Scope Type
+  1496→Entity / Company
+  1497→Country
+  1498→State
+  1499→Effective From
+  1500→Effective To
+  1501→Default Workflow
+  1502→Priority
+  1503→Status
+  1504→Version
+  1505→```
+  1506→
+  1507→## Step 2: Applicability
+  1508→
+  1509→```text
+  1510→Apply Workflow To:
+  1511→- Tenant Default
+  1512→- Entity / Company
+  1513→- Branch
+  1514→- Location
+  1515→- Department
+  1516→- Designation
+  1517→- Grade
+  1518→- Employee Type
+  1519→- Exit Type
+  1520→- Exit Reason
+  1521→- Specific Employee
+  1522→```
+  1523→
+  1524→## Step 3: Kanban Board
+  1525→
+  1526→```text
+  1527→Use Default Kanban Board
+  1528→Selected Kanban Board
+  1529→Allow Stage Customization
+  1530→Allow HR Manual Stage Movement
+  1531→Allow Auto Stage Movement
+  1532→Require Reason for Manual Movement
+  1533→```
+  1534→
+  1535→## Step 4: Exit Request / Resignation Rules
+  1536→
+  1537→```text
+  1538→Allow Employee Resignation
+  1539→Allow Manager Initiated Exit
+  1540→Allow HR Initiated Exit
+  1541→Allow Bulk Exit Initiation
+  1542→Allow Future Dated Resignation
+  1543→Allow Backdated Resignation
+  1544→Minimum Notice Required
+  1545→Allow Withdrawal Before Approval
+  1546→Allow Withdrawal After Approval
+  1547→Withdrawal Requires Approval
+  1548→Allow LWD Change
+  1549→LWD Change Requires Approval
+  1550→Require Exit Reason
+  1551→Require Detailed Reason
+  1552→Require Attachment
+  1553→Require Manager Discussion
+  1554→```
+  1555→
+  1556→## Step 5: Clearance & Checklists
+  1557→
+  1558→```text
+  1559→Clearance Checklist
+  1560→Stage Mapping
+  1561→Auto Create Clearance Tasks
+  1562→Task Owner
+  1563→Due Date Rule
+  1564→Mandatory Task
+  1565→Blocking Task
+  1566→Requires Attachment
+  1567→Requires Comment
+  1568→Requires Approval
+  1569→Financial Impact
+  1570→Recovery Allowed
+  1571→Reminder Rule
+  1572→Escalation Rule
+  1573→Block Stage Exit Until Completed
+  1574→```
+  1575→
+  1576→## Step 6: Asset Recovery Rules
+  1577→
+  1578→```text
+  1579→Asset Recovery Required
+  1580→Auto Fetch Assigned Assets
+  1581→Require Asset Return Before Exit
+  1582→Allow Asset Waiver
+  1583→Allow Damage Recovery
+  1584→Allow Lost Asset Recovery
+  1585→Push Recovery Amount to FnF
+  1586→Asset Owner
+  1587→Reminder Rule
+  1588→Escalation Rule
+  1589→```
+  1590→
+  1591→## Step 7: IT Revocation Rules
+  1592→
+  1593→```text
+  1594→IT Revocation Required
+  1595→Auto Fetch Access List
+  1596→Revoke Timing
+  1597→- Immediately
+  1598→- On LWD End of Day
+  1599→- After Clearance
+  1600→- Manual
+  1601→
+  1602→Data Backup Required
+  1603→Ownership Transfer Required
+  1604→Disable HRMS Login
+  1605→Disable Email
+  1606→Disable SSO / VPN / Tools
+  1607→Disable Biometric Access
+  1608→Allow Limited Alumni Access
+  1609→Block Exit Closure Until Revoked
+  1610→```
+  1611→
+  1612→## Step 8: Exit Interview Rules
+  1613→
+  1614→```text
+  1615→Exit Interview Required
+  1616→Exit Interview Form
+  1617→Send To Employee
+  1618→Anonymous Allowed
+  1619→Due Date Rule
+  1620→HR Review Required
+  1621→Block Exit Closure Until Submitted
+  1622→Allow HR Waiver
+  1623→```
+  1624→
+  1625→## Step 9: FnF Rules
+  1626→
+  1627→```text
+  1628→FnF Required
+  1629→FnF Rule
+  1630→Auto Fetch Payroll Inputs
+  1631→Auto Fetch Leave Encashment
+  1632→Auto Fetch Notice Recovery
+  1633→Auto Fetch Loan Recovery
+  1634→Auto Fetch Asset Recovery
+  1635→Allow Manual Earnings
+  1636→Allow Manual Deductions
+  1637→FnF Approval Required
+  1638→FnF Must Be Completed Before Exit Closure
+  1639→Allow FnF After Exit
+  1640→Generate FnF Letter
+  1641→```
+  1642→
+  1643→## Step 10: Document / Letter Rules
+  1644→
+  1645→```text
+  1646→Generate Resignation Acceptance Letter
+  1647→Generate Relieving Letter
+  1648→Generate Experience Letter
+  1649→Generate No Dues Certificate
+  1650→Generate FnF Settlement Letter
+  1651→Generate Termination Letter
+  1652→Letter Template
+  1653→Stage Mapping
+  1654→Approval Required Before Issue
+  1655→Digital Signature Required
+  1656→Email Letter To Employee
+  1657→Block Closure Until Letter Generated
+  1658→```
+  1659→
+  1660→## Step 11: Approval Rules
+  1661→
+  1662→```text
+  1663→Approval Required
+  1664→Approval Type
+  1665→Approver Type
+  1666→Approver
+  1667→Approval Level
+  1668→Sequential / Parallel
+  1669→Auto Approve If Approver Missing
+  1670→Escalation After Days
+  1671→Reminder Frequency
+  1672→Block Stage Until Approved
+  1673→```
+  1674→
+  1675→## Approval Types
+  1676→
+  1677→```text
+  1678→Resignation Approval
+  1679→HR Exit Approval
+  1680→LWD Change Approval
+  1681→Notice Waiver Approval
+  1682→Clearance Approval
+  1683→Asset Waiver Approval
+  1684→FnF Approval
+  1685→Letter Approval
+  1686→Exit Closure Approval
+  1687→```
+  1688→
+  1689→## Step 12: Email Rules
+  1690→
+  1691→This is where you set **what email goes when**.
+  1692→
+  1693→```text
+  1694→Stage
+  1695→Trigger Event
+  1696→Email Template
+  1697→Send To
+  1698→CC
+  1699→BCC
+  1700→Send Timing
+  1701→Delay
+  1702→Repeat Reminder
+  1703→Reminder Frequency
+  1704→Maximum Reminder Count
+  1705→Escalation Required
+  1706→Escalate To
+  1707→Condition
+  1708→Status
+  1709→```
+  1710→
+  1711→## Trigger Events
+  1712→
+  1713→```text
+  1714→Resignation submitted
+  1715→Exit initiated
+  1716→Employee enters stage
+  1717→Employee exits stage
+  1718→Manager approval pending
+  1719→HR approval pending
+  1720→LWD changed
+  1721→Notice period started
+  1722→Clearance task assigned
+  1723→Clearance task overdue
+  1724→Asset return pending
+  1725→IT revocation pending
+  1726→Exit interview assigned
+  1727→Exit interview submitted
+  1728→FnF initiated
+  1729→FnF approved
+  1730→FnF paid
+  1731→Letter generated
+  1732→Employee marked exited
+  1733→Alumni profile created
+  1734→```
+  1735→
+  1736→## Example Email Rule
+  1737→
+  1738→```text
+  1739→Stage: Clearance
+  1740→Trigger: Employee enters stage
+  1741→Email Template: Clearance Task Assigned
+  1742→Send To: Task Owner
+  1743→CC: HR Owner
+  1744→When: Immediately
+  1745→```
+  1746→
+  1747→Reminder example:
+  1748→
+  1749→```text
+  1750→Trigger: Asset return pending
+  1751→Condition: Pending for 2 days
+  1752→Template: Asset Return Reminder
+  1753→Send To: Employee
+  1754→CC: Admin Team, HR Owner
+  1755→Repeat: Every 2 days
+  1756→Maximum Count: 3
+  1757→Escalate To: HR Manager
+  1758→```
+  1759→
+  1760→## Step 13: Employee Status / Alumni Rules
+  1761→
+  1762→```text
+  1763→Mark Employee Exited On
+  1764→- Actual LWD
+  1765→- Exit Closure
+  1766→- Manual HR Action
+  1767→
+  1768→Deactivate Employee Profile
+  1769→Deactivate Login
+  1770→Keep Limited Exit Portal Access
+  1771→Create Alumni Profile
+  1772→Allow Rehire
+  1773→Default Rehire Eligibility
+  1774→Blacklist / No-Rehire Option
+  1775→Data Retention Rule
+  1776→```
+  1777→
+  1778→# 20. Settings
+  1779→
+  1780→## Where
+  1781→
+  1782→```text
+  1783→Offboarding → Settings
+  1784→```
+  1785→
+  1786→Settings are for module-level and entity-wise defaults.
+  1787→
+  1788→## Settings Tabs
+  1789→
+  1790→```text
+  1791→General Settings
+  1792→Employee Exit Settings
+  1793→Entity Configuration
+  1794→Kanban Settings
+  1795→Workflow Settings
+  1796→Clearance Settings
+  1797→Asset Recovery Settings
+  1798→IT Revocation Settings
+  1799→FnF Settings
+  1800→Document / Letter Settings
+  1801→Email Settings
+  1802→Exit Interview Settings
+  1803→Approval Settings
+  1804→Employee Portal Settings
+  1805→Alumni Settings
+  1806→Import / Export Settings
+  1807→Audit & Security
+  1808→```
+  1809→
+  1810→# 21. Entity Configuration Settings
+  1811→
+  1812→## Where
+  1813→
+  1814→```text
+  1815→Offboarding → Settings → Entity Configuration
+  1816→```
+  1817→
+  1818→## Purpose
+  1819→
+  1820→For each entity/company, select default offboarding setup.
+  1821→
+  1822→## Fields
+  1823→
+  1824→```text
+  1825→Entity / Company
+  1826→Use Tenant Default: Yes / No
+  1827→
+  1828→Default Exit Workflow
+  1829→Default Exit Kanban Board
+  1830→Default Clearance Checklist
+  1831→Default Asset Recovery Rule
+  1832→Default IT Revocation Rule
+  1833→Default FnF Rule
+  1834→Default Exit Interview Form
+  1835→Default Email Template Group
+  1836→Default Approval Workflow
+  1837→Default Letter Template Group
+  1838→Default HR Owner
+  1839→Default Exit Reason Set
+  1840→Default Notice Period Policy
+  1841→Default Alumni Rule
+  1842→
+  1843→Effective From
+  1844→Effective To
+  1845→Status
+  1846→```
+  1847→
+  1848→## Example
+  1849→
+  1850→```text
+  1851→Entity: ABC India Pvt Ltd
+  1852→Use Tenant Default: No
+  1853→
+  1854→Default Exit Workflow: India Full-Time Exit Workflow
+  1855→Default Kanban Board: India Exit Kanban
+  1856→Default Clearance Checklist: India Clearance Checklist
+  1857→Default FnF Rule: India FnF Rule
+  1858→Default Email Template Group: India Exit Emails
+  1859→Default Exit Interview Form: India Exit Interview Form
+  1860→Default Letter Template Group: India Exit Letters
+  1861→Default Notice Period Policy: India Notice Policy
+  1862→```
+  1863→
+  1864→# 22. Important Settings Fields
+  1865→
+  1866→## General Settings
+  1867→
+  1868→```text
+  1869→Enable Offboarding Module
+  1870→Allow Employee Resignation
+  1871→Allow Manager Initiated Exit
+  1872→Allow HR Initiated Exit
+  1873→Allow Bulk Exit Initiation
+  1874→Allow Resignation Withdrawal
+  1875→Allow Exit Cancellation
+  1876→Allow Rehire
+  1877→Default Exit Workflow
+  1878→Default Kanban Board
+  1879→Default HR Owner
+  1880→```
+  1881→
+  1882→## Employee Exit Settings
+  1883→
+  1884→```text
+  1885→Employee Exit ID Auto Generate
+  1886→Exit ID Prefix
+  1887→Exit ID Format
+  1888→Duplicate Active Exit Case Check
+  1889→Allow Backdated Exit Initiation
+  1890→Allow Future-Dated Exit
+  1891→Allow LWD Change
+  1892→Allow Exit Hold
+  1893→Allow Exit Reopen
+  1894→```
+  1895→
+  1896→## Workflow Settings
+  1897→
+  1898→```text
+  1899→Allow Multiple Workflows
+  1900→Allow Entity-Wise Workflow
+  1901→Allow Department-Wise Workflow
+  1902→Allow Employee Type-Wise Workflow
+  1903→Allow Exit Type-Wise Workflow
+  1904→Allow Workflow Priority
+  1905→Allow Workflow Versioning
+  1906→Allow Clone Workflow
+  1907→Allow Archive Workflow
+  1908→Allow Workflow Publish Approval
+  1909→Conflict Handling
+  1910→```
+  1911→
+  1912→## Clearance Settings
+  1913→
+  1914→```text
+  1915→Enable Clearance
+  1916→Allow Entity-Wise Clearance Checklist
+  1917→Allow Department-Wise Clearance Checklist
+  1918→Allow Mandatory Task
+  1919→Allow Blocking Task
+  1920→Allow Task Waiver
+  1921→Allow Recovery Amount
+  1922→Require Clearance Before FnF
+  1923→Require Clearance Before Exit Closure
+  1924→```
+  1925→
+  1926→## FnF Settings
+  1927→
+  1928→```text
+  1929→Enable FnF
+  1930→Allow Entity-Wise FnF Rule
+  1931→Allow Payroll Group-Wise FnF Rule
+  1932→Auto Fetch Payroll Inputs
+  1933→Auto Fetch Leave Encashment
+  1934→Auto Fetch Asset Recovery
+  1935→Auto Fetch Loan Recovery
+  1936→Allow Manual Earnings
+  1937→Allow Manual Deductions
+  1938→FnF Approval Required
+  1939→FnF Payment Tracking
+  1940→```
+  1941→
+  1942→## Email Settings
+  1943→
+  1944→```text
+  1945→Enable Email Notifications
+  1946→Enable Entity-Wise Email Templates
+  1947→Enable Workflow-Wise Email Templates
+  1948→Enable Stage-Wise Email Rules
+  1949→Enable Reminder Emails
+  1950→Enable Escalation Emails
+  1951→Enable Email Logs
+  1952→Enable Retry Failed Emails
+  1953→Default Email Template Group
+  1954→Default From Email
+  1955→Default Reply-To Email
+  1956→Send Immediately / Queue
+  1957→Retry Count
+  1958→Retry Interval
+  1959→```
+  1960→
+  1961→## Audit & Security Settings
+  1962→
+  1963→```text
+  1964→Enable Audit Log
+  1965→Track Exit Details Changes
+  1966→Track Workflow Changes
+  1967→Track Stage Movement
+  1968→Track Clearance Changes
+  1969→Track Asset Recovery Changes
+  1970→Track IT Revocation Changes
+  1971→Track FnF Changes
+  1972→Track Letter Generation
+  1973→Track Employee Status Change
+  1974→Soft Delete Only
+  1975→Role-Based Access Control
+  1976→Field-Level Permission
+  1977→```
+  1978→
+  1979→# 23. Logs
+  1980→
+  1981→## Where
+  1982→
+  1983→```text
+  1984→Offboarding → Logs
+  1985→```
+  1986→
+  1987→## Log Types
+  1988→
+  1989→```text
+  1990→Exit Case Logs
+  1991→Resignation Logs
+  1992→Workflow Logs
+  1993→Stage Movement Logs
+  1994→Clearance Logs
+  1995→Asset Recovery Logs
+  1996→IT Revocation Logs
+  1997→FnF Logs
+  1998→Document / Letter Logs
+  1999→Email Logs
+  2000→Approval Logs
+
+[showing lines 1-2000 of 2192; use offset=2001 with limit to continue reading]

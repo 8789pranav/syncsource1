@@ -1,0 +1,802 @@
+     1→     1→"use client"
+     2→     2→
+     3→     3→// ============================================================================
+     4→     4→//  SettingsSection — Onboarding module Settings (spec #13) + Entity
+     5→     5→//  Configuration (spec #14). 15 vertical tabs on the left; the 3rd tab is a
+     6→     6→//  special entity-config table (Add / Edit / Delete dialog). The other 14 are
+     7→     7→//  form panels driven by the pre-seeded onboarding-settings JSON.
+     8→     8→// ============================================================================
+     9→     9→
+    10→    10→import * as React from "react"
+    11→    11→import { motion, AnimatePresence } from "framer-motion"
+    12→    12→import {
+    13→    13→  Settings as SettingsIcon, Users, Building2, KanbanSquare, Workflow as WorkflowIcon,
+    14→    14→  FileText, LayoutTemplate, ListChecks, Mail, ShieldCheck, BadgeCheck, Globe,
+    15→    15→  UserCog, ArrowUpDown, Lock, Save, Plus, Pencil, Trash2, AlertTriangle, Check, X,
+    16→    16→  ChevronRight,
+    17→    17→} from "lucide-react"
+    18→    18→import { toast } from "sonner"
+    19→    19→
+    20→    20→import { cn } from "@/lib/utils"
+    21→    21→import {
+    22→    22→  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    23→    23→} from "@/components/ui/dialog"
+    24→    24→import {
+    25→    25→  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+    26→    26→  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+    27→    27→} from "@/components/ui/alert-dialog"
+    28→    28→import { Button } from "@/components/ui/button"
+    29→    29→import { Input } from "@/components/ui/input"
+    30→    30→import { Label } from "@/components/ui/label"
+    31→    31→import { Switch } from "@/components/ui/switch"
+    32→    32→import { Badge } from "@/components/ui/badge"
+    33→    33→import { Skeleton } from "@/components/ui/skeleton"
+    34→    34→import { Separator } from "@/components/ui/separator"
+    35→    35→import {
+    36→    36→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    37→    37→} from "@/components/ui/select"
+    38→    38→import {
+    39→    39→  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+    40→    40→} from "@/components/ui/tooltip"
+    41→    41→import {
+    42→    42→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    43→    43→} from "@/components/ui/table"
+    44→    44→
+    45→    45→import { PageHeader, SectionCard, EmptyState, StatusBadge } from "@/components/hrms/ui"
+    46→    46→import {
+    47→    47→  useFetch, apiPost, apiPatch, apiDelete, safeToast, safeParseJson,
+    48→    48→  formatDate,
+    49→    49→} from "@/components/hrms/onboarding/shared"
+    50→    50→
+    51→    51→// ============================================================================
+    52→    52→//  Types
+    53→    53→// ============================================================================
+    54→    54→
+    55→    55→type FieldType = "switch" | "text" | "number" | "select"
+    56→    56→
+    57→    57→interface FieldDef {
+    58→    58→  key: string
+    59→    59→  label: string
+    60→    60→  description?: string
+    61→    61→  type: FieldType
+    62→    62→  placeholder?: string
+    63→    63→  options?: { value: string; label: string }[]
+    64→    64→}
+    65→    65→
+    66→    66→interface CategoryDef {
+    67→    67→  /** API category key — must match the seeded `OnboardingSetting.category` */
+    68→    68→  category: string
+    69→    69→  /** Visible tab label */
+    70→    70→  label: string
+    71→    71→  icon: React.ComponentType<{ className?: string }>
+    72→    72→  description: string
+    73→    73→  fields: FieldDef[]
+    74→    74→}
+    75→    75→
+    76→    76→interface SettingValue {
+    77→    77→  [category: string]: Record<string, any>
+    78→    78→}
+    79→    79→
+    80→    80→interface EntityOption {
+    81→    81→  id: string
+    82→    82→  legalName: string
+    83→    83→  tradeName?: string | null
+    84→    84→  code: string
+    85→    85→}
+    86→    86→
+    87→    87→interface EntityConfig {
+    88→    88→  id: string
+    89→    89→  tenantId: string
+    90→    90→  entityId: string
+    91→    91→  useTenantDefault: boolean
+    92→    92→  defaultWorkflowId: string | null
+    93→    93→  defaultKanbanBoardId: string | null
+    94→    94→  defaultCandidateFormId: string | null
+    95→    95→  defaultDocumentSet: string | null
+    96→    96→  defaultChecklistSet: string | null
+    97→    97→  defaultEmailGroup: string | null
+    98→    98→  defaultVerificationRule: string | null
+    99→    99→  defaultApprovalWorkflow: string | null
+   100→   100→  defaultCandidatePortalSetting: string | null
+   101→   101→  defaultEmployeeConversionRule: string | null
+   102→   102→  defaultHrOwner: string | null
+   103→   103→  defaultRecruiter: string | null
+   104→   104→  defaultReportingManagerRule: string | null
+   105→   105→  defaultSetupRule: string | null
+   106→   106→  effectiveFrom: string | null
+   107→   107→  effectiveTo: string | null
+   108→   108→  status: string
+   109→   109→  entity: { id: string; name: string; code: string } | null
+   110→   110→  createdAt: string
+   111→   111→  updatedAt: string
+   112→   112→}
+   113→   113→
+   114→   114→// ============================================================================
+   115→   115→//  Static field definitions — driven by seed defaults (onboarding-seed/route.ts)
+   116→   116→// ============================================================================
+   117→   117→
+   118→   118→const CONFLICT_OPTIONS = [
+   119→   119→  { value: "Highest Priority Wins", label: "Highest Priority Wins" },
+   120→   120→  { value: "Block Conflict", label: "Block Conflict" },
+   121→   121→  { value: "Ask Admin To Resolve", label: "Ask Admin To Resolve" },
+   122→   122→]
+   123→   123→
+   124→   124→const SEND_MODE_OPTIONS = [
+   125→   125→  { value: "Immediately", label: "Immediately" },
+   126→   126→  { value: "Queue", label: "Queue" },
+   127→   127→]
+   128→   128→
+   129→   129→const CATEGORIES: CategoryDef[] = [
+   130→   130→  {
+   131→   131→    category: "general",
+   132→   132→    label: "General",
+   133→   133→    icon: SettingsIcon,
+   134→   134→    description: "Master switches for the onboarding module.",
+   135→   135→    fields: [
+   136→   136→      { key: "enableOnboardingModule", label: "Enable onboarding module", description: "Master switch for the entire module.", type: "switch" },
+   137→   137→      { key: "enableCandidateOnboarding", label: "Candidate onboarding", description: "Allow new candidates to be initiated.", type: "switch" },
+   138→   138→      { key: "enableEmployeeOnboarding", label: "Employee onboarding", description: "Allow candidates to convert to employees.", type: "switch" },
+   139→   139→      { key: "enableBulkCandidateUpload", label: "Bulk candidate upload", description: "Allow importing candidates via CSV.", type: "switch" },
+   140→   140→      { key: "enableRehireOnboarding", label: "Rehire onboarding", description: "Re-onboard ex-employees through a faster pipeline.", type: "switch" },
+   141→   141→      { key: "enableInternalTransferOnboarding", label: "Internal transfer onboarding", description: "Onboard employees transferring between entities.", type: "switch" },
+   142→   142→      { key: "allowSaveAsDraft", label: "Allow save as draft", description: "Let HR save candidate records as drafts.", type: "switch" },
+   143→   143→      { key: "allowDeleteDraftCandidate", label: "Allow delete draft candidate", description: "Permit deletion of draft candidates.", type: "switch" },
+   144→   144→    ],
+   145→   145→  },
+   146→   146→  {
+   147→   147→    category: "candidate",
+   148→   148→    label: "Candidate",
+   149→   149→    icon: Users,
+   150→   150→    description: "Candidate ID, duplicate detection and edit rules.",
+   151→   151→    fields: [
+   152→   152→      { key: "candidateIdAutoGenerate", label: "Auto-generate candidate ID", type: "switch" },
+   153→   153→      { key: "candidateIdPrefix", label: "Candidate ID prefix", description: "Prefix used when generating candidate IDs.", type: "text", placeholder: "CAND" },
+   154→   154→      { key: "candidateIdFormat", label: "Candidate ID format", description: "Use {YYYY} for year and {####} for running number.", type: "text", placeholder: "CAND-{YYYY}-{####}" },
+   155→   155→      { key: "duplicateCheckByEmail", label: "Duplicate check by email", type: "switch" },
+   156→   156→      { key: "duplicateCheckByMobile", label: "Duplicate check by mobile", type: "switch" },
+   157→   157→      { key: "allowCandidateEditAfterSubmit", label: "Allow candidate edit after submit", type: "switch" },
+   158→   158→      { key: "allowHrEditCandidateData", label: "Allow HR to edit candidate data", type: "switch" },
+   159→   159→      { key: "candidatePortalExpiryDays", label: "Portal expiry (days)", description: "How long the candidate portal link stays valid.", type: "number", placeholder: "30" },
+   160→   160→    ],
+   161→   161→  },
+   162→   162→  {
+   163→   163→    category: "kanban",
+   164→   164→    label: "Kanban",
+   165→   165→    icon: KanbanSquare,
+   166→   166→    description: "Board customisation and stage movement rules.",
+   167→   167→    fields: [
+   168→   168→      { key: "allowCustomKanbanBoard", label: "Allow custom boards", type: "switch" },
+   169→   169→      { key: "allowEntityWiseBoard", label: "Entity-wise boards", type: "switch" },
+   170→   170→      { key: "allowWorkflowWiseBoard", label: "Workflow-wise boards", type: "switch" },
+   171→   171→      { key: "allowStageRename", label: "Allow stage rename", type: "switch" },
+   172→   172→      { key: "allowStageReorder", label: "Allow stage reorder", type: "switch" },
+   173→   173→      { key: "allowMandatoryStage", label: "Allow mandatory stage", type: "switch" },
+   174→   174→      { key: "allowStageSkip", label: "Allow stage skip", type: "switch" },
+   175→   175→      { key: "allowStageSla", label: "Allow stage SLA", type: "switch" },
+   176→   176→      { key: "allowAutoStageMovement", label: "Allow auto stage movement", type: "switch" },
+   177→   177→      { key: "allowManualStageMovement", label: "Allow manual stage movement", type: "switch" },
+   178→   178→      { key: "allowDragAndDrop", label: "Allow drag-and-drop", type: "switch" },
+   179→   179→      { key: "requireReasonForManualStageMove", label: "Require reason for manual move", type: "switch" },
+   180→   180→    ],
+   181→   181→  },
+   182→   182→  {
+   183→   183→    category: "workflow",
+   184→   184→    label: "Workflow",
+   185→   185→    icon: WorkflowIcon,
+   186→   186→    description: "Workflow authoring, versioning and conflict handling.",
+   187→   187→    fields: [
+   188→   188→      { key: "allowMultipleWorkflows", label: "Allow multiple workflows", type: "switch" },
+   189→   189→      { key: "allowEntityWiseWorkflow", label: "Entity-wise workflows", type: "switch" },
+   190→   190→      { key: "allowDepartmentWiseWorkflow", label: "Department-wise workflows", type: "switch" },
+   191→   191→      { key: "allowEmployeeTypeWiseWorkflow", label: "Employee-type-wise workflows", type: "switch" },
+   192→   192→      { key: "allowWorkModeWiseWorkflow", label: "Work-mode-wise workflows", type: "switch" },
+   193→   193→      { key: "allowWorkflowPriority", label: "Allow workflow priority", type: "switch" },
+   194→   194→      { key: "allowWorkflowVersioning", label: "Allow workflow versioning", type: "switch" },
+   195→   195→      { key: "allowCloneWorkflow", label: "Allow cloning workflows", type: "switch" },
+   196→   196→      { key: "allowArchiveWorkflow", label: "Allow archiving workflows", type: "switch" },
+   197→   197→      { key: "allowWorkflowPublishApproval", label: "Publish approval required", type: "switch" },
+   198→   198→      {
+   199→   199→        key: "conflictHandling", label: "Conflict handling", type: "select",
+   200→   200→        description: "Behaviour when a candidate matches more than one workflow.",
+   201→   201→        options: CONFLICT_OPTIONS,
+   202→   202→      },
+   203→   203→    ],
+   204→   204→  },
+   205→   205→  {
+   206→   206→    category: "document",
+   207→   207→    label: "Document",
+   208→   208→    icon: FileText,
+   209→   209→    description: "Document templates, e-sign, file types and verification rules.",
+   210→   210→    fields: [
+   211→   211→      { key: "allowDocumentLibrary", label: "Document library", type: "switch" },
+   212→   212→      { key: "allowEntityWiseDocumentTemplate", label: "Entity-wise templates", type: "switch" },
+   213→   213→      { key: "allowWorkflowWiseDocumentTemplate", label: "Workflow-wise templates", type: "switch" },
+   214→   214→      { key: "allowCustomDocumentType", label: "Allow custom document types", type: "switch" },
+   215→   215→      { key: "allowESign", label: "Allow e-sign", type: "switch" },
+   216→   216→      { key: "allowTemplateVersioning", label: "Template versioning", type: "switch" },
+   217→   217→      { key: "allowedFileTypes", label: "Allowed file types", description: "Comma-separated list of extensions.", type: "text", placeholder: "pdf,docx,jpg,png" },
+   218→   218→      { key: "maximumFileSize", label: "Max file size (MB)", type: "number", placeholder: "10" },
+   219→   219→      { key: "documentVerificationRequired", label: "Verification required", type: "switch" },
+   220→   220→      { key: "documentExpiryTracking", label: "Expiry tracking", type: "switch" },
+   221→   221→      { key: "blockOnboardingIfMandatoryDocumentMissing", label: "Block if mandatory missing", type: "switch" },
+   222→   222→    ],
+   223→   223→  },
+   224→   224→  {
+   225→   225→    category: "template",
+   226→   226→    label: "Template",
+   227→   227→    icon: LayoutTemplate,
+   228→   228→    description: "Document/email template versioning and language defaults.",
+   229→   229→    fields: [
+   230→   230→      { key: "allowTemplateVersioning", label: "Template versioning", type: "switch" },
+   231→   231→      { key: "allowTemplateSharing", label: "Allow template sharing", type: "switch" },
+   232→   232→      { key: "defaultLanguage", label: "Default language", description: "ISO language code (e.g. en, hi, ta).", type: "text", placeholder: "en" },
+   233→   233→    ],
+   234→   234→  },
+   235→   235→  {
+   236→   236→    category: "checklist",
+   237→   237→    label: "Checklist",
+   238→   238→    icon: ListChecks,
+   239→   239→    description: "Checklist authoring rules and scoping.",
+   240→   240→    fields: [
+   241→   241→      { key: "allowCustomChecklist", label: "Allow custom checklists", type: "switch" },
+   242→   242→      { key: "allowEntityWiseChecklist", label: "Entity-wise checklists", type: "switch" },
+   243→   243→      { key: "allowDepartmentWiseChecklist", label: "Department-wise checklists", type: "switch" },
+   244→   244→      { key: "allowChecklistVersioning", label: "Checklist versioning", type: "switch" },
+   245→   245→    ],
+   246→   246→  },
+   247→   247→  {
+   248→   248→    category: "email",
+   249→   249→    label: "Email",
+   250→   250→    icon: Mail,
+   251→   251→    description: "Email notifications, retry behaviour and default sender.",
+   252→   252→    fields: [
+   253→   253→      { key: "enableEmailNotifications", label: "Enable notifications", type: "switch" },
+   254→   254→      { key: "enableEntityWiseEmailTemplates", label: "Entity-wise templates", type: "switch" },
+   255→   255→      { key: "enableWorkflowWiseEmailTemplates", label: "Workflow-wise templates", type: "switch" },
+   256→   256→      { key: "enableStageWiseEmailRules", label: "Stage-wise rules", type: "switch" },
+   257→   257→      { key: "enableReminderEmails", label: "Reminder emails", type: "switch" },
+   258→   258→      { key: "enableEscalationEmails", label: "Escalation emails", type: "switch" },
+   259→   259→      { key: "enableEmailLogs", label: "Email logs", type: "switch" },
+   260→   260→      { key: "enableRetryFailedEmails", label: "Retry failed emails", type: "switch" },
+   261→   261→      { key: "defaultFromEmail", label: "Default from email", type: "text", placeholder: "onboarding@acme.com" },
+   262→   262→      { key: "defaultReplyToEmail", label: "Default reply-to email", type: "text", placeholder: "hr@acme.com" },
+   263→   263→      {
+   264→   264→        key: "sendMode", label: "Send mode", type: "select",
+   265→   265→        description: "Immediately sends on event; Queue batches for delivery.",
+   266→   266→        options: SEND_MODE_OPTIONS,
+   267→   267→      },
+   268→   268→      { key: "retryCount", label: "Retry count", type: "number", placeholder: "3" },
+   269→   269→      { key: "retryInterval", label: "Retry interval (seconds)", type: "number", placeholder: "60" },
+   270→   270→    ],
+   271→   271→  },
+   272→   272→  {
+   273→   273→    category: "verification",
+   274→   274→    label: "Verification",
+   275→   275→    icon: ShieldCheck,
+   276→   276→    description: "Background, identity, education and bank verification rules.",
+   277→   277→    fields: [
+   278→   278→      { key: "enableDocumentVerification", label: "Document verification", type: "switch" },
+   279→   279→      { key: "enableFormVerification", label: "Form verification", type: "switch" },
+   280→   280→      { key: "enableBankVerification", label: "Bank verification", type: "switch" },
+   281→   281→      { key: "enableIdentityVerification", label: "Identity verification", type: "switch" },
+   282→   282→      { key: "enableBackgroundVerification", label: "Background verification", type: "switch" },
+   283→   283→      { key: "enableEducationVerification", label: "Education verification", type: "switch" },
+   284→   284→      { key: "enableExperienceVerification", label: "Experience verification", type: "switch" },
+   285→   285→      { key: "allowSendBackForCorrection", label: "Allow send-back for correction", type: "switch" },
+   286→   286→      { key: "requireVerificationRemarks", label: "Require verification remarks", type: "switch" },
+   287→   287→      { key: "correctionAttemptLimit", label: "Correction attempt limit", type: "number", placeholder: "2" },
+   288→   288→    ],
+   289→   289→  },
+   290→   290→  {
+   291→   291→    category: "approval",
+   292→   292→    label: "Approval",
+   293→   293→    icon: BadgeCheck,
+   294→   294→    description: "Approval workflows for offers, documents, salary and conversion.",
+   295→   295→    fields: [
+   296→   296→      { key: "enableApprovalWorkflow", label: "Enable approval workflow", type: "switch" },
+   297→   297→      { key: "offerApprovalRequired", label: "Offer approval required", type: "switch" },
+   298→   298→      { key: "documentApprovalRequired", label: "Document approval required", type: "switch" },
+   299→   299→      { key: "formApprovalRequired", label: "Form approval required", type: "switch" },
+   300→   300→      { key: "salaryApprovalRequired", label: "Salary approval required", type: "switch" },
+   301→   301→      { key: "employeeConversionApprovalRequired", label: "Employee conversion approval", type: "switch" },
+   302→   302→      { key: "allowRoleBasedApprover", label: "Role-based approver", type: "switch" },
+   303→   303→      { key: "allowMultiLevelApproval", label: "Multi-level approval", type: "switch" },
+   304→   304→      { key: "allowParallelApproval", label: "Parallel approval", type: "switch" },
+   305→   305→      { key: "allowDelegation", label: "Allow delegation", type: "switch" },
+   306→   306→      { key: "allowEscalation", label: "Allow escalation", type: "switch" },
+   307→   307→    ],
+   308→   308→  },
+   309→   309→  {
+   310→   310→    category: "candidate_portal",
+   311→   311→    label: "Candidate Portal",
+   312→   312→    icon: Globe,
+   313→   313→    description: "What candidates see and can do in their self-service portal.",
+   314→   314→    fields: [
+   315→   315→      { key: "enableCandidatePortal", label: "Enable candidate portal", type: "switch" },
+   316→   316→      { key: "requireOtpLogin", label: "Require OTP login", type: "switch" },
+   317→   317→      { key: "requireEmailVerification", label: "Require email verification", type: "switch" },
+   318→   318→      { key: "requireMobileVerification", label: "Require mobile verification", type: "switch" },
+   319→   319→      { key: "showProgressTracker", label: "Show progress tracker", type: "switch" },
+   320→   320→      { key: "showDocuments", label: "Show documents", type: "switch" },
+   321→   321→      { key: "showForms", label: "Show forms", type: "switch" },
+   322→   322→      { key: "showOfferLetter", label: "Show offer letter", type: "switch" },
+   323→   323→      { key: "showChecklist", label: "Show checklist", type: "switch" },
+   324→   324→      { key: "showHrContact", label: "Show HR contact", type: "switch" },
+   325→   325→      { key: "showFaq", label: "Show FAQ", type: "switch" },
+   326→   326→      { key: "allowCandidateDownloadDocuments", label: "Allow document download", type: "switch" },
+   327→   327→      { key: "allowCandidateSaveAsDraft", label: "Allow save as draft", type: "switch" },
+   328→   328→      { key: "allowCandidateCorrectionAfterRejection", label: "Allow correction after rejection", type: "switch" },
+   329→   329→    ],
+   330→   330→  },
+   331→   331→  {
+   332→   332→    category: "employee_conversion",
+   333→   333→    label: "Employee Conversion",
+   334→   334→    icon: UserCog,
+   335→   335→    description: "What happens when a candidate is converted to an employee.",
+   336→   336→    fields: [
+   337→   337→      { key: "generateEmployeeCode", label: "Generate employee code", type: "switch" },
+   338→   338→      { key: "createEmployeeProfile", label: "Create employee profile", type: "switch" },
+   339→   339→      { key: "createEmployeeDraftFirst", label: "Create draft first", type: "switch" },
+   340→   340→      { key: "createLogin", label: "Create login", type: "switch" },
+   341→   341→      { key: "activateLoginOnJoiningDate", label: "Activate login on joining date", type: "switch" },
+   342→   342→      { key: "assignRole", label: "Assign role", type: "switch" },
+   343→   343→      { key: "assignReportingManager", label: "Assign reporting manager", type: "switch" },
+   344→   344→      { key: "assignLeaveRule", label: "Assign leave rule", type: "switch" },
+   345→   345→      { key: "assignAttendancePolicy", label: "Assign attendance policy", type: "switch" },
+   346→   346→      { key: "assignShift", label: "Assign shift", type: "switch" },
+   347→   347→      { key: "assignWeeklyOff", label: "Assign weekly off", type: "switch" },
+   348→   348→      { key: "assignHolidayCalendar", label: "Assign holiday calendar", type: "switch" },
+   349→   349→      { key: "assignPayrollGroup", label: "Assign payroll group", type: "switch" },
+   350→   350→      { key: "assignSalaryStructure", label: "Assign salary structure", type: "switch" },
+   351→   351→      { key: "assignAssets", label: "Assign assets", type: "switch" },
+   352→   352→      { key: "blockConversionIfMandatoryDataMissing", label: "Block if mandatory data missing", type: "switch" },
+   353→   353→      { key: "blockConversionIfVerificationPending", label: "Block if verification pending", type: "switch" },
+   354→   354→      { key: "blockConversionIfApprovalPending", label: "Block if approval pending", type: "switch" },
+   355→   355→    ],
+   356→   356→  },
+   357→   357→  {
+   358→   358→    category: "import_export",
+   359→   359→    label: "Import / Export",
+   360→   360→    icon: ArrowUpDown,
+   361→   361→    description: "Bulk data movement and template defaults.",
+   362→   362→    fields: [
+   363→   363→      { key: "allowBulkImport", label: "Allow bulk import", type: "switch" },
+   364→   364→      { key: "allowBulkExport", label: "Allow bulk export", type: "switch" },
+   365→   365→      { key: "importTemplate", label: "Import template", description: "Name of the default import template.", type: "text", placeholder: "Standard" },
+   366→   366→    ],
+   367→   367→  },
+   368→   368→  {
+   369→   369→    category: "audit",
+   370→   370→    label: "Audit & Security",
+   371→   371→    icon: Lock,
+   372→   372→    description: "Audit trail, IP/device logging and retention rules.",
+   373→   373→    fields: [
+   374→   374→      { key: "logAllActions", label: "Log all actions", type: "switch" },
+   375→   375→      { key: "logIpAndDevice", label: "Log IP and device", type: "switch" },
+   376→   376→      { key: "enableAuditTrailExport", label: "Allow audit trail export", type: "switch" },
+   377→   377→      { key: "retainLogsForDays", label: "Retain logs (days)", type: "number", placeholder: "365" },
+   378→   378→    ],
+   379→   379→  },
+   380→   380→]
+   381→   381→
+   382→   382→// Special "Entity Configuration" pseudo-category. Sits at index 2 (3rd tab) per spec.
+   383→   383→const ENTITY_TAB_ID = "__entity__"
+   384→   384→
+   385→   385→interface TabDef {
+   386→   386→  id: string
+   387→   387→  label: string
+   388→   388→  icon: React.ComponentType<{ className?: string }>
+   389→   389→  description: string
+   390→   390→}
+   391→   391→
+   392→   392→function buildTabs(): TabDef[] {
+   393→   393→  const tabs: TabDef[] = []
+   394→   394→  for (let i = 0; i < CATEGORIES.length; i++) {
+   395→   395→    const c = CATEGORIES[i]
+   396→   396→    tabs.push({ id: c.category, label: c.label, icon: c.icon, description: c.description })
+   397→   397→    // Insert the special "Entity Configuration" tab between Candidate (index 1) and Kanban (index 2).
+   398→   398→    if (i === 1) {
+   399→   399→      tabs.push({ id: ENTITY_TAB_ID, label: "Entity Configuration", icon: Building2, description: "Per-entity onboarding defaults." })
+   400→   400→    }
+   401→   401→  }
+   402→   402→  return tabs
+   403→   403→}
+   404→   404→
+   405→   405→const TABS: TabDef[] = buildTabs()
+   406→   406→
+   407→   407→// ============================================================================
+   408→   408→//  Main section
+   409→   409→// ============================================================================
+   410→   410→
+   411→   411→export function SettingsSection() {
+   412→   412→  const [activeTab, setActiveTab] = React.useState<string>(CATEGORIES[0].category)
+   413→   413→
+   414→   414→  return (
+   415→   415→    <div className="flex flex-col gap-5">
+   416→   416→      <PageHeader
+   417→   417→        title="Settings"
+   418→   418→        description="Module-level controls and per-entity default configuration for the entire onboarding pipeline."
+   419→   419→        icon={SettingsIcon}
+   420→   420→      />
+   421→   421→
+   422→   422→      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-5">
+   423→   423→        {/* ---------- LEFT: vertical tab bar ---------- */}
+   424→   424→        <nav
+   425→   425→          aria-label="Settings sections"
+   426→   426→          className="lg:sticky lg:top-4 lg:self-start"
+   427→   427→        >
+   428→   428→          <div className="bg-muted/30 rounded-xl p-1.5 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible max-h-none lg:max-h-[calc(100vh-2rem)]">
+   429→   429→            {TABS.map((t) => {
+   430→   430→              const Icon = t.icon
+   431→   431→              const active = activeTab === t.id
+   432→   432→              const isEntity = t.id === ENTITY_TAB_ID
+   433→   433→              return (
+   434→   434→                <button
+   435→   435→                  key={t.id}
+   436→   436→                  onClick={() => setActiveTab(t.id)}
+   437→   437→                  aria-current={active ? "page" : undefined}
+   438→   438→                  className={cn(
+   439→   439→                    "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all whitespace-nowrap lg:w-full lg:justify-between",
+   440→   440→                    active
+   441→   441→                      ? "bg-card shadow-soft text-emerald-700 dark:text-emerald-300"
+   442→   442→                      : "text-muted-foreground hover:text-foreground hover:bg-card/60",
+   443→   443→                  )}
+   444→   444→                >
+   445→   445→                  <span className="flex items-center gap-2.5 min-w-0">
+   446→   446→                    <Icon className={cn(
+   447→   447→                      "h-4 w-4 shrink-0",
+   448→   448→                      active ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground group-hover:text-foreground",
+   449→   449→                    )} />
+   450→   450→                    <span className="truncate">{t.label}</span>
+   451→   451→                  </span>
+   452→   452→                  {isEntity && (
+   453→   453→                    <Badge variant="outline" className="hidden lg:inline-flex text-[10px] px-1.5 py-0 h-4 border-emerald-300/60 text-emerald-700 dark:text-emerald-300 dark:border-emerald-500/40">
+   454→   454→                      Spec #14
+   455→   455→                    </Badge>
+   456→   456→                  )}
+   457→   457→                  {active && (
+   458→   458→                    <ChevronRight className="hidden lg:block h-3.5 w-3.5 text-emerald-500 shrink-0" />
+   459→   459→                  )}
+   460→   460→                </button>
+   461→   461→              )
+   462→   462→            })}
+   463→   463→          </div>
+   464→   464→        </nav>
+   465→   465→
+   466→   466→        {/* ---------- RIGHT: tab content ---------- */}
+   467→   467→        <div className="min-w-0">
+   468→   468→          <AnimatePresence mode="wait">
+   469→   469→            <motion.div
+   470→   470→              key={activeTab}
+   471→   471→              initial={{ opacity: 0, y: 8 }}
+   472→   472→              animate={{ opacity: 1, y: 0 }}
+   473→   473→              exit={{ opacity: 0, y: -8 }}
+   474→   474→              transition={{ duration: 0.18, ease: "easeOut" }}
+   475→   475→            >
+   476→   476→              {activeTab === ENTITY_TAB_ID ? (
+   477→   477→                <EntityConfigurationPanel />
+   478→   478→              ) : (
+   479→   479→                <SettingsFormPanel category={activeTab} />
+   480→   480→              )}
+   481→   481→            </motion.div>
+   482→   482→          </AnimatePresence>
+   483→   483→        </div>
+   484→   484→      </div>
+   485→   485→    </div>
+   486→   486→  )
+   487→   487→}
+   488→   488→
+   489→   489→// ============================================================================
+   490→   490→//  Settings form panel — for the 14 normal categories
+   491→   491→// ============================================================================
+   492→   492→
+   493→   493→function SettingsFormPanel({ category }: { category: string }) {
+   494→   494→  const cat = CATEGORIES.find((c) => c.category === category)!
+   495→   495→  const { data, loading, error, reload } = useFetch<{ settings: SettingValue }>("/api/onboarding-settings", [])
+   496→   496→
+   497→   497→  // Original loaded values (for dirty detection) and local working copy.
+   498→   498→  const [original, setOriginal] = React.useState<Record<string, any>>({})
+   499→   499→  const [values, setValues] = React.useState<Record<string, any>>({})
+   500→   500→  const [saving, setSaving] = React.useState(false)
+   501→   501→  const [loaded, setLoaded] = React.useState(false)
+   502→   502→
+   503→   503→  React.useEffect(() => {
+   504→   504→    if (!data) return
+   505→   505→    const catValues = data.settings?.[category] || {}
+   506→   506→    const normalized: Record<string, any> = {}
+   507→   507→    for (const f of cat.fields) {
+   508→   508→      normalized[f.key] = catValues[f.key] ?? defaultValueFor(f)
+   509→   509→    }
+   510→   510→    setOriginal(normalized)
+   511→   511→    setValues(normalized)
+   512→   512→    setLoaded(true)
+   513→   513→  }, [data, category])
+   514→   514→
+   515→   515→  const dirty = React.useMemo(() => {
+   516→   516→    for (const f of cat.fields) {
+   517→   517→      const o = original[f.key]
+   518→   518→      const v = values[f.key]
+   519→   519→      if (String(o ?? "") !== String(v ?? "")) return true
+   520→   520→    }
+   521→   521→    return false
+   522→   522→  }, [original, values, cat.fields])
+   523→   523→
+   524→   524→  function setValue(key: string, value: any) {
+   525→   525→    setValues((prev) => ({ ...prev, [key]: value }))
+   526→   526→  }
+   527→   527→
+   528→   528→  function reset() {
+   529→   529→    setValues(original)
+   530→   530→  }
+   531→   531→
+   532→   532→  async function handleSave() {
+   533→   533→    setSaving(true)
+   534→   534→    // Build a minimal patch payload of only changed keys.
+   535→   535→    const changed: Record<string, any> = {}
+   536→   536→    for (const f of cat.fields) {
+   537→   537→      const o = original[f.key]
+   538→   538→      const v = values[f.key]
+   539→   539→      if (String(o ?? "") !== String(v ?? "")) changed[f.key] = v
+   540→   540→    }
+   541→   541→    if (Object.keys(changed).length === 0) {
+   542→   542→      toast.info("No changes to save.")
+   543→   543→      setSaving(false)
+   544→   544→      return
+   545→   545→    }
+   546→   546→    try {
+   547→   547→      await apiPatch("/api/onboarding-settings", { settings: { [category]: changed } })
+   548→   548→      toast.success("Settings saved")
+   549→   549→      setOriginal({ ...values })
+   550→   550→    } catch (e: any) {
+   551→   551→      toast.error(e.message || "Failed to save settings")
+   552→   552→    } finally {
+   553→   553→      setSaving(false)
+   554→   554→    }
+   555→   555→  }
+   556→   556→
+   557→   557→  if (loading && !loaded) {
+   558→   558→    return <SettingsFormSkeleton />
+   559→   559→  }
+   560→   560→  if (error) {
+   561→   561→    return (
+   562→   562→      <SectionCard title={cat.label} description={cat.description}>
+   563→   563→        <EmptyState
+   564→   564→          icon={AlertTriangle}
+   565→   565→          title="Could not load settings"
+   566→   566→          description={error}
+   567→   567→          action={<Button size="sm" variant="outline" onClick={reload}>Retry</Button>}
+   568→   568→        />
+   569→   569→      </SectionCard>
+   570→   570→    )
+   571→   571→  }
+   572→   572→
+   573→   573→  // Group fields visually: switches get a 2-col grid; text/number/select go full-width below.
+   574→   574→  const switches = cat.fields.filter((f) => f.type === "switch")
+   575→   575→  const others = cat.fields.filter((f) => f.type !== "switch")
+   576→   576→
+   577→   577→  return (
+   578→   578→    <div className="flex flex-col gap-4">
+   579→   579→      <SectionCard
+   580→   580→        title={cat.label + " Settings"}
+   581→   581→        description={cat.description}
+   582→   582→        action={
+   583→   583→          dirty ? (
+   584→   584→            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 border-0">
+   585→   585→              Unsaved changes
+   586→   586→            </Badge>
+   587→   587→          ) : (
+   588→   588→            <Badge variant="outline" className="border-emerald-300/60 text-emerald-700 dark:text-emerald-300 dark:border-emerald-500/40">
+   589→   589→              <Check className="h-3 w-3 mr-1" /> Saved
+   590→   590→            </Badge>
+   591→   591→          )
+   592→   592→        }
+   593→   593→      >
+   594→   594→        <div className="flex flex-col gap-6">
+   595→   595→          {switches.length > 0 && (
+   596→   596→            <div className={cn("grid gap-3", switches.length >= 4 ? "sm:grid-cols-2" : "grid-cols-1")}>
+   597→   597→              {switches.map((f) => (
+   598→   598→                <SwitchRow
+   599→   599→                  key={f.key}
+   600→   600→                  field={f}
+   601→   601→                  checked={!!values[f.key]}
+   602→   602→                  onChange={(v) => setValue(f.key, v)}
+   603→   603→                />
+   604→   604→              ))}
+   605→   605→            </div>
+   606→   606→          )}
+   607→   607→
+   608→   608→          {switches.length > 0 && others.length > 0 && <Separator />}
+   609→   609→
+   610→   610→          {others.length > 0 && (
+   611→   611→            <div className="grid gap-4 sm:grid-cols-2">
+   612→   612→              {others.map((f) => (
+   613→   613→                <FieldRow
+   614→   614→                  key={f.key}
+   615→   615→                  field={f}
+   616→   616→                  value={values[f.key]}
+   617→   617→                  onChange={(v) => setValue(f.key, v)}
+   618→   618→                />
+   619→   619→              ))}
+   620→   620→            </div>
+   621→   621→          )}
+   622→   622→        </div>
+   623→   623→      </SectionCard>
+   624→   624→
+   625→   625→      {/* Sticky save bar */}
+   626→   626→      <AnimatePresence>
+   627→   627→        {dirty && (
+   628→   628→          <motion.div
+   629→   629→            initial={{ opacity: 0, y: 12 }}
+   630→   630→            animate={{ opacity: 1, y: 0 }}
+   631→   631→            exit={{ opacity: 0, y: 12 }}
+   632→   632→            transition={{ duration: 0.18 }}
+   633→   633→            className="sticky bottom-4 z-30"
+   634→   634→          >
+   635→   635→            <div className="rounded-xl border border-emerald-300/60 dark:border-emerald-500/40 bg-card/95 backdrop-blur shadow-card p-3 flex items-center justify-between gap-3">
+   636→   636→              <div className="flex items-center gap-2 text-sm">
+   637→   637→                <AlertTriangle className="h-4 w-4 text-amber-500" />
+   638→   638→                <span className="text-foreground">You have unsaved changes in <span className="font-medium text-emerald-700 dark:text-emerald-300">{cat.label}</span>.</span>
+   639→   639→              </div>
+   640→   640→              <div className="flex items-center gap-2">
+   641→   641→                <Button size="sm" variant="ghost" onClick={reset} disabled={saving}>
+   642→   642→                  <X className="h-4 w-4" /> Discard
+   643→   643→                </Button>
+   644→   644→                <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
+   645→   645→                  <Save className="h-4 w-4" />
+   646→   646→                  {saving ? "Saving..." : "Save Changes"}
+   647→   647→                </Button>
+   648→   648→              </div>
+   649→   649→            </div>
+   650→   650→          </motion.div>
+   651→   651→        )}
+   652→   652→      </AnimatePresence>
+   653→   653→    </div>
+   654→   654→  )
+   655→   655→}
+   656→   656→
+   657→   657→function defaultValueFor(f: FieldDef): any {
+   658→   658→  switch (f.type) {
+   659→   659→    case "switch": return false
+   660→   660→    case "number": return 0
+   661→   661→    case "select": return f.options?.[0]?.value ?? ""
+   662→   662→    default: return ""
+   663→   663→  }
+   664→   664→}
+   665→   665→
+   666→   666→// ---------- Field row primitives ----------
+   667→   667→
+   668→   668→function SwitchRow({
+   669→   669→  field, checked, onChange,
+   670→   670→}: {
+   671→   671→  field: FieldDef
+   672→   672→  checked: boolean
+   673→   673→  onChange: (v: boolean) => void
+   674→   674→}) {
+   675→   675→  return (
+   676→   676→    <label
+   677→   677→      htmlFor={`sw-${field.key}`}
+   678→   678→      className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-background/60 hover:bg-background p-3 transition-colors cursor-pointer"
+   679→   679→    >
+   680→   680→      <div className="min-w-0">
+   681→   681→        <div className="text-sm font-medium text-foreground">{field.label}</div>
+   682→   682→        {field.description && (
+   683→   683→          <div className="text-xs text-muted-foreground mt-0.5">{field.description}</div>
+   684→   684→        )}
+   685→   685→      </div>
+   686→   686→      <Switch
+   687→   687→        id={`sw-${field.key}`}
+   688→   688→        checked={checked}
+   689→   689→        onCheckedChange={onChange}
+   690→   690→        className="data-[state=checked]:bg-emerald-600 dark:data-[state=checked]:bg-emerald-500 mt-0.5"
+   691→   691→      />
+   692→   692→    </label>
+   693→   693→  )
+   694→   694→}
+   695→   695→
+   696→   696→function FieldRow({
+   697→   697→  field, value, onChange,
+   698→   698→}: {
+   699→   699→  field: FieldDef
+   700→   700→  value: any
+   701→   701→  onChange: (v: any) => void
+   702→   702→}) {
+   703→   703→  const isFullWidth = field.type === "text" && (field.key === "candidateIdFormat" || field.key === "allowedFileTypes")
+   704→   704→  return (
+   705→   705→    <div className={cn("flex flex-col gap-1.5", isFullWidth && "sm:col-span-2")}>
+   706→   706→      <Label htmlFor={`f-${field.key}`} className="text-xs font-medium text-foreground">
+   707→   707→        {field.label}
+   708→   708→      </Label>
+   709→   709→      {field.description && (
+   710→   710→        <p className="text-xs text-muted-foreground">{field.description}</p>
+   711→   711→      )}
+   712→   712→      {field.type === "select" ? (
+   713→   713→        <Select value={String(value ?? "")} onValueChange={onChange}>
+   714→   714→          <SelectTrigger id={`f-${field.key}`} className="w-full">
+   715→   715→            <SelectValue placeholder="Select..." />
+   716→   716→          </SelectTrigger>
+   717→   717→          <SelectContent>
+   718→   718→            {field.options?.map((o) => (
+   719→   719→              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+   720→   720→            ))}
+   721→   721→          </SelectContent>
+   722→   722→        </Select>
+   723→   723→      ) : (
+   724→   724→        <Input
+   725→   725→          id={`f-${field.key}`}
+   726→   726→          type={field.type === "number" ? "number" : "text"}
+   727→   727→          value={value ?? ""}
+   728→   728→          placeholder={field.placeholder}
+   729→   729→          onChange={(e) => onChange(field.type === "number" ? Number(e.target.value) : e.target.value)}
+   730→   730→          className="h-9"
+   731→   731→        />
+   732→   732→      )}
+   733→   733→    </div>
+   734→   734→  )
+   735→   735→}
+   736→   736→
+   737→   737→// ---------- Skeleton ----------
+   738→   738→
+   739→   739→function SettingsFormSkeleton() {
+   740→   740→  return (
+   741→   741→    <SectionCard title="Loading settings" description="Fetching the current configuration...">
+   742→   742→      <div className="grid gap-3 sm:grid-cols-2">
+   743→   743→        {Array.from({ length: 8 }).map((_, i) => (
+   744→   744→          <div key={i} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 p-3">
+   745→   745→            <div className="flex flex-col gap-1.5">
+   746→   746→              <Skeleton className="h-3.5 w-32" />
+   747→   747→              <Skeleton className="h-3 w-48" />
+   748→   748→            </div>
+   749→   749→            <Skeleton className="h-5 w-9 rounded-full" />
+   750→   750→          </div>
+   751→   751→        ))}
+   752→   752→      </div>
+   753→   753→    </SectionCard>
+   754→   754→  )
+   755→   755→}
+   756→   756→
+   757→   757→// ============================================================================
+   758→   758→//  Entity Configuration panel — special tab per spec #14
+   759→   759→// ============================================================================
+   760→   760→
+   761→   761→const ENTITY_CONFIG_STATUSES = ["Active", "Inactive", "Draft"]
+   762→   762→
+   763→   763→interface EntityConfigFormState {
+   764→   764→  id?: string
+   765→   765→  entityId: string
+   766→   766→  useTenantDefault: boolean
+   767→   767→  defaultWorkflowId: string
+   768→   768→  defaultKanbanBoardId: string
+   769→   769→  defaultCandidateFormId: string
+   770→   770→  defaultDocumentSet: string
+   771→   771→  defaultChecklistSet: string
+   772→   772→  defaultEmailGroup: string
+   773→   773→  defaultVerificationRule: string
+   774→   774→  defaultApprovalWorkflow: string
+   775→   775→  defaultCandidatePortalSetting: string
+   776→   776→  defaultEmployeeConversionRule: string
+   777→   777→  defaultHrOwner: string
+   778→   778→  defaultRecruiter: string
+   779→   779→  defaultReportingManagerRule: string
+   780→   780→  defaultSetupRule: string
+   781→   781→  effectiveFrom: string
+   782→   782→  effectiveTo: string
+   783→   783→  status: string
+   784→   784→}
+   785→   785→
+   786→   786→const EMPTY_ENTITY_FORM: EntityConfigFormState = {
+   787→   787→  entityId: "",
+   788→   788→  useTenantDefault: true,
+   789→   789→  defaultWorkflowId: "",
+   790→   790→  defaultKanbanBoardId: "",
+   791→   791→  defaultCandidateFormId: "",
+   792→   792→  defaultDocumentSet: "",
+   793→   793→  defaultChecklistSet: "",
+   794→   794→  defaultEmailGroup: "",
+   795→   795→  defaultVerificationRule: "",
+   796→   796→  defaultApprovalWorkflow: "",
+   797→   797→  defaultCandidatePortalSetting: "",
+   798→   798→  defaultEmployeeConversionRule: "",
+   799→   799→  defaultHrOwner: "",
+   800→   800→  defaultRecruiter: "",
+
+[showing lines 1-800 of 1228; use offset=801 with limit to continue reading]

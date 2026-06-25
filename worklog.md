@@ -1284,3 +1284,342 @@ Stage Summary:
   4. All three scroll regions work: body (overall), editor contentEditable (long content), slug palette ScrollArea (148 slugs across 23 categories).
 - The Email Template editor's slug palette is now `lg:sticky` + viewport-bounded (`h-[calc(90vh-128px)]`) + self-scrolling, so it no longer stretches to ~4400px and force the user to scroll the whole body to reach lower slugs.
 - Layout is robust across viewport sizes from 1024×600 up to 1920×1080+ (verified at 1153×827, 1024×600, and default).
+
+---
+Task ID: OFFBOARDING-FOUNDATION
+Agent: main (Z.ai Code)
+Task: User provided a comprehensive Offboarding module spec (2191 lines) that mirrors the onboarding module. "Wire it completely with our project." The spec covers: Dashboard, Employees/Exit Cases, Resignation Requests, Kanban Board, Clearance, Asset Recovery, IT Access Revocation, FnF Settlement, Document Library, Workflow Configuration, Email Templates, Checklists, Exit Interview Forms, Alumni, Logs, and Settings — with entity-wise configuration, workflow wiring, and full audit.
+
+Work Log:
+- Read the full spec from /tmp/offboarding-spec.txt (2191 lines) covering 27 sections.
+- Studied the existing onboarding module structure (modules/onboarding.tsx shell + 9 section files + shared.tsx + slug-catalog.tsx + rich-editor.tsx) to mirror the pattern.
+- Created the foundation for the Offboarding module:
+  1. Added "offboarding" to ModuleId type in src/lib/types.ts
+  2. Added Offboarding to Shell MODULES list (icon: UserMinus, group: People) in src/components/hrms/shell.tsx
+  3. Added OffboardingModule dynamic import + render in src/app/page.tsx
+  4. Added `.gradient-rose` and `.gradient-rose-soft` CSS classes to src/app/globals.css (rose theme to visually distinguish offboarding from onboarding's emerald)
+  5. Created src/components/hrms/modules/offboarding.tsx — the module shell with 16 tabs (Dashboard, Exit Cases, Resignations, Kanban, Clearance, Asset Recovery, IT Access, FnF, Documents, Workflows, Emails, Checklists, Exit Interviews, Alumni, Logs, Settings), lazy-loading each section.
+  6. Created src/components/hrms/offboarding/shared.tsx — all TypeScript types (ExitCase, ExitWorkflow, ClearanceTask, AssetRecoveryItem, ITAccessItem, FnFRecord, ExitDocumentTemplate, ExitEmailTemplate, ExitChecklist, ExitInterviewForm, AlumniRecord, ResignationRequest, OffboardingLog, OffboardingSettings, EntityConfiguration), constants (EXIT_TYPES, EXIT_REASONS, DEFAULT_EXIT_STAGES with 14 stages, color palettes), and helpers (useFetch, apiPost/Patch/Delete, safeToast, formatDate, formatCurrency, etc.).
+  7. Created src/components/hrms/offboarding/data.ts — comprehensive seed data: 4 exit workflows (Standard, India FT, UAE, Termination), 8 exit cases (various stages/entities/types), 6 resignation requests, 13 clearance tasks, 10 asset recovery items, 11 IT access items, 4 FnF records with detailed earnings/deductions, 7 document templates (relieving, experience, resignation acceptance, NDC, FnF letter, India relieving, termination), 8 email templates, 5 checklists, 3 exit interview forms, 5 alumni records, 15 logs, full settings object, 4 entity configurations, 4 kanban boards, and a getDashboardStats() helper.
+- Created the sections directory: src/components/hrms/offboarding/sections/
+
+Stage Summary:
+- Foundation is complete. The Offboarding module is wired into the sidebar navigation, the page router, and the module shell. All seed data and types are defined.
+- Next: dispatch parallel subagents to build the 16 section files that the shell lazy-loads.
+- The offboarding module uses a rose theme (vs onboarding's emerald) to visually distinguish exit management from onboarding.
+- All section components will import their types and seed data from src/components/hrms/offboarding/shared.tsx and data.ts, and reuse the shared rich-editor.tsx and slug-catalog.tsx from the onboarding module for the document and email editors.
+
+---
+Task ID: 2b
+Agent: full-stack-developer
+Task: Build exit-cases.tsx for offboarding module
+
+Work Log:
+- Read /home/z/my-project/worklog.md to understand prior context (foundation phase, offboarding module wired with rose theme, 16 tabs, shared types & seed data already in place).
+- Read the offboarding spec (lines 182–468) for Exit Cases page requirements (top buttons, table columns, row actions, bulk actions) and Initiate Exit wizard (7-step flow: Employee Selection → Exit Details → Workflow → Clearance preview → Notice/FnF → Email → Review & Initiate).
+- Read /home/z/my-project/src/components/hrms/offboarding/shared.tsx (709 lines) for types (ExitCase, ExitWorkflow, ClearanceTask, status unions), constants (EXIT_TYPES, EXIT_REASONS, EXIT_CATEGORIES, DEFAULT_EXIT_STAGES, EXIT_TYPE_COLORS, STATUS_COLORS, AVATAR_COLORS), and helpers (initials, formatDate).
+- Read /home/z/my-project/src/components/hrms/offboarding/data.ts (795 lines) for seed data (EXIT_CASES with 8 cases, EXIT_WORKFLOWS with 4 workflows, CLEARANCE_TASKS with 13 tasks, etc.).
+- Read /home/z/my-project/src/components/hrms/onboarding/sections/initiate.tsx to mirror the dialog/wizard UI pattern (numbered section headers, color-stripe cards, Field wrapper, ScrollArea body, sticky footer).
+- Created /home/z/my-project/src/components/hrms/offboarding/sections/exit-cases.tsx (~970 lines) implementing:
+  1. **Top action bar** — 7 buttons (Initiate Exit with rose gradient primary, Bulk Exit Initiation, Bulk Update, Export, Import, Assign Workflow, Send Reminder).
+  2. **Filter bar** — 10 filter selects (Entity, Branch, Location, Department, Exit Type, Exit Status, Clearance Status, FnF Status, Manager, HR Owner) + search by name/exit-case-ID + reset.
+  3. **Exit cases table** — shadcn Table with 16 columns: checkbox, exit case ID (with high-risk shield), employee (avatar circle + initials + name + code), entity, department, designation, exit type (colored badge using EXIT_TYPE_COLORS), exit reason, resignation date, approved LWD, workflow, current stage (colored badge from DEFAULT_EXIT_STAGES colors), clearance, FnF, exit status, actions.
+  4. **Row actions dropdown** — 15 menu items grouped with separators: View, Edit, Assign/Change Workflow, Move Stage, Approve/Reject Resignation, Change LWD, Start Clearance, Assign Checklist, Send Reminder, Initiate FnF, Generate Relieving Letter, Mark Exited, Cancel Exit (destructive), View Logs.
+  5. **Bulk actions bar** — appears when any rows selected; shows count + 5 actions (Assign Workflow, Change Stage, Assign HR Owner, Send Reminder, Export Selected) + Clear.
+  6. **Initiate Exit wizard** — Dialog with a clickable 7-step horizontal StepIndicator (numbered circles, done=emerald check, current=rose). Each step rendered as its own component:
+     - Step 1: Employee dropdown (synthesized ACTIVE_EMPLOYEES list) → auto-fills 9 readonly detail fields.
+     - Step 2: Exit Type/Category/Reason/Sub Reason/Detailed Reason selects+textarea, 4 date inputs, notice-period block (Switch + 2 number inputs + 2 toggles), employee remarks, 4 flag toggles (Legal Hold, Regrettable, Eligible Rehire, Confidential).
+     - Step 3: Auto vs Manual mode buttons; workflow select; auto-resolved artefact cards (Kanban Board, Clearance Checklist, Email Group, FnF Rule) + stage pipeline dots preview.
+     - Step 4: Clearance preview grouped by department using CLEARANCE_TASKS filtered to ec-1; 4 stat tiles (Total/Departments/Mandatory/Blocking); MANDATORY + BLOCKING badges per task.
+     - Step 5: Two side-by-side cards — Notice Period details (Required/Served/Shortfall/Waiver/Buyout/Recovery) and FnF details (Rule/Leave encashment/Pending salary/Reimbursements/Loan/Asset/Payroll cut-off/Approval).
+     - Step 6: 6 toggle cards (Resignation Email, Clearance Emails, Manager Approval Email, CC HR, CC Manager, CC Payroll) + Email Template Group summary.
+     - Step 7: 6 ReviewBlocks (Employee, Exit Details, Notice Period, Workflow, Flags, Notifications) + action explainer card. Footer exposes 4 finish actions: Save as Draft, Initiate Exit, Initiate & Notify, Initiate & Start Clearance (all wire to toast feedback).
+  7. Polished UX: rose theme accents throughout (gradient-rose primary, rose-600/700 fills), card shadows, hover effects, responsive grid (mobile-first), max-h scroll areas, Tooltip for risk flag, AnimatePresence-compatible section, sticky footer with Back/Next + finish actions.
+- Ran `bun run lint` — 0 errors, only 1 pre-existing warning in dynamic-form.tsx (unrelated to this file).
+- Verified dev.log: my exit-cases.tsx compiles cleanly (no module-not-found or syntax errors). Pre-existing errors are for OTHER not-yet-built offboarding sections (workflows, alumni, logs, settings, etc.) that other agents are building in parallel.
+
+Stage Summary:
+- /home/z/my-project/src/components/hrms/offboarding/sections/exit-cases.tsx is complete and compiling cleanly.
+- The ExitCasesSection is named-exported (matches the dynamic import in modules/offboarding.tsx line 16).
+- All imports resolve: types & constants from ../shared, seed data from ../data, shadcn/ui components, cn from @/lib/utils, toast from sonner.
+- Rose theme distinguishes offboarding from onboarding's emerald, consistent with the foundation agent's color decision.
+- The wizard is a controlled multi-step form driven by useState (wizardStep + form), with step jumps, Back/Next navigation, and 4 finish modes.
+- File is ~970 lines (within the 1000-line limit), strict TypeScript, "use client" directive.
+
+---
+Task ID: 2c
+Agent: full-stack-developer
+Task: Build resignations.tsx for offboarding module
+
+Work Log:
+- Read worklog.md to understand the project context, shared contracts, file ownership map, and the offboarding section's lazy-load pattern in `src/components/hrms/modules/offboarding.tsx`.
+- Read `/tmp/offboarding-spec.txt` lines 469-541 (#6 Resignation Requests) for exact field requirements.
+- Read `src/components/hrms/offboarding/shared.tsx` to consume `ResignationRequest`, `ResignationStatus`, `initials`, `formatDate`, `formatDateTime`, `daysBetween`, `STATUS_COLORS`, `AVATAR_COLORS` exports.
+- Read `src/components/hrms/offboarding/data.ts` to consume `RESIGNATION_REQUESTS` (6 seed rows), `EXIT_WORKFLOWS`, `EXIT_CHECKLISTS`.
+- Created `/home/z/my-project/src/components/hrms/offboarding/sections/resignations.tsx` (832 lines) — single named export `ResignationsSection` + default re-export.
+- Section layout (top → bottom):
+  1. Header card with rose-accent icon tile + filtered/total count badge.
+  2. 4 stat cards: Total Requests, Pending Manager Approval, Pending HR Approval, Approved This Month (computed via `updatedAt` month match).
+  3. Filter bar: search input (employee name / code / request ID), status `Select` (All + 8 statuses), department `Select` (derived from data), Clear button.
+  4. Resignation requests `Table` with all spec columns: Request ID, Employee (avatar+name+code), Department, Designation, Reporting Manager, Resignation Date, Requested LWD, Exit Reason, Notice Shortfall Days (rose badge if >0), Status (colored badge with status dot), Regrettable (rose heart badge), Actions (dropdown).
+  5. Row actions dropdown: View Details, Manager Review, HR Review, Approve, Reject, Send Back, Withdraw, Initiate Exit, View Logs — each disabled when not applicable via `canAction(status, action)` helper.
+  6. Rose dashed-border hint footer explaining in-memory action semantics.
+- `ReviewDialog` (mode = `manager` | `hr`):
+  • Always shows employee header + resignation form details (resignation date, requested LWD, exit reason, detailed reason, notice period auto-calc, notice shortfall preview, employee remarks).
+  • Always shows the `StatusFlowStepper` (Submitted → Pending Manager Approval → Pending HR Approval → Approved → Exit Initiated) with current step highlighted in rose; off-flow statuses (Draft/Rejected/Withdrawn/Cancelled) render a rose info banner instead.
+  • Manager mode adds: Manager Decision (Approved/Rejected/Pending), Recommended LWD, Retention Discussion Done (Switch), Discussion Summary (Textarea), Regrettable Attrition (Switch), Manager Remarks (Textarea), Forward to HR / Reject & Send Back buttons.
+  • HR mode adds: Final LWD, Exit Workflow (Select populated from `EXIT_WORKFLOWS`), Clearance Checklist (Select populated from `EXIT_CHECKLISTS`), Notice Waiver / Notice Buyout / Notice Recovery (ToggleCard switches), HR Remarks (Textarea), Approve & Initiate / Reject / Send Back buttons.
+- `ViewDetailsDialog`: read-only summary with avatar, status badge, regrettable badge, status flow stepper, resignation form grid, Review Trail (Manager + HR decisions/lwd/remarks), created/updated timestamps.
+- `LogsDialog`: synthesised timeline of actions (created, submitted, manager decision, HR decision, withdrawal, exit initiation) with colour-coded dots.
+- All mutating actions (manager-approved, manager-rejected, hr-approve, hr-reject, hr-send-back, approve, reject, send-back, withdraw, initiate-exit) operate on local in-memory state via `setRequests` and surface a `sonner` toast.
+- Visual polish: rose theme accents (icon tiles, badges, focus states, primary buttons `bg-rose-600 hover:bg-rose-700`), card shadows + hover lift on stat cards, sticky-first-column table styling, responsive grid (1/2/4 columns), `TooltipProvider` wraps entire section.
+- Type-safe throughout (TypeScript strict). `ResignationStatus` union drives both `STATUS_BADGE_CLASSES` and the `STATUS_FILTER_OPTIONS`.
+- Verified: `bunx eslint src/components/hrms/offboarding/sections/resignations.tsx` → 0 errors / 0 warnings. `bun run lint` project-wide → only the pre-existing `dynamic-form.tsx` watch() warning (not my file).
+- Verified: dev.log shows `✓ Compiled in 440ms` / `467ms` after my file was created; the pre-existing `Can't resolve '@/components/hrms/offboarding/sections/resignations'` errors at log line ~99533 are gone — only `workflows` (sibling section, other task) remains unresolved.
+- Wrote work record to `/home/z/my-project/agent-ctx/2c-full-stack-developer.md`.
+
+Stage Summary:
+- File created (1): `src/components/hrms/offboarding/sections/resignations.tsx` (832 lines).
+- Exports: `ResignationsSection` (named), `default ResignationsSection` — matches the dynamic-import contract in `src/components/hrms/modules/offboarding.tsx:17`.
+- Spec coverage: 4 stat cards ✓, status/department/search filters ✓, full 12-column table ✓, all 9 row actions ✓, Manager Review dialog ✓, HR Review dialog ✓, status flow stepper ✓ (shown in both Review and Details dialogs), View Details dialog ✓, View Logs dialog ✓.
+- Theme: rose accents throughout (icon tile, primary buttons, badges, focus states, dashed hint footer) — no indigo/blue.
+- Zero new lint errors; dev server compiles cleanly when this section is loaded.
+- Pre-existing module-not-found errors in dev.log are for sibling sections (workflows, checklists, exit-interviews, alumni, logs, settings) — those belong to tasks 2d/2e/etc., not 2c.
+
+---
+Task ID: 2e
+Agent: full-stack-developer
+Task: Build clearance.tsx, asset-recovery.tsx, it-access.tsx for offboarding module
+
+Work Log:
+- Read worklog.md, shared.tsx (types, helpers, color palettes), data.ts (EXIT_CASES, CLEARANCE_TASKS, ASSET_RECOVERY, IT_ACCESS seed data), and spec sections 787-1004 (#10 Clearance, #11 Asset Recovery, #12 IT Access Revocation).
+- Inspected offboarding.tsx shell to confirm expected named exports: ClearanceSection, AssetRecoverySection, ItAccessSection.
+- Created `src/components/hrms/offboarding/sections/clearance.tsx` (697 lines):
+  - Stats cards (4): Total Tasks, Pending, Completed, Overdue
+  - Filter bar: Exit Case (8) + Department (14 clearance depts) + Status (11 ClearanceTaskStatus) + Search
+  - Tasks table (sticky header, ScrollArea max-h-640): Task Name+Code, Dept badge (14 colored), Owner Type+Owner, Exit Case avatar, Due Date, SLA Days, Flag badges (M/B/₹), Recovery Amount, Status badge, Actions dropdown
+  - Row actions (12 in dropdown, rendered via PRIMARY_ACTIONS + SECONDARY_ACTIONS arrays of {key,label,Icon}): Start, Submit, Approve, Reject, Send Back, Mark Complete, Waive, Add Recovery, Add Comment, Upload Attachment, Reassign Owner, Send Reminder
+  - Task detail dialog (sm:max-w-3xl, max-h-92vh): top meta strip (status+dept+flags), exit-case bar, 8-field grid (sm:grid-cols-4), 4 FlagPills, existing comment block, attachment list with file upload, comment thread with avatars + Textarea + Add Comment, dialog footer with 7 quick-action buttons (FOOTER_ACTIONS array)
+  - Department-wise clearance summary: 14 cards (responsive 1/2/3/4 cols) with department avatar, task count, 3-stat row (Done/Pending/Overdue) via SummaryStat component, framer-motion staggered entrance
+  - Local state: tasks (mutable on action), comments (keyed by task id), attachments (keyed by task id), filters, selectedTaskId, detailOpen, newComment
+  - Toast.success on every action with task name + exit-case label
+- Created `src/components/hrms/offboarding/sections/asset-recovery.tsx` (558 lines):
+  - Stats cards (4): Total Assets, Pending Return, Returned, Damaged/Lost
+  - Filter bar: Exit Case + Asset Type (16 ASSET_TYPES) + Return Status (5) + Search by asset code/serial
+  - Asset recovery table: Asset Code+Type (icon-by-type via ASSET_TYPE_ICON 16-type map + colored tint), Serial No, Exit Case avatar, Assigned/Expected/Actual Return dates, Return Status badge, Condition, Damage (badge+amount)/Lost badge, Recovery Amount, Push to FnF badge, Actions dropdown
+  - Row actions (8): Mark Returned, Mark Damaged, Mark Lost, Add Recovery Amount, Waive Recovery, Send Reminder, Generate Asset No-Dues, Push to FnF
+  - Asset summary by exit case: card per employee with total badge, 3-stat row (Pending/Returned/Dmg-Lost), recovery total + FnF pushed count
+- Created `src/components/hrms/offboarding/sections/it-access.tsx` (625 lines):
+  - Important Rules panel (highlighted, gradient-rose-to-orange background) with 4 RuleCards covering all spec #12 rules: Termination/high-risk → immediate (rose), Normal resignation → LWD EOD (amber), Garden leave → start (sky), HRMS self-service → until FnF/letters (slate)
+  - Stats cards (4): Total Access Items, Pending Revocation, Revoked, Scheduled
+  - Filter bar: Exit Case + System Name (22 SYSTEM_NAMES) + Revoke Timing (4) + Revocation Status (5) + Search
+  - IT access table: System Name+Access Type (icon-by-system via SYSTEM_ICON 22-system map), Owner Team badge, Exit Case avatar, Revoke Timing badge (color-coded), Revoke Date/Time, Data Backup/Transfer pills (Yes/No), New Owner, License Deactivation pill, Revocation Status badge, Verification Status badge, Actions dropdown
+  - Row actions (5): Revoke Now, Schedule Revocation, Mark Verified, Send Reminder, Add Remarks (opens dialog with Textarea prefilled with existing remarks)
+- All three files: "use client" directive, TypeScript strict (0 errors), import types from ../shared, data from ../data, use cn + toast + initials/formatDate/formatCurrency/STATUS_COLORS/AVATAR_COLORS, use shadcn/ui (Card, Table, Badge, Button, Dialog, Input, Select, Textarea, DropdownMenu, ScrollArea, Separator). Rose theme accents throughout. Responsive grids. Card shadows + hover effects. framer-motion entrance animations.
+- Verified: `bun run lint` → 0 errors in my 3 files (one pre-existing error in another agent's kanban.tsx; one pre-existing warning in dynamic-form.tsx). `bunx tsc --noEmit --skipLibCheck` → 0 errors in my 3 files. dev.log shows my 3 files load via dynamic import without errors. All 3 files under the 700-line limit (697/558/625).
+- Wrote work record to `/home/z/my-project/agent-ctx/2e-full-stack-developer.md`.
+
+Stage Summary:
+- 3 files created (1880 lines total): clearance.tsx (697), asset-recovery.tsx (558), it-access.tsx (625)
+- The Offboarding module's "Clearance", "Asset Recovery", and "IT Access" tabs now render real, interactive UIs backed by in-memory seed data
+- 12 row actions on clearance tasks, 8 on assets, 5 on IT access — all mutate local state and produce toast feedback
+- Task detail dialog includes comment thread + attachment upload + 7 quick-action footer buttons
+- Important Rules panel on IT Access highlights all four spec #12 revocation-timing rules with color-coded cards
+- Lint clean, TypeScript clean, no dev server errors for these files
+
+---
+Task ID: 2a
+Agent: full-stack-developer
+Task: Build dashboard.tsx and logs.tsx for offboarding module
+
+Work Log:
+- Read /home/z/my-project/worklog.md to understand prior work — confirmed the offboarding module foundation (shared.tsx, data.ts, modules/offboarding.tsx) was already created in the OFFBOARDING-FOUNDATION task, with seed data including 8 EXIT_CASES, 15 OFFBOARDING_LOGS, DEFAULT_EXIT_STAGES (14 stages), and a getDashboardStats() helper.
+- Read /home/z/my-project/src/components/hrms/offboarding/shared.tsx (710 lines) — understood all types (ExitCase, OffboardingLog, ExitStage, etc.), color constants (EXIT_TYPE_COLORS, STATUS_COLORS, RISK_COLORS), and helpers (formatDate, formatDateTime, timeAgo, formatCurrency).
+- Read /home/z/my-project/src/components/hrms/offboarding/data.ts (795 lines) — confirmed OFFBOARDING_LOGS has 15 entries spanning 8 log types, and getDashboardStats returns 18+ stat fields matching spec requirements.
+- Read /tmp/offboarding-spec.txt lines 131-181 (Dashboard) and 1979-2024 (Logs) for exact spec requirements.
+- Read /home/z/my-project/src/components/hrms/onboarding/sections/dashboard.tsx and logs.tsx as visual/structural references — mirrored their pattern (PageHeader, motion stagger grid, SectionCard, table with sticky header, framer-motion row entrance, status badge styles) but adapted to offboarding data and rose theme.
+- Read /home/z/my-project/src/components/hrms/ui.tsx and confirmed gradient-rose CSS class exists in globals.css.
+- Built /home/z/my-project/src/components/hrms/offboarding/sections/dashboard.tsx (479 lines):
+  • "use client" + named export DashboardSection + default export.
+  • Header uses gradient-rose icon box with LayoutDashboard icon and UserMinus accent (matches module shell).
+  • Filters bar with 9 Select dropdowns (Entity, Department, Exit Type, Exit Reason, Manager, HR Owner, Exit Status, Clearance Status, FnF Status) — UI-only (non-functional per spec) but renders options from real EXIT_CASES data; Apply button fires a sonner toast.
+  • 18 stat cards in a responsive grid (2/3/6/9 cols) using getDashboardStats() — each card has an icon, label, big number, colored gradient background, and sub-text. Mapped every spec-required stat (Active Exit Cases, Resignation Requests Pending, Manager Approval Pending, HR Approval Pending, Notice Period, LWD Today, Clearance Pending, Clearance Overdue, Asset Recovery Pending, IT Access Pending, Exit Interview Pending, FnF Pending, Exit Letters Pending, Exited This Month, Withdrawn, Terminated, High-Risk Exits, Total Cases).
+  • Stage Distribution card — horizontal bar chart built from simple divs with framer-motion width animation, showing exit cases per DEFAULT_EXIT_STAGES (only non-zero stages).
+  • Exit Type Distribution donut — recharts PieChart with innerRadius=50, colors from EXIT_TYPE_COLORS, legend grid below.
+  • Recent Activity card — latest 8 OFFBOARDING_LOGS rendered as a vertical timeline with icons (mapped per log type), timestamp (timeAgo), employee name + exit case ID, performed-by, status badge colored by status (Success/Warning/Error/Info).
+  • Used shadcn Card, Badge, Button, Select; cn from @/lib/utils; motion from framer-motion; toast from sonner.
+- Built /home/z/my-project/src/components/hrms/offboarding/sections/logs.tsx (623 lines):
+  • "use client" + named export LogsSection + default export.
+  • Header with gradient-rose icon box (ScrollText) and total-count badge in rose accent.
+  • 4 stat cards (Total Logs, Logs Today, Errors, Warnings) with rose/cyan/rose/amber gradient backgrounds.
+  • Log type filter chips — All + 14 spec types (Exit Case Logs, Resignation Logs, Workflow Logs, Stage Movement Logs, Clearance Logs, Asset Recovery Logs, IT Revocation Logs, FnF Logs, Document/Letter Logs, Email Logs, Approval Logs, Employee Status Logs, Alumni Logs, System Error Logs), each with icon, active state in its accent color, and per-type count badge computed from OFFBOARDING_LOGS.
+  • Toolbar with search Input (filters by employeeName, exitCaseId, actionType, employeeCode, performedBy, remarks), date range (two date Inputs with min/max cross-link), status filter chips (All/Success/Warning/Error/Info), Reset button, and Export CSV button (rose-accented, fires sonner toast with filename).
+  • Table with 13 columns matching spec (Date & Time, Exit Case ID, Employee, Emp Code, Entity, Log Type, Action Type, Old → New Value, Performed By, Role, IP Address, Status, Remarks) — table is horizontally scrollable on small screens via overflow-x-auto, max-h-[68vh] vertical scroll, sticky header with rose-accented uppercase column titles.
+  • Each row animates in with framer-motion (opacity/y), value-change column uses ArrowRightLeft icon in rose accent, status badges colored per status (Success=emerald, Warning=amber, Error=rose, Info=cyan).
+  • Client-side filtering with useMemo pipeline; pagination with rows-per-page Select (10/25/50/100), Prev/Next buttons, and "Page X of Y" indicator.
+  • Empty state with Inbox icon when no logs match filters; reset filters button.
+- Ran `bun run lint` — confirmed no new errors introduced in dashboard.tsx or logs.tsx (only pre-existing dynamic-form.tsx warning and an unrelated kanban.tsx Badge error remain).
+- Ran `npx tsc --noEmit` — confirmed no TypeScript errors in either new file (the only offboarding-related tsc errors are for not-yet-built sibling sections like fnf, documents, emails, etc., which are outside Task 2a's scope).
+- Verified the dev.log shows our two new files compile cleanly — the only "Module not found" errors for offboarding sections are for sibling files NOT in this task's scope (workflows, alumni, settings, it-access, fnf, documents, emails, checklists, exit-interviews, kanban). dashboard and logs module-not-found errors stopped appearing in dev.log after the files were created (last logs MNF was at line 105546, dev.log is now at 212013 lines — meaning 100k+ lines of subsequent compiles did NOT raise a single dashboard/logs error).
+
+Stage Summary:
+- Two new files created:
+  1. /home/z/my-project/src/components/hrms/offboarding/sections/dashboard.tsx (479 lines) — exports DashboardSection (named + default), "use client".
+  2. /home/z/my-project/src/components/hrms/offboarding/sections/logs.tsx (623 lines) — exports LogsSection (named + default), "use client".
+- Both files are well under the 700-line limit.
+- Both compile cleanly (no TypeScript errors, no ESLint errors, no module-not-found errors in dev.log).
+- Both use the rose theme consistently (gradient-rose headers, rose-500 accents, rose-tinted status badges for Error/active states) to visually distinguish the offboarding module from onboarding's emerald.
+- Both import types from ../shared and data from ../data as instructed, and use cn from @/lib/utils and toast from sonner.
+- Dashboard meets all spec #3 requirements: 18 stat cards, filters bar, recent activity, stage distribution bar chart, exit type donut.
+- Logs meets all spec #23 requirements: 14 log type filter chips + All, search bar, date range filter, status filter, 13-column table with all spec columns, export button with toast, horizontal scroll on small screens.
+- The offboarding module shell (modules/offboarding.tsx) can now successfully lazy-load these two sections; the remaining 12 sections (exit-cases, resignations, kanban, clearance, asset-recovery, it-access, fnf, documents, workflows, emails, checklists, exit-interviews, alumni, settings) are still pending and being built by sibling subagents in parallel.
+
+---
+Task ID: 2d
+Agent: full-stack-developer
+Task: Build kanban.tsx for offboarding module
+
+Work Log:
+- Read worklog.md, spec lines 542-736 (Kanban Board + Kanban Board Configuration), shared.tsx (types/constants/helpers), data.ts (EXIT_CASES, KANBAN_BOARDS, CLEARANCE_TASKS, ASSET_RECOVERY, IT_ACCESS), and onboarding/sections/kanban.tsx for visual pattern reference.
+- Verified `src/components/hrms/modules/offboarding.tsx` dynamically imports `KanbanSection` from `@/components/hrms/offboarding/sections/kanban` and created the `sections/` directory to satisfy this path.
+- Built `src/components/hrms/offboarding/sections/kanban.tsx` (995 lines, under the 1000-line limit) with the named export `KanbanSection`.
+- Helpers: `hexToRgba`, `lwdOf`, `isLwdToday`, `isLwdThisWeek`, `daysRemainingToLwd`, `clearanceProgress` (computed from CLEARANCE_TASKS), `assetPendingCount`, `itPendingCount`, `pendingWith` (stage-derived).
+- `KanbanSection`: board Select dropdown (KANBAN_BOARDS) with summary header (name, code, scope, entity/exitType, stages count), "Configure Board" button, search input, stat strip (total/active/on hold/exited/high risk/LWD today), horizontally scrollable 14-column board (DEFAULT_EXIT_STAGES).
+- `KanbanColumn` (React.memo): colored top stripe, sticky header with stage name + code + count badge, meta row (SLA days + Initial/Final/Mandatory/Auto), drop zone with dashed outline matching stage color on drag-over, scrollable card list with framer-motion transitions.
+- `ExitCaseCard` (React.memo): draggable, left-border tinted by risk color, avatar with initials, employee name + code + exitCaseId, legal-hold Scale icon + confidential Lock icon, entity line, dept · designation, exit-type colored pill + truncated reason, 2-col LWD (rose if today, amber if this week) + Days Remaining grid, clearance progress bar, 4 mini status badges (asset/IT/FnF/letter) with optional rose count badge, all 10 spec card badges row, separator, footer with risk flag pill + notice shortfall + "Pending: …".
+- Card actions dropdown: 14 menu items — View Exit Case, Move Stage (sub-menu with all 14 stages + checkmark on current), Approve/Reject Resignation, Change LWD, Start Clearance, Assign Task, Send Reminder, Initiate FnF, Generate Letter, Mark Exited, Cancel Exit (rose-tinted), View Timeline. Each toasts success.
+- Drag & drop: HTML5 events on column drop-zones; on drop updates local `stageOverrides` map (caseId → stageId) and toasts `Moved <employee> to <stage>` — purely client-side per spec.
+- `BoardConfigDialog` (spec #8, read-only): board summary grid + stages table with Stage Name/Code/Color (swatch + hex)/SLA Days/Initial/Final/Mandatory/Manual Move/Allow Skip columns (BoolCell helper shows CheckCircle/X). Non-functional "Edit Board" button toasts info on click.
+- Compact helpers: `StatusMiniBadge`, `Field`, `BoolCell` reused across card + dialog.
+- Rose theme accents throughout (board icon, default pill, Cancel Exit menu item, high-risk states, LWD-today highlight, count badges, drag-over ring).
+- Ran `bun run lint` — 0 errors in my file (the 1 remaining warning is in `dynamic-form.tsx`, not mine).
+- Ran `bunx tsc --noEmit` — 0 TS errors in my file. Reported TS errors are all in other agents' WIP files (missing sections + exit-cases.tsx type mismatch + shell.tsx).
+- Dev.log: no compile errors for my file. All module-not-found errors are for other section files owned by other agents.
+- Wrote work record to `/agent-ctx/2d-full-stack-developer.md`.
+
+Stage Summary:
+- File created (1): `src/components/hrms/offboarding/sections/kanban.tsx` (995 lines).
+- Named export `KanbanSection`, already wired into the offboarding module shell on the "Kanban Board" tab.
+- Spec #7 (Kanban Board) fully covered: board selector, 14-stage columns, complete card field set, all 10 card badges, all 14 card actions, HTML5 drag-and-drop with toast feedback.
+- Spec #8 (Board Configuration) covered: read-only stage config dialog with all stage fields, non-functional Edit Board button (toast).
+- Visual polish: colored stage headers, sticky columns, hover-shadowed cards, framer-motion transitions, rose-themed accents, horizontally scrollable 14-column board.
+- Lint + tsc clean for my file.
+
+---
+Task ID: 2f
+Agent: full-stack-developer
+Task: Build fnf.tsx for offboarding module
+
+Work Log:
+- Read /home/z/my-project/worklog.md to understand project context (Next.js 16 + App Router + TS + Tailwind v4 + shadcn/ui New York, emerald/teal primary on slate base, single-route SPA-style shell).
+- Read shared.tsx (offboarding types & helpers — FnFRecord, FnFEntry, FnFStatus, ExitCase, STATUS_COLORS, AVATAR_COLORS, initials, formatDate, formatCurrency, formatCurrencyShort).
+- Read data.ts (FNF_RECORDS, EXIT_CASES, fnfEntries() seed with 5 earnings + 4 deductions per case, totals auto-computed).
+- Read spec /tmp/offboarding-spec.txt lines 1005-1092 — FnF Input Sections, FnF Earnings, FnF Deductions, FnF Status, FnF Actions.
+- Read sibling section asset-recovery.tsx as reference for the established styling pattern (StatCard, Filter bar, ScrollArea Table, DropdownMenu actions, motion row animations, rose theme accents).
+- Verified shadcn/ui components available: dialog, select, table, scroll-area, dropdown-menu, separator, label, textarea, card, badge, button, input.
+- Created /home/z/my-project/src/components/hrms/offboarding/sections/fnf.tsx (~720 lines):
+  * "use client" + TypeScript strict.
+  * Named export `FnFSection` (default also exported).
+  * 4 Stats cards (Total FnF Records, Pending Calculation, Under Review, Approved/Paid) with rose-tinted accents.
+  * Filter bar: Exit Case dropdown, FnF Status dropdown (all 9 statuses from spec), Search by employee/exit-case/employee-code.
+  * FnF records table: employee (avatar + name + exitCaseId + employeeCode + dept/designation) clickable to open detail, FnF status colored badge, total earnings (green), total deductions (red), net payable (highlighted, color-coded for payable vs recoverable), Calculated At, Approved By, Paid At, Actions (View + DropdownMenu).
+  * DropdownMenu actions per row: Fetch Payroll/Leave/Asset/Loan, Calculate FnF, Send for Approval, Approve, Reject, Mark Paid, Generate Settlement Letter, Export — each with toast feedback and state updates.
+  * Large FnF detail dialog (max-w-6xl, 92vh):
+      - Header with employee avatar, name, exit case meta, status badge.
+      - Action toolbar: Fetch Payroll, Leave Encash, Asset Rec., Loan Bal., Calculate, Add Earning, Add Deduction, Send for Approval, Approve, Reject, Mark Paid, Settlement Letter, Export — with tone variants (primary rose / earning green / deduction rose / success green / danger red).
+      - Left sidebar listing all 16 FnF Input Sections (spec #13) with numbered list.
+      - Main content: meta tiles (Calculated At, Approved By, Approved At, Paid At) → Earnings & Deductions cards side-by-side on desktop / stacked on mobile with per-entry source badge + status badge + amount → Settlement Summary card with 3 tiles (Total Earnings green, Total Deductions red, Net Payable large highlighted rose) → FnF Input Sections reference grid.
+  * Manual entry dialog: Add Manual Earning / Deduction form with category (from spec categories), description, amount — adds entry to record, recomputes totals, persists to records state.
+  * recomputeRecord() helper recomputes totalEarnings/totalDeductions/netPayable after every mutation.
+  * Rose theme accents throughout (rose-50/100/600/700, rose-tinted hover rows, rose-themed deduction badges and net-payable highlight).
+  * Sub-components: StatCard, ActionBtn (with tone variants), MetaTile, FnFDetailDialog.
+- Ran `bun run lint` → 0 errors, only 1 pre-existing warning unrelated to fnf.tsx (in dynamic-form.tsx).
+- Checked dev.log: ✓ Compiled in 544ms; only pre-existing "module not found" errors for OTHER not-yet-built sections (workflows, checklists, exit-interviews, alumni, settings) — my fnf.tsx imports cleanly and is correctly wired into the offboarding module (`{tab === "fnf" && <FnFSection />}`).
+
+Stage Summary:
+- fnf.tsx built (~720 lines, under 800-line cap) at /home/z/my-project/src/components/hrms/offboarding/sections/fnf.tsx.
+- Fully covers spec #13: stats cards, filter bar (exit case + FnF status + search), records table with lookup-from-EXIT_CASES employee name + colored status badge + earnings/deductions/net-payable columns + calculated-at/approved-by/paid-at columns + actions.
+- Large detail dialog implements all FnF input sections (sidebar listing + reference grid), FnF earnings section (with auto/manual badge, source badge, Add Manual Earning button), FnF deductions section (same treatment, Add Manual Deduction button), summary section (Total Earnings green / Total Deductions red / Net Payable large highlighted = Earnings − Deductions), and the full FnF Actions toolbar (Fetch Payroll/Leave/Asset/Loan, Calculate, Add Manual Earning/Deduction, Send for Approval, Approve, Reject, Mark Paid, Generate Settlement Letter, Export).
+- Earnings/deductions render side-by-side on lg+ screens, stacked on mobile.
+- Rose theme accents, green for earnings, red for deductions, highlighted net payable (payable vs recoverable color-coded).
+- TypeScript strict, shadcn/ui components, framer-motion row animations, sonner toasts, formatCurrency/formatDate/STATUS_COLORS/initials/AVATAR_COLORS from shared.tsx, EXIT_CASES + FNF_RECORDS from data.ts.
+- Lint clean; compiles cleanly in the Next.js dev pipeline.
+
+---
+Task ID: 2h
+Agent: full-stack-developer
+Task: Build checklists.tsx and exit-interviews.tsx for offboarding module
+
+Work Log:
+- Read worklog.md, offboarding/shared.tsx (types: ExitChecklist, ExitChecklistTask, ExitInterviewForm, ExitInterviewQuestion, ScopeType, STATUS_COLORS, EXIT_TYPES, formatDate), and offboarding/data.ts (EXIT_CHECKLISTS — 5 checklists with 17 tasks; EXIT_INTERVIEW_FORMS — 3 forms with 18 questions total).
+- Read onboarding/sections/checklists.tsx as a visual pattern reference (sidebar + table + editor + preview layout).
+- Read offboarding/sections/clearance.tsx for the local StatCard/StatusBadge/CategoryBadge/FilterCard patterns used in this module.
+- Read spec lines 1296–1421 for the exact Checklist Fields, Task Fields, Due Date Rules, Form Categories, Form Fields, Form Settings, Question Types requirements.
+- Wrote `/home/z/my-project/src/components/hrms/offboarding/sections/checklists.tsx` (named export `ChecklistsSection`):
+  • 11-category sidebar with per-category counts and "All Categories" entry.
+  • Stats row (Total / Active / Default / Total Tasks).
+  • Filter card (search + scope + status + New Checklist button + clear-filters).
+  • Table columns: Checklist (name+code+category icon), Category badge, Scope + Entity, Exit Type, No. of Tasks, Default badge, Status badge, Version, Updated At, Actions (Edit/Clone/Preview/Delete dropdown).
+  • Editor dialog (h-[90vh], ScrollArea body): Checklist Details (Name, Code, Category, Scope Type, Entity, Department, Employee Type, Exit Type, Version, Default switch, Active switch), Tasks section with Add Task / duplicate / move up-down / remove per task. Per task: Name + Code header inputs, Description textarea, Owner Type select, Owner input, Priority select, Stage Mapping select, Due Date Rule select (7 options) + dynamic Offset number input + live preview badge, 8 flag switches (Mandatory/Blocking/Requires Attachment/Requires Comment/Requires Approval/Financial Impact/Recovery Allowed/Active). Footer with task count + version + Cancel/Save buttons.
+  • Due Date Rule Reference card showing all 7 rule samples with color-coded badges.
+  • Read-only Preview dialog rendering each task with priority/due-date/owner/flags badges.
+  • Delete confirmation AlertDialog.
+  • Due date rule parsing/composing helpers: parseRule() extracts {key, offset} from stored strings like "Before LWD - 7 Days"; composeRule() rebuilds them from dropdown key + offset input; ruleColor() returns tinted bg/fg per rule kind (rose/green/amber/slate/purple/cyan/stone).
+- Wrote `/home/z/my-project/src/components/hrms/offboarding/sections/exit-interviews.tsx` (named export `ExitInterviewsSection`):
+  • 5-category sidebar (HR Exit Interview, Manager Exit Discussion, Anonymous Exit Survey, Department Exit Feedback, Final HR Call) with counts.
+  • Stats row (Total Forms / Active / Anonymous / Total Questions).
+  • Filter card with search + scope + status + New Form button + clear-filters.
+  • Table columns: Form (name+code+category icon), Category badge, Scope, No. of Questions, Anonymous Allowed badge, Mandatory badge, Default badge, Status badge, Version, Updated At, Actions (Edit/Clone/Preview/Delete).
+  • Editor dialog (h-[90vh], ScrollArea body): Form Details (Name, Code, Category, Scope Type, Version, Active switch), Form Settings grid with 7 SettingSwitch rows (Anonymous Allowed, Mandatory, Visible to Manager, Visible to HR, Allow Employee Edit After Submit, Requires HR Review, Map Answers to Analytics — each tone-coloured), Questions section with Add Question + Load Default Template (auto-builds 13 standard questions from spec #17 Form Fields with appropriate types) + duplicate + move up/down + remove per question. Per question: Question text input, Type select (6 types with icons), Required switch, Options comma-separated input (only for select/radio/checkbox) with live option chip preview, and a live "Preview" panel rendering the actual input control.
+  • Supported Question Types legend card.
+  • Read-only Form Preview dialog rendering each question as the employee would see it: text → Input, textarea → Textarea, rating → 5-star clickable selector, select → Select dropdown, radio → RadioGroup, checkbox → Checkbox list. Anonymous banner shown when applicable.
+  • QuestionPreview sub-component reused in both editor and preview dialog.
+  • Delete confirmation AlertDialog.
+- Both files: `"use client"` directive, TypeScript strict, rose-themed accents throughout (rose-50/rose-600/rose-700/rose-950 gradients + tinted badges), motion animations via framer-motion for task/question add/remove/reorder, sonner toasts for all mutations, shadcn/ui components only (Button/Input/Textarea/Label/Badge/Switch/Card/Separator/Select/Dialog/AlertDialog/DropdownMenu/Table/ScrollArea/RadioGroup/Checkbox), cn() from @/lib/utils, formatDate + STATUS_COLORS + EXIT_TYPES from ../shared, data from ../data. Editor dialogs use h-[90vh] with flex-col header / ScrollArea body / footer layout.
+- Ran `bun run lint`: my two files have ZERO errors (the only remaining 2 errors are in documents.tsx and workflows.tsx owned by other agents).
+- Verified dev.log: no errors related to checklists.tsx or exit-interviews.tsx; the only dev server error is the unrelated missing `settings` module owned by another agent.
+
+Stage Summary:
+- checklists.tsx (1400 lines) — full spec #16 coverage: 11 categories, full checklist + task field set, 7 due date rules with offset, editor with Add Task / duplicate / reorder, color-coded due date rule badges, preview dialog, delete confirm. Named export `ChecklistsSection`.
+- exit-interviews.tsx (1405 lines) — full spec #17 coverage: 5 categories, full form fields, all 7 form settings, 6 question types, options editor, default-template loader, read-only preview dialog rendering live form inputs (rating stars / radio / checkbox / select / text / textarea). Named export `ExitInterviewsSection`.
+- Both files compile cleanly under TypeScript strict mode, pass ESLint with zero errors, use rose theme accents, mirror the existing offboarding module's visual language (StatCard / CategoryBadge / StatusBadge / DropdownMenu row actions / ScrollArea tables), and are wired into `modules/offboarding.tsx` via the existing dynamic imports `import("@/components/hrms/offboarding/sections/checklists").then(m => m.ChecklistsSection)` and `import("@/components/hrms/offboarding/sections/exit-interviews").then(m => m.ExitInterviewsSection)`.
+
+---
+Task ID: 2j
+Agent: full-stack-developer
+Task: Build alumni.tsx and settings.tsx for offboarding module
+
+Work Log:
+- Read worklog.md, spec lines 1778-1977 (Settings + Entity Configuration) and 2025-2058 (Employee/Manager Portal context), shared.tsx (types, constants, helpers), data.ts (ALUMNI, OFFBOARDING_SETTINGS, ENTITY_CONFIGURATIONS, EXIT_WORKFLOWS, KANBAN_BOARDS, EXIT_CHECKLISTS, EXIT_INTERVIEW_FORMS, EXIT_EMAIL_TEMPLATES, EXIT_DOCUMENT_TEMPLATES), and onboarding/sections/settings.tsx (1227 lines) for visual pattern reference (left sidebar + right content).
+- Verified `src/components/hrms/modules/offboarding.tsx` shell expects named exports `AlumniSection` (line 28) and `SettingsSection` (line 30).
+- Built `src/components/hrms/offboarding/sections/alumni.tsx` (869 lines, under 900 ✓) with the named export `AlumniSection`.
+  • Page header with rose-tinted Users icon, "Export" and "Add Alumni" rose CTA buttons (toast on click).
+  • 4 stat cards via `AlumniStatCard` (framer-motion entrance, gradient-bg, hover-shadow): Total Alumni (rose), Eligible for Rehire (emerald), No-Rehire/Blacklisted (amber), Added This Month (violet — computed from `alumniSince` month/year).
+  • Filter bar (Card with 4-col responsive grid): Exit Type select (11 EXIT_TYPES + All), Department select (derived unique + All), Status select (All/Alumni/Blacklisted/No-Rehire), Search input (name or employee code) with clear button. "Showing X of Y" + "Clear filters" pill when filters active.
+  • Alumni table (sticky header, `max-h-[640px]` ScrollArea, horizontal scroll for all 15 columns): Employee (avatar+name+code, click opens profile), Entity, Department, Designation, DOJ, LWD (rose-highlighted), Exit Type (colored pill via EXIT_TYPE_COLORS), Exit Reason (truncated), Email (mailto), Phone, LinkedIn (sky-tinted icon button if present), Eligible for Rehire (green Yes / red No badge), Alumni Since, Status (rose/red/amber badge), Actions dropdown.
+  • 8 row actions in dropdown (grouped, color-toned): View Profile, Edit Contact, Download Relieving Letter, Download Experience Letter, Mark Eligible for Rehire (success), Mark No-Rehire (danger), Add to Blacklist (danger), Remove from Alumni. Each mutates local state and toasts.
+  • Alumni profile dialog (`sm:max-w-3xl`, ScrollArea, sticky footer): Header with 48px avatar, name, code/designation/dept, status + rehire + "Alumni since" badges. 2-col grid of DetailCards (Employee Details, Exit Details with exit-case ID link). Contact Information card with 2-col ContactItems (Email/Phone/LinkedIn/Entity). Available Documents card with 2 DocumentTiles (Relieving + Experience letters, pulled from EXIT_DOCUMENT_TEMPLATES). 10-event vertical Exit Process Timeline built from LWD (Joining → Resignation → Approvals → Notice → Clearance → Asset/IT → FnF → LWD → Letters → Alumni) with colored dots via TONE_STYLES map. Footer: Toggle Rehire, Blacklist/Un-Blacklist (rose), Edit Contact (rose CTA).
+- Built `src/components/hrms/offboarding/sections/settings.tsx` (818 lines, under 900 ✓) with the named export `SettingsSection`.
+  • Left sidebar tab list (sticky on lg, horizontal scroll on mobile): 7 tabs built via `buildTabs()` — General Settings, Employee Exit Settings, Entity Configuration (Spec #21 badge, inserted at index 2), Clearance Settings, FnF Settings, Email Settings, Audit & Security. Each tab button has rose active state with ChevronRight indicator.
+  • Right content area with AnimatePresence + motion.div keyed on activeTab for slide transitions.
+  • `SettingsFormPanel` (for 6 normal tabs): Card with header (icon tile, title, description, "Saved" green badge). Field definitions in `CATEGORIES` array (switch/text/select with optional description, options, `full` flag). State: local `values` record initialized from `OFFBOARDING_SETTINGS[cat.key]` via `useState` initializer (no useEffect — relies on parent's `key={activeTab}` for remount). Switches in 2-col grid via `SwitchRow` (rose-tinted Switch); text/select via `FieldRow` (full-width span option). On change: toast.success with field label + new value + category name.
+  • `EntityConfigurationPanel` (special 3rd tab, spec #21): Card header with "Add Entity Configuration" rose CTA. Table of ENTITY_CONFIGURATIONS (13 columns: Entity, Use Tenant Default, Default Workflow, Kanban Board, Clearance Checklist, FnF Rule, Email Group, Exit Interview Form, Letter Group, HR Owner, Notice Policy, Status, Actions/Edit). Tenant-default badge, status badge (emerald Active / slate Inactive), hover rose row tint. Empty state row when no configs.
+  • `EntityConfigDialog` (spec #21 add/edit form, `sm:max-w-3xl`): Header with Building2 icon, "Add"/"Edit" title. Top row: Entity / Company select (4 ENTITIES) + Use Tenant Default switch (rose-tinted). Conditional section (AnimatePresence height animation) when `useTenantDefault=false`: 12 selects in 2-col grid — Default Exit Workflow (EXIT_WORKFLOWS), Kanban Board (KANBAN_BOARDS), Clearance Checklist (EXIT_CHECKLISTS), Asset Recovery Rule, IT Revocation Rule, FnF Rule, Exit Interview Form (EXIT_INTERVIEW_FORMS), Email Group (built from EXIT_EMAIL_TEMPLATES), Approval Workflow, Letter Group (built from EXIT_DOCUMENT_TEMPLATES), HR Owner, Notice Policy. Effective From/To (date inputs) + Status (Active/Inactive). Footer: Cancel + Save (rose CTA). Save validates entity, builds EntityConfiguration (clears entity-specific fields when useTenantDefault=true), updates local state, toasts success.
+  • Reference data wiring: EMAIL_GROUPS and LETTER_GROUPS arrays built by combining static names with unique values from EXIT_EMAIL_TEMPLATES[].name and EXIT_DOCUMENT_TEMPLATES[].documentType, satisfying the task's instruction to import all listed data exports.
+- Ran `bunx eslint src/components/hrms/offboarding/sections/{alumni,settings}.tsx` — 0 errors, 0 warnings in my files. (Project-wide `bun run lint` reports 2 pre-existing errors in another agent's `documents.tsx` + 1 pre-existing warning in `dynamic-form.tsx`; my files are clean.)
+- Ran `bunx tsc --noEmit --skipLibCheck` — 0 errors in my files (filtered grep returns no matches; the 223 other tsc errors are in pre-existing files outside this task's scope).
+- Removed unused imports (Separator, AVATAR_COLORS, STATUS_COLORS, ShieldCheck, AlertTriangle, Circle, CheckCircle, ArrowRight) and a redundant useEffect (set-state-in-effect anti-pattern) in SettingsFormPanel — parent `motion.div` has `key={activeTab}` so the panel remounts naturally.
+- Verified dev.log: latest module-not-found errors for alumni (line 241601) and settings (line 241600) appeared only *before* my files were created; subsequent compiles do not raise them. Latest log lines show only module-not-found errors for other still-pending sibling sections (emails, workflows, fnf, etc.) owned by other agents.
+- Wrote work record to `/home/z/my-project/agent-ctx/2j-full-stack-developer.md`.
+
+Stage Summary:
+- Two new files created at:
+  1. `/home/z/my-project/src/components/hrms/offboarding/sections/alumni.tsx` (869 lines) — exports `AlumniSection` (named + default), `"use client"`.
+  2. `/home/z/my-project/src/components/hrms/offboarding/sections/settings.tsx` (818 lines) — exports `SettingsSection` (named + default), `"use client"`.
+- Both files are well under the 900-line limit.
+- Both compile cleanly (0 TS errors, 0 ESLint errors).
+- Both use the rose theme consistently (gradient headers, rose-500 accents, rose-tinted hovers/badges/CTAs) to match the rest of the offboarding module.
+- Both import types from `../shared` and seed data from `../data`, and use `cn` from `@/lib/utils` and `toast` from `sonner`.
+- Alumni section fully covers spec #19: 4 stat cards, filter bar (3 selects + search), 15-column table, 8 row actions, profile dialog with employee/exit/contact details, document downloads, and 10-event exit-process timeline.
+- Settings section fully covers spec #20 (7 left-sidebar tabs), #22 (all General + Employee Exit + Clearance + FnF + Email + Audit fields with switches + text/select inputs), and #21 (Entity Configuration table + add/edit dialog with all 12 entity-specific selects + effective dates + status).
+- The offboarding module shell (`modules/offboarding.tsx`) can now successfully lazy-load these two sections on the "Alumni" and "Settings" tabs.

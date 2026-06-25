@@ -1,0 +1,856 @@
+     1→"use client"
+     2→
+     3→// =============================================================
+     4→// Onboarding Logs Section — spec #25 (audit trail)
+     5→// Task ID: 8-F
+     6→// READ-ONLY: filters + views system-generated logs.
+     7→// =============================================================
+     8→
+     9→import * as React from "react"
+    10→import { useState, useMemo, useEffect } from "react"
+    11→import { motion } from "framer-motion"
+    12→import { toast } from "sonner"
+    13→import {
+    14→  ScrollText, User, Workflow, ArrowRightLeft, FileText, Mail,
+    15→  ListChecks, CheckCircle2, ShieldCheck, UserCheck, Settings,
+    16→  AlertTriangle, Search, Download, Inbox, X, ChevronLeft,
+    17→  ChevronRight, Clock, AlertCircle, Info,
+    18→} from "lucide-react"
+    19→
+    20→import { cn } from "@/lib/utils"
+    21→import { Button } from "@/components/ui/button"
+    22→import { Input } from "@/components/ui/input"
+    23→import { Badge } from "@/components/ui/badge"
+    24→import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+    25→import { Skeleton } from "@/components/ui/skeleton"
+    26→import {
+    27→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    28→} from "@/components/ui/table"
+    29→import {
+    30→  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+    31→} from "@/components/ui/sheet"
+    32→import {
+    33→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    34→} from "@/components/ui/select"
+    35→import {
+    36→  Tooltip, TooltipTrigger, TooltipContent,
+    37→} from "@/components/ui/tooltip"
+    38→
+    39→import { PageHeader, StatCard, EmptyState } from "@/components/hrms/ui"
+    40→import {
+    41→  useFetch, formatDateTime, initials,
+    42→} from "@/components/hrms/onboarding/shared"
+    43→
+    44→// =============================================================
+    45→// Types
+    46→// =============================================================
+    47→
+    48→interface LogItem {
+    49→  id: string
+    50→  tenantId?: string
+    51→  logType: string
+    52→  candidateId?: string | null
+    53→  candidateName?: string | null
+    54→  employeeCode?: string | null
+    55→  entityId?: string | null
+    56→  entityType?: string | null
+    57→  actionType: string
+    58→  oldValue?: string | null
+    59→  newValue?: string | null
+    60→  performedBy?: string | null
+    61→  performedByName?: string | null
+    62→  role?: string | null
+    63→  ipAddress?: string | null
+    64→  device?: string | null
+    65→  status: string // Success | Failed | Warning
+    66→  remarks?: string | null
+    67→  metadata?: string | null
+    68→  createdAt: string
+    69→}
+    70→
+    71→interface LogsResponse {
+    72→  items: LogItem[]
+    73→  total: number
+    74→  page: number
+    75→  pageSize: number
+    76→  totalPages: number
+    77→}
+    78→
+    79→// =============================================================
+    80→// Log type metadata — 11 types per spec #25
+    81→// =============================================================
+    82→
+    83→interface LogTypeMeta {
+    84→  value: string
+    85→  label: string
+    86→  icon: React.ComponentType<{ className?: string }>
+    87→  borderClass: string // left-border color on table rows
+    88→  iconBgClass: string // sidebar icon bg
+    89→  iconTextClass: string // sidebar icon text color
+    90→}
+    91→
+    92→const LOG_TYPES: LogTypeMeta[] = [
+    93→  {
+    94→    value: "Candidate Activity", label: "Candidate Activity", icon: User,
+    95→    borderClass: "border-l-emerald-500",
+    96→    iconBgClass: "bg-emerald-500/10",
+    97→    iconTextClass: "text-emerald-600 dark:text-emerald-400",
+    98→  },
+    99→  {
+   100→    value: "Workflow", label: "Workflow", icon: Workflow,
+   101→    borderClass: "border-l-teal-500",
+   102→    iconBgClass: "bg-teal-500/10",
+   103→    iconTextClass: "text-teal-600 dark:text-teal-400",
+   104→  },
+   105→  {
+   106→    value: "Stage Movement", label: "Stage Movement", icon: ArrowRightLeft,
+   107→    borderClass: "border-l-cyan-500",
+   108→    iconBgClass: "bg-cyan-500/10",
+   109→    iconTextClass: "text-cyan-600 dark:text-cyan-400",
+   110→  },
+   111→  {
+   112→    value: "Document", label: "Document", icon: FileText,
+   113→    borderClass: "border-l-amber-500",
+   114→    iconBgClass: "bg-amber-500/10",
+   115→    iconTextClass: "text-amber-600 dark:text-amber-400",
+   116→  },
+   117→  {
+   118→    value: "Email", label: "Email", icon: Mail,
+   119→    borderClass: "border-l-violet-500",
+   120→    iconBgClass: "bg-violet-500/10",
+   121→    iconTextClass: "text-violet-600 dark:text-violet-400",
+   122→  },
+   123→  {
+   124→    value: "Checklist", label: "Checklist", icon: ListChecks,
+   125→    borderClass: "border-l-lime-500",
+   126→    iconBgClass: "bg-lime-500/10",
+   127→    iconTextClass: "text-lime-600 dark:text-lime-400",
+   128→  },
+   129→  {
+   130→    value: "Approval", label: "Approval", icon: CheckCircle2,
+   131→    borderClass: "border-l-emerald-500",
+   132→    iconBgClass: "bg-emerald-500/10",
+   133→    iconTextClass: "text-emerald-600 dark:text-emerald-400",
+   134→  },
+   135→  {
+   136→    value: "Verification", label: "Verification", icon: ShieldCheck,
+   137→    borderClass: "border-l-rose-500",
+   138→    iconBgClass: "bg-rose-500/10",
+   139→    iconTextClass: "text-rose-600 dark:text-rose-400",
+   140→  },
+   141→  {
+   142→    value: "Employee Conversion", label: "Employee Conversion", icon: UserCheck,
+   143→    borderClass: "border-l-fuchsia-500",
+   144→    iconBgClass: "bg-fuchsia-500/10",
+   145→    iconTextClass: "text-fuchsia-600 dark:text-fuchsia-400",
+   146→  },
+   147→  {
+   148→    value: "System", label: "System", icon: Settings,
+   149→    borderClass: "border-l-slate-500",
+   150→    iconBgClass: "bg-slate-500/10",
+   151→    iconTextClass: "text-slate-600 dark:text-slate-400",
+   152→  },
+   153→  {
+   154→    value: "Error", label: "Error", icon: AlertTriangle,
+   155→    borderClass: "border-l-rose-500",
+   156→    iconBgClass: "bg-rose-500/10",
+   157→    iconTextClass: "text-rose-600 dark:text-rose-400",
+   158→  },
+   159→]
+   160→
+   161→const ALL_LOG_TYPE_META: LogTypeMeta = {
+   162→  value: "All",
+   163→  label: "All Logs",
+   164→  icon: ScrollText,
+   165→  borderClass: "",
+   166→  iconBgClass: "bg-emerald-500/10",
+   167→  iconTextClass: "text-emerald-600 dark:text-emerald-400",
+   168→}
+   169→
+   170→function getLogTypeMeta(value: string): LogTypeMeta | undefined {
+   171→  return LOG_TYPES.find((t) => t.value === value)
+   172→}
+   173→
+   174→// =============================================================
+   175→// Status + role badge palettes (NO indigo, NO blue)
+   176→// =============================================================
+   177→
+   178→const STATUS_OPTIONS = ["All", "Success", "Warning", "Failed"] as const
+   179→
+   180→const STATUS_BADGE_CLASS: Record<string, string> = {
+   181→  Success: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+   182→  Warning: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+   183→  Failed: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
+   184→}
+   185→
+   186→const ROLE_BADGE_CLASS: Record<string, string> = {
+   187→  HR: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400",
+   188→  System: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400",
+   189→  Admin: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
+   190→  Manager: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400",
+   191→}
+   192→
+   193→function LogStatusBadge({ status }: { status: string }) {
+   194→  const cls = STATUS_BADGE_CLASS[status] || "bg-muted text-muted-foreground"
+   195→  return (
+   196→    <Badge variant="secondary" className={cn("font-medium border-0", cls)}>
+   197→      {status}
+   198→    </Badge>
+   199→  )
+   200→}
+   201→
+   202→function RoleBadge({ role }: { role?: string | null }) {
+   203→  if (!role) return <span className="text-muted-foreground/40 text-xs italic">—</span>
+   204→  const cls = ROLE_BADGE_CLASS[role] || "bg-muted text-muted-foreground"
+   205→  return (
+   206→    <Badge variant="secondary" className={cn("font-medium border-0 text-[10px] px-1.5 py-0", cls)}>
+   207→      {role}
+   208→    </Badge>
+   209→  )
+   210→}
+   211→
+   212→// =============================================================
+   213→// CSV export helper
+   214→// =============================================================
+   215→
+   216→function exportCsv(items: LogItem[]) {
+   217→  const headers = [
+   218→    "Date & Time", "Log Type", "Candidate", "Employee Code",
+   219→    "Entity Type", "Entity ID", "Action Type", "Old Value", "New Value",
+   220→    "Performed By", "Role", "IP Address", "Device", "Status", "Remarks",
+   221→  ]
+   222→  const esc = (v: string | null | undefined) => {
+   223→    const s = (v ?? "").toString()
+   224→    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+   225→  }
+   226→  const rows = items.map((it) => [
+   227→    formatDateTime(it.createdAt), it.logType, it.candidateName, it.employeeCode,
+   228→    it.entityType, it.entityId, it.actionType, it.oldValue, it.newValue,
+   229→    it.performedByName, it.role, it.ipAddress, it.device, it.status, it.remarks,
+   230→  ].map(esc).join(","))
+   231→  const csv = [headers.join(","), ...rows].join("\n")
+   232→  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+   233→  const url = URL.createObjectURL(blob)
+   234→  const a = document.createElement("a")
+   235→  a.href = url
+   236→  a.download = `onboarding-logs-${new Date().toISOString().slice(0, 10)}.csv`
+   237→  document.body.appendChild(a)
+   238→  a.click()
+   239→  document.body.removeChild(a)
+   240→  URL.revokeObjectURL(url)
+   241→  toast.success(`Exported ${items.length} log${items.length === 1 ? "" : "s"} to CSV`)
+   242→}
+   243→
+   244→// =============================================================
+   245→// Per-log-type counts (one fetch per type, all in parallel)
+   246→// =============================================================
+   247→
+   248→function useLogTypeCounts(): Record<string, number> {
+   249→  const [counts, setCounts] = useState<Record<string, number>>({})
+   250→
+   251→  useEffect(() => {
+   252→    let active = true
+   253→    Promise.all(
+   254→      LOG_TYPES.map(async (t) => {
+   255→        try {
+   256→          const r = await fetch(`/api/onboarding-logs?logType=${encodeURIComponent(t.value)}&pageSize=1`)
+   257→          if (!r.ok) return { type: t.value, count: 0 }
+   258→          const j = await r.json()
+   259→          return { type: t.value, count: j.total || 0 }
+   260→        } catch {
+   261→          return { type: t.value, count: 0 }
+   262→        }
+   263→      }),
+   264→    ).then((results) => {
+   265→      if (!active) return
+   266→      const map: Record<string, number> = {}
+   267→      results.forEach((r) => { map[r.type] = r.count })
+   268→      setCounts(map)
+   269→    }).catch(() => {
+   270→      // silently leave counts empty
+   271→    })
+   272→    return () => { active = false }
+   273→  }, [])
+   274→
+   275→  return counts
+   276→}
+   277→
+   278→// =============================================================
+   279→// Sidebar log-type pill
+   280→// =============================================================
+   281→
+   282→function LogTypePill({
+   283→  meta, count, active, onClick,
+   284→}: {
+   285→  meta: LogTypeMeta
+   286→  count?: number
+   287→  active: boolean
+   288→  onClick: () => void
+   289→}) {
+   290→  const Icon = meta.icon
+   291→  return (
+   292→    <button
+   293→      type="button"
+   294→      onClick={onClick}
+   295→      className={cn(
+   296→        "group w-full flex items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left text-sm transition-all",
+   297→        "border-transparent hover:bg-muted/40",
+   298→        active && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+   299→      )}
+   300→    >
+   301→      <span className={cn("grid h-7 w-7 shrink-0 place-items-center rounded-md", meta.iconBgClass, meta.iconTextClass)}>
+   302→        <Icon className="h-4 w-4" />
+   303→      </span>
+   304→      <span className="flex-1 truncate font-medium">{meta.label}</span>
+   305→      {typeof count === "number" && (
+   306→        <span className={cn(
+   307→          "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+   308→          active
+   309→            ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+   310→            : "bg-muted text-muted-foreground",
+   311→        )}>
+   312→          {count}
+   313→        </span>
+   314→      )}
+   315→    </button>
+   316→  )
+   317→}
+   318→
+   319→// =============================================================
+   320→// Table skeleton
+   321→// =============================================================
+   322→
+   323→function TableSkeleton({ rows = 8 }: { rows?: number }) {
+   324→  return (
+   325→    <div className="p-2 space-y-1.5">
+   326→      {Array.from({ length: rows }).map((_, i) => (
+   327→        <Skeleton key={i} className="h-12 w-full rounded-md" />
+   328→      ))}
+   329→    </div>
+   330→  )
+   331→}
+   332→
+   333→// =============================================================
+   334→// Log detail Sheet
+   335→// =============================================================
+   336→
+   337→function metadataToDisplay(raw?: string | null): string | null {
+   338→  if (!raw) return null
+   339→  try {
+   340→    return JSON.stringify(JSON.parse(raw), null, 2)
+   341→  } catch {
+   342→    return raw
+   343→  }
+   344→}
+   345→
+   346→function DetailField({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
+   347→  return (
+   348→    <div className="space-y-0.5 min-w-0">
+   349→      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+   350→      <p className={cn("text-sm text-foreground break-words", mono && "font-mono text-xs")}>
+   351→        {value || <span className="text-muted-foreground/50 italic">—</span>}
+   352→      </p>
+   353→    </div>
+   354→  )
+   355→}
+   356→
+   357→function LogDetailSheet({
+   358→  log, open, onOpenChange,
+   359→}: {
+   360→  log: LogItem | null
+   361→  open: boolean
+   362→  onOpenChange: (v: boolean) => void
+   363→}) {
+   364→  if (!log) return null
+   365→  const meta = getLogTypeMeta(log.logType)
+   366→  const Icon = meta?.icon || ScrollText
+   367→  const metadataDisplay = metadataToDisplay(log.metadata)
+   368→
+   369→  return (
+   370→    <Sheet open={open} onOpenChange={onOpenChange}>
+   371→      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+   372→        <SheetHeader>
+   373→          <div className="flex items-center gap-2.5 pr-6">
+   374→            <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg", meta?.iconBgClass, meta?.iconTextClass)}>
+   375→              <Icon className="h-5 w-5" />
+   376→            </span>
+   377→            <div className="min-w-0">
+   378→              <SheetTitle className="text-base leading-tight">{log.actionType}</SheetTitle>
+   379→              <SheetDescription className="mt-0.5">
+   380→                {log.logType} · {formatDateTime(log.createdAt)}
+   381→              </SheetDescription>
+   382→            </div>
+   383→          </div>
+   384→        </SheetHeader>
+   385→
+   386→        <div className="px-4 pb-6 space-y-4">
+   387→          <div className="flex items-center gap-2 flex-wrap">
+   388→            <LogStatusBadge status={log.status} />
+   389→            {log.role && <RoleBadge role={log.role} />}
+   390→            <Badge variant="outline" className="text-[10px] border-border/60 text-muted-foreground">
+   391→              {log.logType}
+   392→            </Badge>
+   393→          </div>
+   394→
+   395→          <div className="grid grid-cols-2 gap-3">
+   396→            <DetailField label="Candidate" value={log.candidateName} />
+   397→            <DetailField label="Employee Code" value={log.employeeCode} />
+   398→            <DetailField label="Entity Type" value={log.entityType} />
+   399→            <DetailField label="Entity ID" value={log.entityId} mono />
+   400→            <DetailField label="Performed By" value={log.performedByName} />
+   401→            <DetailField label="IP Address" value={log.ipAddress} mono />
+   402→            <DetailField label="Device" value={log.device} />
+   403→            <DetailField label="Candidate ID" value={log.candidateId} mono />
+   404→          </div>
+   405→
+   406→          <div className="space-y-3">
+   407→            <DetailField label="Old Value" value={log.oldValue} />
+   408→            <DetailField label="New Value" value={log.newValue} />
+   409→            <DetailField label="Remarks" value={log.remarks} />
+   410→          </div>
+   411→
+   412→          {metadataDisplay && (
+   413→            <div className="space-y-1.5">
+   414→              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Metadata</p>
+   415→              <pre className="bg-muted/50 rounded-lg border border-border/60 p-3 text-xs text-foreground/90 overflow-x-auto whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
+   416→                {metadataDisplay}
+   417→              </pre>
+   418→            </div>
+   419→          )}
+   420→
+   421→          <div className="pt-3 border-t border-border/60 space-y-1.5">
+   422→            <DetailField label="Log ID" value={log.id} mono />
+   423→          </div>
+   424→        </div>
+   425→      </SheetContent>
+   426→    </Sheet>
+   427→  )
+   428→}
+   429→
+   430→// =============================================================
+   431→// Main section
+   432→// =============================================================
+   433→
+   434→export function LogsSection() {
+   435→  // ---- Filter state ----
+   436→  const [activeType, setActiveType] = useState<string>("All")
+   437→  const [activeStatus, setActiveStatus] = useState<string>("All")
+   438→  const [search, setSearch] = useState("")
+   439→  const [fromDate, setFromDate] = useState("")
+   440→  const [toDate, setToDate] = useState("")
+   441→  const [page, setPage] = useState(1)
+   442→  const [pageSize, setPageSize] = useState(50)
+   443→  const [selectedLog, setSelectedLog] = useState<LogItem | null>(null)
+   444→  const [sheetOpen, setSheetOpen] = useState(false)
+   445→
+   446→  // ---- Stable stats URLs (computed once on mount) ----
+   447→  const [statsUrls] = useState(() => {
+   448→    const d = new Date()
+   449→    d.setHours(0, 0, 0, 0)
+   450→    return {
+   451→      total: "/api/onboarding-logs?pageSize=1",
+   452→      today: `/api/onboarding-logs?from=${d.toISOString()}&pageSize=1`,
+   453→      errors: "/api/onboarding-logs?status=Failed&pageSize=1",
+   454→      warnings: "/api/onboarding-logs?status=Warning&pageSize=1",
+   455→    }
+   456→  })
+   457→
+   458→  const { data: statsTotal } = useFetch<LogsResponse>(statsUrls.total, [])
+   459→  const { data: statsToday } = useFetch<LogsResponse>(statsUrls.today, [])
+   460→  const { data: statsErrors } = useFetch<LogsResponse>(statsUrls.errors, [])
+   461→  const { data: statsWarnings } = useFetch<LogsResponse>(statsUrls.warnings, [])
+   462→
+   463→  // ---- Per-log-type counts (single hook, 11 parallel fetches) ----
+   464→  const logTypeCounts = useLogTypeCounts()
+   465→
+   466→  // ---- Main query URL ----
+   467→  const mainUrl = useMemo(() => {
+   468→    const params = new URLSearchParams()
+   469→    params.set("page", String(page))
+   470→    params.set("pageSize", String(pageSize))
+   471→    if (activeType !== "All") params.set("logType", activeType)
+   472→    if (activeStatus !== "All") params.set("status", activeStatus)
+   473→    if (fromDate) params.set("from", fromDate)
+   474→    if (toDate) params.set("to", `${toDate}T23:59:59`)
+   475→    if (search.trim()) params.set("q", search.trim())
+   476→    return `/api/onboarding-logs?${params.toString()}`
+   477→  }, [activeType, activeStatus, fromDate, toDate, search, page, pageSize])
+   478→
+   479→  const { data, loading, error } = useFetch<LogsResponse>(mainUrl, [pageSize])
+   480→
+   481→  const items = data?.items ?? []
+   482→  const total = data?.total ?? 0
+   483→  const totalPages = data?.totalPages ?? 0
+   484→
+   485→  // ---- Handlers (each batches page reset with filter change) ----
+   486→  const handleTypeChange = (t: string) => { setActiveType(t); setPage(1) }
+   487→  const handleStatusChange = (s: string) => { setActiveStatus(s); setPage(1) }
+   488→  const handleSearchChange = (v: string) => { setSearch(v); setPage(1) }
+   489→  const handleFromDateChange = (v: string) => { setFromDate(v); setPage(1) }
+   490→  const handleToDateChange = (v: string) => { setToDate(v); setPage(1) }
+   491→  const handlePageSizeChange = (v: number) => { setPageSize(v); setPage(1) }
+   492→
+   493→  const handleRowClick = (log: LogItem) => {
+   494→    setSelectedLog(log)
+   495→    setSheetOpen(true)
+   496→  }
+   497→
+   498→  const handleExport = () => {
+   499→    if (items.length === 0) {
+   500→      toast.error("No logs to export")
+   501→      return
+   502→    }
+   503→    exportCsv(items)
+   504→  }
+   505→
+   506→  const handleResetFilters = () => {
+   507→    setActiveType("All")
+   508→    setActiveStatus("All")
+   509→    setSearch("")
+   510→    setFromDate("")
+   511→    setToDate("")
+   512→    setPage(1)
+   513→  }
+   514→
+   515→  const hasActiveFilters =
+   516→    activeType !== "All" ||
+   517→    activeStatus !== "All" ||
+   518→    search.trim() !== "" ||
+   519→    fromDate !== "" ||
+   520→    toDate !== ""
+   521→
+   522→  return (
+   523→    <div className="space-y-5">
+   524→      <PageHeader
+   525→        title="Onboarding Logs"
+   526→        description="Complete audit trail of every action across the onboarding pipeline. Filter by type, candidate, or date range."
+   527→        icon={ScrollText}
+   528→        badge={
+   529→          <Badge variant="outline" className="border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
+   530→            {statsTotal?.total ?? 0} total
+   531→          </Badge>
+   532→        }
+   533→      />
+   534→
+   535→      {/* Stats row */}
+   536→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+   537→        <StatCard label="Total Logs" value={statsTotal?.total ?? "—"} icon={ScrollText} accent="emerald" sub="All time" />
+   538→        <StatCard label="Logs Today" value={statsToday?.total ?? "—"} icon={Clock} accent="cyan" sub="Since midnight" />
+   539→        <StatCard label="Errors" value={statsErrors?.total ?? "—"} icon={AlertCircle} accent="coral" sub="Status: Failed" />
+   540→        <StatCard label="Warnings" value={statsWarnings?.total ?? "—"} icon={AlertTriangle} accent="amber" sub="Status: Warning" />
+   541→      </div>
+   542→
+   543→      {/* Two-column layout */}
+   544→      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4">
+   545→        {/* LEFT: filter sidebar */}
+   546→        <aside className="space-y-3 lg:sticky lg:top-2 lg:self-start">
+   547→          <div className="rounded-xl border border-border/60 bg-card p-2.5 space-y-0.5">
+   548→            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-2 pb-1.5 pt-1">
+   549→              Log Types
+   550→            </p>
+   551→            <LogTypePill
+   552→              meta={ALL_LOG_TYPE_META}
+   553→              count={statsTotal?.total}
+   554→              active={activeType === "All"}
+   555→              onClick={() => handleTypeChange("All")}
+   556→            />
+   557→            <div className="h-px bg-border/40 my-1" />
+   558→            {LOG_TYPES.map((t) => (
+   559→              <LogTypePill
+   560→                key={t.value}
+   561→                meta={t}
+   562→                count={logTypeCounts[t.value]}
+   563→                active={activeType === t.value}
+   564→                onClick={() => handleTypeChange(t.value)}
+   565→              />
+   566→            ))}
+   567→          </div>
+   568→
+   569→          <div className="rounded-xl border border-border/60 bg-card p-2.5 space-y-2">
+   570→            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-1">Status</p>
+   571→            <div className="flex flex-wrap gap-1.5 px-1">
+   572→              {STATUS_OPTIONS.map((s) => (
+   573→                <button
+   574→                  key={s}
+   575→                  type="button"
+   576→                  onClick={() => handleStatusChange(s)}
+   577→                  className={cn(
+   578→                    "rounded-full px-2.5 py-1 text-xs font-medium border transition-all",
+   579→                    activeStatus === s
+   580→                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+   581→                      : "bg-background text-muted-foreground border-border/60 hover:bg-muted/40",
+   582→                  )}
+   583→                >
+   584→                  {s}
+   585→                </button>
+   586→              ))}
+   587→            </div>
+   588→          </div>
+   589→
+   590→          <div className="rounded-xl border border-border/60 bg-card p-2.5 space-y-2">
+   591→            <div className="flex items-center gap-1.5 px-1">
+   592→              <Clock className="h-3 w-3 text-muted-foreground" />
+   593→              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Date Range</p>
+   594→            </div>
+   595→            <div className="space-y-1.5 px-1">
+   596→              <div>
+   597→                <label className="text-[10px] uppercase tracking-wide text-muted-foreground/80">From</label>
+   598→                <Input
+   599→                  type="date"
+   600→                  value={fromDate}
+   601→                  max={toDate || undefined}
+   602→                  onChange={(e) => handleFromDateChange(e.target.value)}
+   603→                  className="h-8 text-xs mt-0.5"
+   604→                />
+   605→              </div>
+   606→              <div>
+   607→                <label className="text-[10px] uppercase tracking-wide text-muted-foreground/80">To</label>
+   608→                <Input
+   609→                  type="date"
+   610→                  value={toDate}
+   611→                  min={fromDate || undefined}
+   612→                  onChange={(e) => handleToDateChange(e.target.value)}
+   613→                  className="h-8 text-xs mt-0.5"
+   614→                />
+   615→              </div>
+   616→            </div>
+   617→            {hasActiveFilters && (
+   618→              <Button
+   619→                variant="ghost"
+   620→                size="sm"
+   621→                className="w-full h-7 text-xs text-muted-foreground hover:text-foreground"
+   622→                onClick={handleResetFilters}
+   623→              >
+   624→                <X className="h-3 w-3" /> Reset Filters
+   625→              </Button>
+   626→            )}
+   627→          </div>
+   628→        </aside>
+   629→
+   630→        {/* RIGHT: toolbar + table + pagination */}
+   631→        <section className="space-y-3 min-w-0">
+   632→          {/* Toolbar */}
+   633→          <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+   634→            <div className="relative w-full sm:max-w-md">
+   635→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   636→              <Input
+   637→                value={search}
+   638→                onChange={(e) => handleSearchChange(e.target.value)}
+   639→                placeholder="Search candidate, code, action, performed by, remarks…"
+   640→                className="pl-9 h-9 bg-background"
+   641→              />
+   642→            </div>
+   643→            <div className="flex items-center gap-2">
+   644→              <Button
+   645→                variant="outline"
+   646→                size="sm"
+   647→                onClick={handleExport}
+   648→                disabled={items.length === 0}
+   649→                className="gap-1.5"
+   650→              >
+   651→                <Download className="h-4 w-4" /> Export CSV
+   652→              </Button>
+   653→            </div>
+   654→          </div>
+   655→
+   656→          {/* Table card */}
+   657→          <div className="bg-card border border-border/60 rounded-xl overflow-hidden">
+   658→            {loading ? (
+   659→              <TableSkeleton rows={8} />
+   660→            ) : error ? (
+   661→              <EmptyState
+   662→                icon={AlertCircle}
+   663→                title="Failed to load logs"
+   664→                description={error}
+   665→                action={
+   666→                  <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+   667→                    Retry
+   668→                  </Button>
+   669→                }
+   670→              />
+   671→            ) : items.length === 0 ? (
+   672→              <EmptyState
+   673→                icon={Inbox}
+   674→                title="No logs match your filters."
+   675→                description="Try adjusting the log type, status, search keyword, or date range."
+   676→                action={
+   677→                  hasActiveFilters ? (
+   678→                    <Button variant="outline" size="sm" onClick={handleResetFilters}>
+   679→                      Reset Filters
+   680→                    </Button>
+   681→                  ) : undefined
+   682→                }
+   683→              />
+   684→            ) : (
+   685→              <div className="overflow-x-auto max-h-[68vh] overflow-y-auto custom-scrollbar">
+   686→                <Table>
+   687→                  <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur-sm">
+   688→                    <TableRow className="border-border/60 hover:bg-muted/60">
+   689→                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Date & Time</TableHead>
+   690→                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Candidate</TableHead>
+   691→                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Emp Code</TableHead>
+   692→                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Entity</TableHead>
+   693→                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Action Type</TableHead>
+   694→                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Value Change</TableHead>
+   695→                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Performed By</TableHead>
+   696→                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">IP Address</TableHead>
+   697→                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Device</TableHead>
+   698→                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Status</TableHead>
+   699→                      <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Remarks</TableHead>
+   700→                    </TableRow>
+   701→                  </TableHeader>
+   702→                  <TableBody>
+   703→                    {items.map((log, idx) => {
+   704→                      const meta = getLogTypeMeta(log.logType)
+   705→                      return (
+   706→                        <motion.tr
+   707→                          key={log.id}
+   708→                          initial={{ opacity: 0, y: 4 }}
+   709→                          animate={{ opacity: 1, y: 0 }}
+   710→                          transition={{ duration: 0.18, delay: Math.min(idx * 0.015, 0.25) }}
+   711→                          onClick={() => handleRowClick(log)}
+   712→                          className={cn(
+   713→                            "cursor-pointer border-b border-border/40 transition-colors hover:bg-muted/30 border-l-4",
+   714→                            meta?.borderClass || "border-l-slate-400",
+   715→                          )}
+   716→                        >
+   717→                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap py-2.5">
+   718→                            {formatDateTime(log.createdAt)}
+   719→                          </TableCell>
+   720→                          <TableCell className="py-2.5">
+   721→                            <div className="flex items-center gap-2">
+   722→                              <Avatar className="h-6 w-6">
+   723→                                <AvatarFallback
+   724→                                  className={cn("text-[10px] font-semibold", meta?.iconBgClass, meta?.iconTextClass)}
+   725→                                >
+   726→                                  {initials(log.candidateName || "?")}
+   727→                                </AvatarFallback>
+   728→                              </Avatar>
+   729→                              <span className="text-sm text-foreground truncate max-w-[150px]">
+   730→                                {log.candidateName || <span className="text-muted-foreground/50 italic text-xs">—</span>}
+   731→                              </span>
+   732→                            </div>
+   733→                          </TableCell>
+   734→                          <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap py-2.5">
+   735→                            {log.employeeCode || "—"}
+   736→                          </TableCell>
+   737→                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap py-2.5">
+   738→                            {log.entityType || "—"}
+   739→                          </TableCell>
+   740→                          <TableCell className="text-sm font-semibold text-foreground whitespace-nowrap py-2.5">
+   741→                            {log.actionType}
+   742→                          </TableCell>
+   743→                          <TableCell className="text-xs py-2.5">
+   744→                            <div className="flex items-center gap-1.5 max-w-[220px]">
+   745→                              <span className="text-muted-foreground truncate">
+   746→                                {log.oldValue || <span className="italic">∅</span>}
+   747→                              </span>
+   748→                              {(log.oldValue || log.newValue) && (
+   749→                                <ArrowRightLeft className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+   750→                              )}
+   751→                              <span className="text-foreground/80 truncate font-medium">
+   752→                                {log.newValue || <span className="italic">∅</span>}
+   753→                              </span>
+   754→                            </div>
+   755→                          </TableCell>
+   756→                          <TableCell className="py-2.5">
+   757→                            <div className="flex items-center gap-1.5">
+   758→                              <span className="text-sm text-foreground truncate max-w-[110px]">
+   759→                                {log.performedByName || <span className="text-muted-foreground/50 italic text-xs">System</span>}
+   760→                              </span>
+   761→                              {log.role && <RoleBadge role={log.role} />}
+   762→                            </div>
+   763→                          </TableCell>
+   764→                          <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap py-2.5">
+   765→                            {log.ipAddress || "—"}
+   766→                          </TableCell>
+   767→                          <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate py-2.5">
+   768→                            {log.device || "—"}
+   769→                          </TableCell>
+   770→                          <TableCell className="py-2.5">
+   771→                            <LogStatusBadge status={log.status} />
+   772→                          </TableCell>
+   773→                          <TableCell className="text-xs text-muted-foreground max-w-[180px] py-2.5">
+   774→                            {log.remarks ? (
+   775→                              <Tooltip>
+   776→                                <TooltipTrigger asChild>
+   777→                                  <span className="truncate block cursor-help">{log.remarks}</span>
+   778→                                </TooltipTrigger>
+   779→                                <TooltipContent className="max-w-sm whitespace-normal text-left">
+   780→                                  {log.remarks}
+   781→                                </TooltipContent>
+   782→                              </Tooltip>
+   783→                            ) : (
+   784→                              <span className="text-muted-foreground/40 italic">—</span>
+   785→                            )}
+   786→                          </TableCell>
+   787→                        </motion.tr>
+   788→                      )
+   789→                    })}
+   790→                  </TableBody>
+   791→                </Table>
+   792→              </div>
+   793→            )}
+   794→          </div>
+   795→
+   796→          {/* Pagination */}
+   797→          {!loading && !error && items.length > 0 && (
+   798→            <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between px-1 pt-1">
+   799→              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+   800→                <span>Rows per page:</span>
+   801→                <Select value={String(pageSize)} onValueChange={(v) => handlePageSizeChange(Number(v))}>
+   802→                  <SelectTrigger className="h-7 w-[72px] text-xs">
+   803→                    <SelectValue />
+   804→                  </SelectTrigger>
+   805→                  <SelectContent>
+   806→                    <SelectItem value="50">50</SelectItem>
+   807→                    <SelectItem value="100">100</SelectItem>
+   808→                    <SelectItem value="200">200</SelectItem>
+   809→                  </SelectContent>
+   810→                </Select>
+   811→                <span className="hidden sm:inline">· {total} total</span>
+   812→              </div>
+   813→              <div className="flex items-center gap-2">
+   814→                <Button
+   815→                  variant="outline"
+   816→                  size="sm"
+   817→                  disabled={page <= 1}
+   818→                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+   819→                  className="h-7 gap-1"
+   820→                >
+   821→                  <ChevronLeft className="h-3.5 w-3.5" /> Prev
+   822→                </Button>
+   823→                <span className="text-xs text-muted-foreground px-1">
+   824→                  Page <span className="font-semibold text-foreground">{page}</span> of {Math.max(totalPages, 1)}
+   825→                </span>
+   826→                <Button
+   827→                  variant="outline"
+   828→                  size="sm"
+   829→                  disabled={page >= totalPages}
+   830→                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+   831→                  className="h-7 gap-1"
+   832→                >
+   833→                  Next <ChevronRight className="h-3.5 w-3.5" />
+   834→                </Button>
+   835→              </div>
+   836→            </div>
+   837→          )}
+   838→
+   839→          {/* Hint footer */}
+   840→          {!loading && !error && items.length > 0 && (
+   841→            <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground/80 px-1">
+   842→              <Info className="h-3 w-3" />
+   843→              Click any row to view full log details including metadata.
+   844→            </p>
+   845→          )}
+   846→        </section>
+   847→      </div>
+   848→
+   849→      {/* Detail drawer */}
+   850→      <LogDetailSheet log={selectedLog} open={sheetOpen} onOpenChange={setSheetOpen} />
+   851→    </div>
+   852→  )
+   853→}
+   854→
+   855→export default LogsSection
+   856→

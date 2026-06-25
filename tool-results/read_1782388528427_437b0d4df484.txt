@@ -1,0 +1,1228 @@
+     1→"use client"
+     2→
+     3→// ============================================================================
+     4→//  SettingsSection — Onboarding module Settings (spec #13) + Entity
+     5→//  Configuration (spec #14). 15 vertical tabs on the left; the 3rd tab is a
+     6→//  special entity-config table (Add / Edit / Delete dialog). The other 14 are
+     7→//  form panels driven by the pre-seeded onboarding-settings JSON.
+     8→// ============================================================================
+     9→
+    10→import * as React from "react"
+    11→import { motion, AnimatePresence } from "framer-motion"
+    12→import {
+    13→  Settings as SettingsIcon, Users, Building2, KanbanSquare, Workflow as WorkflowIcon,
+    14→  FileText, LayoutTemplate, ListChecks, Mail, ShieldCheck, BadgeCheck, Globe,
+    15→  UserCog, ArrowUpDown, Lock, Save, Plus, Pencil, Trash2, AlertTriangle, Check, X,
+    16→  ChevronRight,
+    17→} from "lucide-react"
+    18→import { toast } from "sonner"
+    19→
+    20→import { cn } from "@/lib/utils"
+    21→import {
+    22→  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    23→} from "@/components/ui/dialog"
+    24→import {
+    25→  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+    26→  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+    27→} from "@/components/ui/alert-dialog"
+    28→import { Button } from "@/components/ui/button"
+    29→import { Input } from "@/components/ui/input"
+    30→import { Label } from "@/components/ui/label"
+    31→import { Switch } from "@/components/ui/switch"
+    32→import { Badge } from "@/components/ui/badge"
+    33→import { Skeleton } from "@/components/ui/skeleton"
+    34→import { Separator } from "@/components/ui/separator"
+    35→import {
+    36→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    37→} from "@/components/ui/select"
+    38→import {
+    39→  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+    40→} from "@/components/ui/tooltip"
+    41→import {
+    42→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    43→} from "@/components/ui/table"
+    44→
+    45→import { PageHeader, SectionCard, EmptyState, StatusBadge } from "@/components/hrms/ui"
+    46→import {
+    47→  useFetch, apiPost, apiPatch, apiDelete, safeToast, safeParseJson,
+    48→  formatDate,
+    49→} from "@/components/hrms/onboarding/shared"
+    50→
+    51→// ============================================================================
+    52→//  Types
+    53→// ============================================================================
+    54→
+    55→type FieldType = "switch" | "text" | "number" | "select"
+    56→
+    57→interface FieldDef {
+    58→  key: string
+    59→  label: string
+    60→  description?: string
+    61→  type: FieldType
+    62→  placeholder?: string
+    63→  options?: { value: string; label: string }[]
+    64→}
+    65→
+    66→interface CategoryDef {
+    67→  /** API category key — must match the seeded `OnboardingSetting.category` */
+    68→  category: string
+    69→  /** Visible tab label */
+    70→  label: string
+    71→  icon: React.ComponentType<{ className?: string }>
+    72→  description: string
+    73→  fields: FieldDef[]
+    74→}
+    75→
+    76→interface SettingValue {
+    77→  [category: string]: Record<string, any>
+    78→}
+    79→
+    80→interface EntityOption {
+    81→  id: string
+    82→  legalName: string
+    83→  tradeName?: string | null
+    84→  code: string
+    85→}
+    86→
+    87→interface EntityConfig {
+    88→  id: string
+    89→  tenantId: string
+    90→  entityId: string
+    91→  useTenantDefault: boolean
+    92→  defaultWorkflowId: string | null
+    93→  defaultKanbanBoardId: string | null
+    94→  defaultCandidateFormId: string | null
+    95→  defaultDocumentSet: string | null
+    96→  defaultChecklistSet: string | null
+    97→  defaultEmailGroup: string | null
+    98→  defaultVerificationRule: string | null
+    99→  defaultApprovalWorkflow: string | null
+   100→  defaultCandidatePortalSetting: string | null
+   101→  defaultEmployeeConversionRule: string | null
+   102→  defaultHrOwner: string | null
+   103→  defaultRecruiter: string | null
+   104→  defaultReportingManagerRule: string | null
+   105→  defaultSetupRule: string | null
+   106→  effectiveFrom: string | null
+   107→  effectiveTo: string | null
+   108→  status: string
+   109→  entity: { id: string; name: string; code: string } | null
+   110→  createdAt: string
+   111→  updatedAt: string
+   112→}
+   113→
+   114→// ============================================================================
+   115→//  Static field definitions — driven by seed defaults (onboarding-seed/route.ts)
+   116→// ============================================================================
+   117→
+   118→const CONFLICT_OPTIONS = [
+   119→  { value: "Highest Priority Wins", label: "Highest Priority Wins" },
+   120→  { value: "Block Conflict", label: "Block Conflict" },
+   121→  { value: "Ask Admin To Resolve", label: "Ask Admin To Resolve" },
+   122→]
+   123→
+   124→const SEND_MODE_OPTIONS = [
+   125→  { value: "Immediately", label: "Immediately" },
+   126→  { value: "Queue", label: "Queue" },
+   127→]
+   128→
+   129→const CATEGORIES: CategoryDef[] = [
+   130→  {
+   131→    category: "general",
+   132→    label: "General",
+   133→    icon: SettingsIcon,
+   134→    description: "Master switches for the onboarding module.",
+   135→    fields: [
+   136→      { key: "enableOnboardingModule", label: "Enable onboarding module", description: "Master switch for the entire module.", type: "switch" },
+   137→      { key: "enableCandidateOnboarding", label: "Candidate onboarding", description: "Allow new candidates to be initiated.", type: "switch" },
+   138→      { key: "enableEmployeeOnboarding", label: "Employee onboarding", description: "Allow candidates to convert to employees.", type: "switch" },
+   139→      { key: "enableBulkCandidateUpload", label: "Bulk candidate upload", description: "Allow importing candidates via CSV.", type: "switch" },
+   140→      { key: "enableRehireOnboarding", label: "Rehire onboarding", description: "Re-onboard ex-employees through a faster pipeline.", type: "switch" },
+   141→      { key: "enableInternalTransferOnboarding", label: "Internal transfer onboarding", description: "Onboard employees transferring between entities.", type: "switch" },
+   142→      { key: "allowSaveAsDraft", label: "Allow save as draft", description: "Let HR save candidate records as drafts.", type: "switch" },
+   143→      { key: "allowDeleteDraftCandidate", label: "Allow delete draft candidate", description: "Permit deletion of draft candidates.", type: "switch" },
+   144→    ],
+   145→  },
+   146→  {
+   147→    category: "candidate",
+   148→    label: "Candidate",
+   149→    icon: Users,
+   150→    description: "Candidate ID, duplicate detection and edit rules.",
+   151→    fields: [
+   152→      { key: "candidateIdAutoGenerate", label: "Auto-generate candidate ID", type: "switch" },
+   153→      { key: "candidateIdPrefix", label: "Candidate ID prefix", description: "Prefix used when generating candidate IDs.", type: "text", placeholder: "CAND" },
+   154→      { key: "candidateIdFormat", label: "Candidate ID format", description: "Use {YYYY} for year and {####} for running number.", type: "text", placeholder: "CAND-{YYYY}-{####}" },
+   155→      { key: "duplicateCheckByEmail", label: "Duplicate check by email", type: "switch" },
+   156→      { key: "duplicateCheckByMobile", label: "Duplicate check by mobile", type: "switch" },
+   157→      { key: "allowCandidateEditAfterSubmit", label: "Allow candidate edit after submit", type: "switch" },
+   158→      { key: "allowHrEditCandidateData", label: "Allow HR to edit candidate data", type: "switch" },
+   159→      { key: "candidatePortalExpiryDays", label: "Portal expiry (days)", description: "How long the candidate portal link stays valid.", type: "number", placeholder: "30" },
+   160→    ],
+   161→  },
+   162→  {
+   163→    category: "kanban",
+   164→    label: "Kanban",
+   165→    icon: KanbanSquare,
+   166→    description: "Board customisation and stage movement rules.",
+   167→    fields: [
+   168→      { key: "allowCustomKanbanBoard", label: "Allow custom boards", type: "switch" },
+   169→      { key: "allowEntityWiseBoard", label: "Entity-wise boards", type: "switch" },
+   170→      { key: "allowWorkflowWiseBoard", label: "Workflow-wise boards", type: "switch" },
+   171→      { key: "allowStageRename", label: "Allow stage rename", type: "switch" },
+   172→      { key: "allowStageReorder", label: "Allow stage reorder", type: "switch" },
+   173→      { key: "allowMandatoryStage", label: "Allow mandatory stage", type: "switch" },
+   174→      { key: "allowStageSkip", label: "Allow stage skip", type: "switch" },
+   175→      { key: "allowStageSla", label: "Allow stage SLA", type: "switch" },
+   176→      { key: "allowAutoStageMovement", label: "Allow auto stage movement", type: "switch" },
+   177→      { key: "allowManualStageMovement", label: "Allow manual stage movement", type: "switch" },
+   178→      { key: "allowDragAndDrop", label: "Allow drag-and-drop", type: "switch" },
+   179→      { key: "requireReasonForManualStageMove", label: "Require reason for manual move", type: "switch" },
+   180→    ],
+   181→  },
+   182→  {
+   183→    category: "workflow",
+   184→    label: "Workflow",
+   185→    icon: WorkflowIcon,
+   186→    description: "Workflow authoring, versioning and conflict handling.",
+   187→    fields: [
+   188→      { key: "allowMultipleWorkflows", label: "Allow multiple workflows", type: "switch" },
+   189→      { key: "allowEntityWiseWorkflow", label: "Entity-wise workflows", type: "switch" },
+   190→      { key: "allowDepartmentWiseWorkflow", label: "Department-wise workflows", type: "switch" },
+   191→      { key: "allowEmployeeTypeWiseWorkflow", label: "Employee-type-wise workflows", type: "switch" },
+   192→      { key: "allowWorkModeWiseWorkflow", label: "Work-mode-wise workflows", type: "switch" },
+   193→      { key: "allowWorkflowPriority", label: "Allow workflow priority", type: "switch" },
+   194→      { key: "allowWorkflowVersioning", label: "Allow workflow versioning", type: "switch" },
+   195→      { key: "allowCloneWorkflow", label: "Allow cloning workflows", type: "switch" },
+   196→      { key: "allowArchiveWorkflow", label: "Allow archiving workflows", type: "switch" },
+   197→      { key: "allowWorkflowPublishApproval", label: "Publish approval required", type: "switch" },
+   198→      {
+   199→        key: "conflictHandling", label: "Conflict handling", type: "select",
+   200→        description: "Behaviour when a candidate matches more than one workflow.",
+   201→        options: CONFLICT_OPTIONS,
+   202→      },
+   203→    ],
+   204→  },
+   205→  {
+   206→    category: "document",
+   207→    label: "Document",
+   208→    icon: FileText,
+   209→    description: "Document templates, e-sign, file types and verification rules.",
+   210→    fields: [
+   211→      { key: "allowDocumentLibrary", label: "Document library", type: "switch" },
+   212→      { key: "allowEntityWiseDocumentTemplate", label: "Entity-wise templates", type: "switch" },
+   213→      { key: "allowWorkflowWiseDocumentTemplate", label: "Workflow-wise templates", type: "switch" },
+   214→      { key: "allowCustomDocumentType", label: "Allow custom document types", type: "switch" },
+   215→      { key: "allowESign", label: "Allow e-sign", type: "switch" },
+   216→      { key: "allowTemplateVersioning", label: "Template versioning", type: "switch" },
+   217→      { key: "allowedFileTypes", label: "Allowed file types", description: "Comma-separated list of extensions.", type: "text", placeholder: "pdf,docx,jpg,png" },
+   218→      { key: "maximumFileSize", label: "Max file size (MB)", type: "number", placeholder: "10" },
+   219→      { key: "documentVerificationRequired", label: "Verification required", type: "switch" },
+   220→      { key: "documentExpiryTracking", label: "Expiry tracking", type: "switch" },
+   221→      { key: "blockOnboardingIfMandatoryDocumentMissing", label: "Block if mandatory missing", type: "switch" },
+   222→    ],
+   223→  },
+   224→  {
+   225→    category: "template",
+   226→    label: "Template",
+   227→    icon: LayoutTemplate,
+   228→    description: "Document/email template versioning and language defaults.",
+   229→    fields: [
+   230→      { key: "allowTemplateVersioning", label: "Template versioning", type: "switch" },
+   231→      { key: "allowTemplateSharing", label: "Allow template sharing", type: "switch" },
+   232→      { key: "defaultLanguage", label: "Default language", description: "ISO language code (e.g. en, hi, ta).", type: "text", placeholder: "en" },
+   233→    ],
+   234→  },
+   235→  {
+   236→    category: "checklist",
+   237→    label: "Checklist",
+   238→    icon: ListChecks,
+   239→    description: "Checklist authoring rules and scoping.",
+   240→    fields: [
+   241→      { key: "allowCustomChecklist", label: "Allow custom checklists", type: "switch" },
+   242→      { key: "allowEntityWiseChecklist", label: "Entity-wise checklists", type: "switch" },
+   243→      { key: "allowDepartmentWiseChecklist", label: "Department-wise checklists", type: "switch" },
+   244→      { key: "allowChecklistVersioning", label: "Checklist versioning", type: "switch" },
+   245→    ],
+   246→  },
+   247→  {
+   248→    category: "email",
+   249→    label: "Email",
+   250→    icon: Mail,
+   251→    description: "Email notifications, retry behaviour and default sender.",
+   252→    fields: [
+   253→      { key: "enableEmailNotifications", label: "Enable notifications", type: "switch" },
+   254→      { key: "enableEntityWiseEmailTemplates", label: "Entity-wise templates", type: "switch" },
+   255→      { key: "enableWorkflowWiseEmailTemplates", label: "Workflow-wise templates", type: "switch" },
+   256→      { key: "enableStageWiseEmailRules", label: "Stage-wise rules", type: "switch" },
+   257→      { key: "enableReminderEmails", label: "Reminder emails", type: "switch" },
+   258→      { key: "enableEscalationEmails", label: "Escalation emails", type: "switch" },
+   259→      { key: "enableEmailLogs", label: "Email logs", type: "switch" },
+   260→      { key: "enableRetryFailedEmails", label: "Retry failed emails", type: "switch" },
+   261→      { key: "defaultFromEmail", label: "Default from email", type: "text", placeholder: "onboarding@acme.com" },
+   262→      { key: "defaultReplyToEmail", label: "Default reply-to email", type: "text", placeholder: "hr@acme.com" },
+   263→      {
+   264→        key: "sendMode", label: "Send mode", type: "select",
+   265→        description: "Immediately sends on event; Queue batches for delivery.",
+   266→        options: SEND_MODE_OPTIONS,
+   267→      },
+   268→      { key: "retryCount", label: "Retry count", type: "number", placeholder: "3" },
+   269→      { key: "retryInterval", label: "Retry interval (seconds)", type: "number", placeholder: "60" },
+   270→    ],
+   271→  },
+   272→  {
+   273→    category: "verification",
+   274→    label: "Verification",
+   275→    icon: ShieldCheck,
+   276→    description: "Background, identity, education and bank verification rules.",
+   277→    fields: [
+   278→      { key: "enableDocumentVerification", label: "Document verification", type: "switch" },
+   279→      { key: "enableFormVerification", label: "Form verification", type: "switch" },
+   280→      { key: "enableBankVerification", label: "Bank verification", type: "switch" },
+   281→      { key: "enableIdentityVerification", label: "Identity verification", type: "switch" },
+   282→      { key: "enableBackgroundVerification", label: "Background verification", type: "switch" },
+   283→      { key: "enableEducationVerification", label: "Education verification", type: "switch" },
+   284→      { key: "enableExperienceVerification", label: "Experience verification", type: "switch" },
+   285→      { key: "allowSendBackForCorrection", label: "Allow send-back for correction", type: "switch" },
+   286→      { key: "requireVerificationRemarks", label: "Require verification remarks", type: "switch" },
+   287→      { key: "correctionAttemptLimit", label: "Correction attempt limit", type: "number", placeholder: "2" },
+   288→    ],
+   289→  },
+   290→  {
+   291→    category: "approval",
+   292→    label: "Approval",
+   293→    icon: BadgeCheck,
+   294→    description: "Approval workflows for offers, documents, salary and conversion.",
+   295→    fields: [
+   296→      { key: "enableApprovalWorkflow", label: "Enable approval workflow", type: "switch" },
+   297→      { key: "offerApprovalRequired", label: "Offer approval required", type: "switch" },
+   298→      { key: "documentApprovalRequired", label: "Document approval required", type: "switch" },
+   299→      { key: "formApprovalRequired", label: "Form approval required", type: "switch" },
+   300→      { key: "salaryApprovalRequired", label: "Salary approval required", type: "switch" },
+   301→      { key: "employeeConversionApprovalRequired", label: "Employee conversion approval", type: "switch" },
+   302→      { key: "allowRoleBasedApprover", label: "Role-based approver", type: "switch" },
+   303→      { key: "allowMultiLevelApproval", label: "Multi-level approval", type: "switch" },
+   304→      { key: "allowParallelApproval", label: "Parallel approval", type: "switch" },
+   305→      { key: "allowDelegation", label: "Allow delegation", type: "switch" },
+   306→      { key: "allowEscalation", label: "Allow escalation", type: "switch" },
+   307→    ],
+   308→  },
+   309→  {
+   310→    category: "candidate_portal",
+   311→    label: "Candidate Portal",
+   312→    icon: Globe,
+   313→    description: "What candidates see and can do in their self-service portal.",
+   314→    fields: [
+   315→      { key: "enableCandidatePortal", label: "Enable candidate portal", type: "switch" },
+   316→      { key: "requireOtpLogin", label: "Require OTP login", type: "switch" },
+   317→      { key: "requireEmailVerification", label: "Require email verification", type: "switch" },
+   318→      { key: "requireMobileVerification", label: "Require mobile verification", type: "switch" },
+   319→      { key: "showProgressTracker", label: "Show progress tracker", type: "switch" },
+   320→      { key: "showDocuments", label: "Show documents", type: "switch" },
+   321→      { key: "showForms", label: "Show forms", type: "switch" },
+   322→      { key: "showOfferLetter", label: "Show offer letter", type: "switch" },
+   323→      { key: "showChecklist", label: "Show checklist", type: "switch" },
+   324→      { key: "showHrContact", label: "Show HR contact", type: "switch" },
+   325→      { key: "showFaq", label: "Show FAQ", type: "switch" },
+   326→      { key: "allowCandidateDownloadDocuments", label: "Allow document download", type: "switch" },
+   327→      { key: "allowCandidateSaveAsDraft", label: "Allow save as draft", type: "switch" },
+   328→      { key: "allowCandidateCorrectionAfterRejection", label: "Allow correction after rejection", type: "switch" },
+   329→    ],
+   330→  },
+   331→  {
+   332→    category: "employee_conversion",
+   333→    label: "Employee Conversion",
+   334→    icon: UserCog,
+   335→    description: "What happens when a candidate is converted to an employee.",
+   336→    fields: [
+   337→      { key: "generateEmployeeCode", label: "Generate employee code", type: "switch" },
+   338→      { key: "createEmployeeProfile", label: "Create employee profile", type: "switch" },
+   339→      { key: "createEmployeeDraftFirst", label: "Create draft first", type: "switch" },
+   340→      { key: "createLogin", label: "Create login", type: "switch" },
+   341→      { key: "activateLoginOnJoiningDate", label: "Activate login on joining date", type: "switch" },
+   342→      { key: "assignRole", label: "Assign role", type: "switch" },
+   343→      { key: "assignReportingManager", label: "Assign reporting manager", type: "switch" },
+   344→      { key: "assignLeaveRule", label: "Assign leave rule", type: "switch" },
+   345→      { key: "assignAttendancePolicy", label: "Assign attendance policy", type: "switch" },
+   346→      { key: "assignShift", label: "Assign shift", type: "switch" },
+   347→      { key: "assignWeeklyOff", label: "Assign weekly off", type: "switch" },
+   348→      { key: "assignHolidayCalendar", label: "Assign holiday calendar", type: "switch" },
+   349→      { key: "assignPayrollGroup", label: "Assign payroll group", type: "switch" },
+   350→      { key: "assignSalaryStructure", label: "Assign salary structure", type: "switch" },
+   351→      { key: "assignAssets", label: "Assign assets", type: "switch" },
+   352→      { key: "blockConversionIfMandatoryDataMissing", label: "Block if mandatory data missing", type: "switch" },
+   353→      { key: "blockConversionIfVerificationPending", label: "Block if verification pending", type: "switch" },
+   354→      { key: "blockConversionIfApprovalPending", label: "Block if approval pending", type: "switch" },
+   355→    ],
+   356→  },
+   357→  {
+   358→    category: "import_export",
+   359→    label: "Import / Export",
+   360→    icon: ArrowUpDown,
+   361→    description: "Bulk data movement and template defaults.",
+   362→    fields: [
+   363→      { key: "allowBulkImport", label: "Allow bulk import", type: "switch" },
+   364→      { key: "allowBulkExport", label: "Allow bulk export", type: "switch" },
+   365→      { key: "importTemplate", label: "Import template", description: "Name of the default import template.", type: "text", placeholder: "Standard" },
+   366→    ],
+   367→  },
+   368→  {
+   369→    category: "audit",
+   370→    label: "Audit & Security",
+   371→    icon: Lock,
+   372→    description: "Audit trail, IP/device logging and retention rules.",
+   373→    fields: [
+   374→      { key: "logAllActions", label: "Log all actions", type: "switch" },
+   375→      { key: "logIpAndDevice", label: "Log IP and device", type: "switch" },
+   376→      { key: "enableAuditTrailExport", label: "Allow audit trail export", type: "switch" },
+   377→      { key: "retainLogsForDays", label: "Retain logs (days)", type: "number", placeholder: "365" },
+   378→    ],
+   379→  },
+   380→]
+   381→
+   382→// Special "Entity Configuration" pseudo-category. Sits at index 2 (3rd tab) per spec.
+   383→const ENTITY_TAB_ID = "__entity__"
+   384→
+   385→interface TabDef {
+   386→  id: string
+   387→  label: string
+   388→  icon: React.ComponentType<{ className?: string }>
+   389→  description: string
+   390→}
+   391→
+   392→function buildTabs(): TabDef[] {
+   393→  const tabs: TabDef[] = []
+   394→  for (let i = 0; i < CATEGORIES.length; i++) {
+   395→    const c = CATEGORIES[i]
+   396→    tabs.push({ id: c.category, label: c.label, icon: c.icon, description: c.description })
+   397→    // Insert the special "Entity Configuration" tab between Candidate (index 1) and Kanban (index 2).
+   398→    if (i === 1) {
+   399→      tabs.push({ id: ENTITY_TAB_ID, label: "Entity Configuration", icon: Building2, description: "Per-entity onboarding defaults." })
+   400→    }
+   401→  }
+   402→  return tabs
+   403→}
+   404→
+   405→const TABS: TabDef[] = buildTabs()
+   406→
+   407→// ============================================================================
+   408→//  Main section
+   409→// ============================================================================
+   410→
+   411→export function SettingsSection() {
+   412→  const [activeTab, setActiveTab] = React.useState<string>(CATEGORIES[0].category)
+   413→
+   414→  return (
+   415→    <div className="flex flex-col gap-5">
+   416→      <PageHeader
+   417→        title="Settings"
+   418→        description="Module-level controls and per-entity default configuration for the entire onboarding pipeline."
+   419→        icon={SettingsIcon}
+   420→      />
+   421→
+   422→      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-5">
+   423→        {/* ---------- LEFT: vertical tab bar ---------- */}
+   424→        <nav
+   425→          aria-label="Settings sections"
+   426→          className="lg:sticky lg:top-4 lg:self-start"
+   427→        >
+   428→          <div className="bg-muted/30 rounded-xl p-1.5 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible max-h-none lg:max-h-[calc(100vh-2rem)]">
+   429→            {TABS.map((t) => {
+   430→              const Icon = t.icon
+   431→              const active = activeTab === t.id
+   432→              const isEntity = t.id === ENTITY_TAB_ID
+   433→              return (
+   434→                <button
+   435→                  key={t.id}
+   436→                  onClick={() => setActiveTab(t.id)}
+   437→                  aria-current={active ? "page" : undefined}
+   438→                  className={cn(
+   439→                    "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all whitespace-nowrap lg:w-full lg:justify-between",
+   440→                    active
+   441→                      ? "bg-card shadow-soft text-emerald-700 dark:text-emerald-300"
+   442→                      : "text-muted-foreground hover:text-foreground hover:bg-card/60",
+   443→                  )}
+   444→                >
+   445→                  <span className="flex items-center gap-2.5 min-w-0">
+   446→                    <Icon className={cn(
+   447→                      "h-4 w-4 shrink-0",
+   448→                      active ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground group-hover:text-foreground",
+   449→                    )} />
+   450→                    <span className="truncate">{t.label}</span>
+   451→                  </span>
+   452→                  {isEntity && (
+   453→                    <Badge variant="outline" className="hidden lg:inline-flex text-[10px] px-1.5 py-0 h-4 border-emerald-300/60 text-emerald-700 dark:text-emerald-300 dark:border-emerald-500/40">
+   454→                      Spec #14
+   455→                    </Badge>
+   456→                  )}
+   457→                  {active && (
+   458→                    <ChevronRight className="hidden lg:block h-3.5 w-3.5 text-emerald-500 shrink-0" />
+   459→                  )}
+   460→                </button>
+   461→              )
+   462→            })}
+   463→          </div>
+   464→        </nav>
+   465→
+   466→        {/* ---------- RIGHT: tab content ---------- */}
+   467→        <div className="min-w-0">
+   468→          <AnimatePresence mode="wait">
+   469→            <motion.div
+   470→              key={activeTab}
+   471→              initial={{ opacity: 0, y: 8 }}
+   472→              animate={{ opacity: 1, y: 0 }}
+   473→              exit={{ opacity: 0, y: -8 }}
+   474→              transition={{ duration: 0.18, ease: "easeOut" }}
+   475→            >
+   476→              {activeTab === ENTITY_TAB_ID ? (
+   477→                <EntityConfigurationPanel />
+   478→              ) : (
+   479→                <SettingsFormPanel category={activeTab} />
+   480→              )}
+   481→            </motion.div>
+   482→          </AnimatePresence>
+   483→        </div>
+   484→      </div>
+   485→    </div>
+   486→  )
+   487→}
+   488→
+   489→// ============================================================================
+   490→//  Settings form panel — for the 14 normal categories
+   491→// ============================================================================
+   492→
+   493→function SettingsFormPanel({ category }: { category: string }) {
+   494→  const cat = CATEGORIES.find((c) => c.category === category)!
+   495→  const { data, loading, error, reload } = useFetch<{ settings: SettingValue }>("/api/onboarding-settings", [])
+   496→
+   497→  // Original loaded values (for dirty detection) and local working copy.
+   498→  const [original, setOriginal] = React.useState<Record<string, any>>({})
+   499→  const [values, setValues] = React.useState<Record<string, any>>({})
+   500→  const [saving, setSaving] = React.useState(false)
+   501→  const [loaded, setLoaded] = React.useState(false)
+   502→
+   503→  React.useEffect(() => {
+   504→    if (!data) return
+   505→    const catValues = data.settings?.[category] || {}
+   506→    const normalized: Record<string, any> = {}
+   507→    for (const f of cat.fields) {
+   508→      normalized[f.key] = catValues[f.key] ?? defaultValueFor(f)
+   509→    }
+   510→    setOriginal(normalized)
+   511→    setValues(normalized)
+   512→    setLoaded(true)
+   513→  }, [data, category])
+   514→
+   515→  const dirty = React.useMemo(() => {
+   516→    for (const f of cat.fields) {
+   517→      const o = original[f.key]
+   518→      const v = values[f.key]
+   519→      if (String(o ?? "") !== String(v ?? "")) return true
+   520→    }
+   521→    return false
+   522→  }, [original, values, cat.fields])
+   523→
+   524→  function setValue(key: string, value: any) {
+   525→    setValues((prev) => ({ ...prev, [key]: value }))
+   526→  }
+   527→
+   528→  function reset() {
+   529→    setValues(original)
+   530→  }
+   531→
+   532→  async function handleSave() {
+   533→    setSaving(true)
+   534→    // Build a minimal patch payload of only changed keys.
+   535→    const changed: Record<string, any> = {}
+   536→    for (const f of cat.fields) {
+   537→      const o = original[f.key]
+   538→      const v = values[f.key]
+   539→      if (String(o ?? "") !== String(v ?? "")) changed[f.key] = v
+   540→    }
+   541→    if (Object.keys(changed).length === 0) {
+   542→      toast.info("No changes to save.")
+   543→      setSaving(false)
+   544→      return
+   545→    }
+   546→    try {
+   547→      await apiPatch("/api/onboarding-settings", { settings: { [category]: changed } })
+   548→      toast.success("Settings saved")
+   549→      setOriginal({ ...values })
+   550→    } catch (e: any) {
+   551→      toast.error(e.message || "Failed to save settings")
+   552→    } finally {
+   553→      setSaving(false)
+   554→    }
+   555→  }
+   556→
+   557→  if (loading && !loaded) {
+   558→    return <SettingsFormSkeleton />
+   559→  }
+   560→  if (error) {
+   561→    return (
+   562→      <SectionCard title={cat.label} description={cat.description}>
+   563→        <EmptyState
+   564→          icon={AlertTriangle}
+   565→          title="Could not load settings"
+   566→          description={error}
+   567→          action={<Button size="sm" variant="outline" onClick={reload}>Retry</Button>}
+   568→        />
+   569→      </SectionCard>
+   570→    )
+   571→  }
+   572→
+   573→  // Group fields visually: switches get a 2-col grid; text/number/select go full-width below.
+   574→  const switches = cat.fields.filter((f) => f.type === "switch")
+   575→  const others = cat.fields.filter((f) => f.type !== "switch")
+   576→
+   577→  return (
+   578→    <div className="flex flex-col gap-4">
+   579→      <SectionCard
+   580→        title={cat.label + " Settings"}
+   581→        description={cat.description}
+   582→        action={
+   583→          dirty ? (
+   584→            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 border-0">
+   585→              Unsaved changes
+   586→            </Badge>
+   587→          ) : (
+   588→            <Badge variant="outline" className="border-emerald-300/60 text-emerald-700 dark:text-emerald-300 dark:border-emerald-500/40">
+   589→              <Check className="h-3 w-3 mr-1" /> Saved
+   590→            </Badge>
+   591→          )
+   592→        }
+   593→      >
+   594→        <div className="flex flex-col gap-6">
+   595→          {switches.length > 0 && (
+   596→            <div className={cn("grid gap-3", switches.length >= 4 ? "sm:grid-cols-2" : "grid-cols-1")}>
+   597→              {switches.map((f) => (
+   598→                <SwitchRow
+   599→                  key={f.key}
+   600→                  field={f}
+   601→                  checked={!!values[f.key]}
+   602→                  onChange={(v) => setValue(f.key, v)}
+   603→                />
+   604→              ))}
+   605→            </div>
+   606→          )}
+   607→
+   608→          {switches.length > 0 && others.length > 0 && <Separator />}
+   609→
+   610→          {others.length > 0 && (
+   611→            <div className="grid gap-4 sm:grid-cols-2">
+   612→              {others.map((f) => (
+   613→                <FieldRow
+   614→                  key={f.key}
+   615→                  field={f}
+   616→                  value={values[f.key]}
+   617→                  onChange={(v) => setValue(f.key, v)}
+   618→                />
+   619→              ))}
+   620→            </div>
+   621→          )}
+   622→        </div>
+   623→      </SectionCard>
+   624→
+   625→      {/* Sticky save bar */}
+   626→      <AnimatePresence>
+   627→        {dirty && (
+   628→          <motion.div
+   629→            initial={{ opacity: 0, y: 12 }}
+   630→            animate={{ opacity: 1, y: 0 }}
+   631→            exit={{ opacity: 0, y: 12 }}
+   632→            transition={{ duration: 0.18 }}
+   633→            className="sticky bottom-4 z-30"
+   634→          >
+   635→            <div className="rounded-xl border border-emerald-300/60 dark:border-emerald-500/40 bg-card/95 backdrop-blur shadow-card p-3 flex items-center justify-between gap-3">
+   636→              <div className="flex items-center gap-2 text-sm">
+   637→                <AlertTriangle className="h-4 w-4 text-amber-500" />
+   638→                <span className="text-foreground">You have unsaved changes in <span className="font-medium text-emerald-700 dark:text-emerald-300">{cat.label}</span>.</span>
+   639→              </div>
+   640→              <div className="flex items-center gap-2">
+   641→                <Button size="sm" variant="ghost" onClick={reset} disabled={saving}>
+   642→                  <X className="h-4 w-4" /> Discard
+   643→                </Button>
+   644→                <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
+   645→                  <Save className="h-4 w-4" />
+   646→                  {saving ? "Saving..." : "Save Changes"}
+   647→                </Button>
+   648→              </div>
+   649→            </div>
+   650→          </motion.div>
+   651→        )}
+   652→      </AnimatePresence>
+   653→    </div>
+   654→  )
+   655→}
+   656→
+   657→function defaultValueFor(f: FieldDef): any {
+   658→  switch (f.type) {
+   659→    case "switch": return false
+   660→    case "number": return 0
+   661→    case "select": return f.options?.[0]?.value ?? ""
+   662→    default: return ""
+   663→  }
+   664→}
+   665→
+   666→// ---------- Field row primitives ----------
+   667→
+   668→function SwitchRow({
+   669→  field, checked, onChange,
+   670→}: {
+   671→  field: FieldDef
+   672→  checked: boolean
+   673→  onChange: (v: boolean) => void
+   674→}) {
+   675→  return (
+   676→    <label
+   677→      htmlFor={`sw-${field.key}`}
+   678→      className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-background/60 hover:bg-background p-3 transition-colors cursor-pointer"
+   679→    >
+   680→      <div className="min-w-0">
+   681→        <div className="text-sm font-medium text-foreground">{field.label}</div>
+   682→        {field.description && (
+   683→          <div className="text-xs text-muted-foreground mt-0.5">{field.description}</div>
+   684→        )}
+   685→      </div>
+   686→      <Switch
+   687→        id={`sw-${field.key}`}
+   688→        checked={checked}
+   689→        onCheckedChange={onChange}
+   690→        className="data-[state=checked]:bg-emerald-600 dark:data-[state=checked]:bg-emerald-500 mt-0.5"
+   691→      />
+   692→    </label>
+   693→  )
+   694→}
+   695→
+   696→function FieldRow({
+   697→  field, value, onChange,
+   698→}: {
+   699→  field: FieldDef
+   700→  value: any
+   701→  onChange: (v: any) => void
+   702→}) {
+   703→  const isFullWidth = field.type === "text" && (field.key === "candidateIdFormat" || field.key === "allowedFileTypes")
+   704→  return (
+   705→    <div className={cn("flex flex-col gap-1.5", isFullWidth && "sm:col-span-2")}>
+   706→      <Label htmlFor={`f-${field.key}`} className="text-xs font-medium text-foreground">
+   707→        {field.label}
+   708→      </Label>
+   709→      {field.description && (
+   710→        <p className="text-xs text-muted-foreground">{field.description}</p>
+   711→      )}
+   712→      {field.type === "select" ? (
+   713→        <Select value={String(value ?? "")} onValueChange={onChange}>
+   714→          <SelectTrigger id={`f-${field.key}`} className="w-full">
+   715→            <SelectValue placeholder="Select..." />
+   716→          </SelectTrigger>
+   717→          <SelectContent>
+   718→            {field.options?.map((o) => (
+   719→              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+   720→            ))}
+   721→          </SelectContent>
+   722→        </Select>
+   723→      ) : (
+   724→        <Input
+   725→          id={`f-${field.key}`}
+   726→          type={field.type === "number" ? "number" : "text"}
+   727→          value={value ?? ""}
+   728→          placeholder={field.placeholder}
+   729→          onChange={(e) => onChange(field.type === "number" ? Number(e.target.value) : e.target.value)}
+   730→          className="h-9"
+   731→        />
+   732→      )}
+   733→    </div>
+   734→  )
+   735→}
+   736→
+   737→// ---------- Skeleton ----------
+   738→
+   739→function SettingsFormSkeleton() {
+   740→  return (
+   741→    <SectionCard title="Loading settings" description="Fetching the current configuration...">
+   742→      <div className="grid gap-3 sm:grid-cols-2">
+   743→        {Array.from({ length: 8 }).map((_, i) => (
+   744→          <div key={i} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 p-3">
+   745→            <div className="flex flex-col gap-1.5">
+   746→              <Skeleton className="h-3.5 w-32" />
+   747→              <Skeleton className="h-3 w-48" />
+   748→            </div>
+   749→            <Skeleton className="h-5 w-9 rounded-full" />
+   750→          </div>
+   751→        ))}
+   752→      </div>
+   753→    </SectionCard>
+   754→  )
+   755→}
+   756→
+   757→// ============================================================================
+   758→//  Entity Configuration panel — special tab per spec #14
+   759→// ============================================================================
+   760→
+   761→const ENTITY_CONFIG_STATUSES = ["Active", "Inactive", "Draft"]
+   762→
+   763→interface EntityConfigFormState {
+   764→  id?: string
+   765→  entityId: string
+   766→  useTenantDefault: boolean
+   767→  defaultWorkflowId: string
+   768→  defaultKanbanBoardId: string
+   769→  defaultCandidateFormId: string
+   770→  defaultDocumentSet: string
+   771→  defaultChecklistSet: string
+   772→  defaultEmailGroup: string
+   773→  defaultVerificationRule: string
+   774→  defaultApprovalWorkflow: string
+   775→  defaultCandidatePortalSetting: string
+   776→  defaultEmployeeConversionRule: string
+   777→  defaultHrOwner: string
+   778→  defaultRecruiter: string
+   779→  defaultReportingManagerRule: string
+   780→  defaultSetupRule: string
+   781→  effectiveFrom: string
+   782→  effectiveTo: string
+   783→  status: string
+   784→}
+   785→
+   786→const EMPTY_ENTITY_FORM: EntityConfigFormState = {
+   787→  entityId: "",
+   788→  useTenantDefault: true,
+   789→  defaultWorkflowId: "",
+   790→  defaultKanbanBoardId: "",
+   791→  defaultCandidateFormId: "",
+   792→  defaultDocumentSet: "",
+   793→  defaultChecklistSet: "",
+   794→  defaultEmailGroup: "",
+   795→  defaultVerificationRule: "",
+   796→  defaultApprovalWorkflow: "",
+   797→  defaultCandidatePortalSetting: "",
+   798→  defaultEmployeeConversionRule: "",
+   799→  defaultHrOwner: "",
+   800→  defaultRecruiter: "",
+   801→  defaultReportingManagerRule: "",
+   802→  defaultSetupRule: "",
+   803→  effectiveFrom: "",
+   804→  effectiveTo: "",
+   805→  status: "Active",
+   806→}
+   807→
+   808→function EntityConfigurationPanel() {
+   809→  const { data, loading, error, reload } = useFetch<{ items: EntityConfig[] }>("/api/onboarding-entity-config", [])
+   810→  const { data: entityData } = useFetch<{ items: EntityOption[] } | { items: any[] }>("/api/entities", [])
+   811→  const entities: EntityOption[] = (entityData as any)?.items || []
+   812→
+   813→  const [dialogOpen, setDialogOpen] = React.useState(false)
+   814→  const [editing, setEditing] = React.useState<EntityConfig | null>(null)
+   815→  const [form, setForm] = React.useState<EntityConfigFormState>(EMPTY_ENTITY_FORM)
+   816→  const [saving, setSaving] = React.useState(false)
+   817→  const [deleteTarget, setDeleteTarget] = React.useState<EntityConfig | null>(null)
+   818→  const [deleting, setDeleting] = React.useState(false)
+   819→
+   820→  function openAdd() {
+   821→    setEditing(null)
+   822→    setForm({ ...EMPTY_ENTITY_FORM })
+   823→    setDialogOpen(true)
+   824→  }
+   825→  function openEdit(item: EntityConfig) {
+   826→    setEditing(item)
+   827→    setForm({
+   828→      id: item.id,
+   829→      entityId: item.entityId,
+   830→      useTenantDefault: item.useTenantDefault,
+   831→      defaultWorkflowId: item.defaultWorkflowId || "",
+   832→      defaultKanbanBoardId: item.defaultKanbanBoardId || "",
+   833→      defaultCandidateFormId: item.defaultCandidateFormId || "",
+   834→      defaultDocumentSet: safeParseJson<string[]>(item.defaultDocumentSet, []).join(", "),
+   835→      defaultChecklistSet: safeParseJson<string[]>(item.defaultChecklistSet, []).join(", "),
+   836→      defaultEmailGroup: safeParseJson<string[]>(item.defaultEmailGroup, []).join(", "),
+   837→      defaultVerificationRule: item.defaultVerificationRule || "",
+   838→      defaultApprovalWorkflow: item.defaultApprovalWorkflow || "",
+   839→      defaultCandidatePortalSetting: item.defaultCandidatePortalSetting || "",
+   840→      defaultEmployeeConversionRule: item.defaultEmployeeConversionRule || "",
+   841→      defaultHrOwner: item.defaultHrOwner || "",
+   842→      defaultRecruiter: item.defaultRecruiter || "",
+   843→      defaultReportingManagerRule: item.defaultReportingManagerRule || "",
+   844→      defaultSetupRule: item.defaultSetupRule || "",
+   845→      effectiveFrom: item.effectiveFrom ? item.effectiveFrom.slice(0, 10) : "",
+   846→      effectiveTo: item.effectiveTo ? item.effectiveTo.slice(0, 10) : "",
+   847→      status: item.status || "Active",
+   848→    })
+   849→    setDialogOpen(true)
+   850→  }
+   851→
+   852→  function setField<K extends keyof EntityConfigFormState>(k: K, v: EntityConfigFormState[K]) {
+   853→    setForm((prev) => ({ ...prev, [k]: v }))
+   854→  }
+   855→
+   856→  function csvToArray(s: string): string[] {
+   857→    return s.split(",").map((x) => x.trim()).filter(Boolean)
+   858→  }
+   859→
+   860→  async function handleSubmit() {
+   861→    if (!form.entityId) {
+   862→      toast.error("Please select an entity.")
+   863→      return
+   864→    }
+   865→    setSaving(true)
+   866→    const payload = {
+   867→      entityId: form.entityId,
+   868→      useTenantDefault: form.useTenantDefault,
+   869→      defaultWorkflowId: form.defaultWorkflowId || null,
+   870→      defaultKanbanBoardId: form.defaultKanbanBoardId || null,
+   871→      defaultCandidateFormId: form.defaultCandidateFormId || null,
+   872→      defaultDocumentSet: csvToArray(form.defaultDocumentSet),
+   873→      defaultChecklistSet: csvToArray(form.defaultChecklistSet),
+   874→      defaultEmailGroup: csvToArray(form.defaultEmailGroup),
+   875→      defaultVerificationRule: form.defaultVerificationRule || null,
+   876→      defaultApprovalWorkflow: form.defaultApprovalWorkflow || null,
+   877→      defaultCandidatePortalSetting: form.defaultCandidatePortalSetting || null,
+   878→      defaultEmployeeConversionRule: form.defaultEmployeeConversionRule || null,
+   879→      defaultHrOwner: form.defaultHrOwner || null,
+   880→      defaultRecruiter: form.defaultRecruiter || null,
+   881→      defaultReportingManagerRule: form.defaultReportingManagerRule || null,
+   882→      defaultSetupRule: form.defaultSetupRule || null,
+   883→      effectiveFrom: form.effectiveFrom || null,
+   884→      effectiveTo: form.effectiveTo || null,
+   885→      status: form.status,
+   886→    }
+   887→    try {
+   888→      if (editing) {
+   889→        await safeToast(
+   890→          apiPatch(`/api/onboarding-entity-config/${editing.id}`, payload),
+   891→          "Entity config updated",
+   892→          "Could not update entity config",
+   893→        )
+   894→      } else {
+   895→        await safeToast(
+   896→          apiPost("/api/onboarding-entity-config", payload),
+   897→          "Entity config created",
+   898→          "Could not create entity config",
+   899→        )
+   900→      }
+   901→      setDialogOpen(false)
+   902→      reload()
+   903→    } catch {
+   904→      // toast already shown
+   905→    } finally {
+   906→      setSaving(false)
+   907→    }
+   908→  }
+   909→
+   910→  async function handleDelete() {
+   911→    if (!deleteTarget) return
+   912→    setDeleting(true)
+   913→    try {
+   914→      await safeToast(
+   915→        apiDelete(`/api/onboarding-entity-config/${deleteTarget.id}`),
+   916→        "Entity config deleted",
+   917→        "Could not delete entity config",
+   918→      )
+   919→      setDeleteTarget(null)
+   920→      reload()
+   921→    } catch {
+   922→      // toast already shown
+   923→    } finally {
+   924→      setDeleting(false)
+   925→    }
+   926→  }
+   927→
+   928→  const items = data?.items || []
+   929→
+   930→  return (
+   931→    <SectionCard
+   932→      title="Entity Configuration"
+   933→      description="Override tenant-level onboarding defaults per entity. When 'Use tenant default' is on, the entity inherits all tenant settings."
+   934→      action={
+   935→        <Button size="sm" onClick={openAdd} className="gap-1.5">
+   936→          <Plus className="h-4 w-4" /> Add Entity Config
+   937→        </Button>
+   938→      }
+   939→    >
+   940→      {loading ? (
+   941→        <div className="space-y-2">
+   942→          {Array.from({ length: 4 }).map((_, i) => (
+   943→            <Skeleton key={i} className="h-12 w-full" />
+   944→          ))}
+   945→        </div>
+   946→      ) : error ? (
+   947→        <EmptyState
+   948→          icon={AlertTriangle}
+   949→          title="Could not load entity configs"
+   950→          description={error}
+   951→          action={<Button size="sm" variant="outline" onClick={reload}>Retry</Button>}
+   952→        />
+   953→      ) : items.length === 0 ? (
+   954→        <EmptyState
+   955→          icon={Building2}
+   956→          title="No entity configurations yet"
+   957→          description="Add per-entity overrides for workflows, owners, document sets and more."
+   958→          action={<Button size="sm" onClick={openAdd} className="gap-1.5"><Plus className="h-4 w-4" /> Add Entity Config</Button>}
+   959→        />
+   960→      ) : (
+   961→        <div className="rounded-xl border border-border/60 overflow-hidden bg-card">
+   962→          <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+   963→            <Table>
+   964→              <TableHeader className="sticky top-0 z-10">
+   965→                <TableRow className="bg-muted/40 hover:bg-muted/40">
+   966→                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground min-w-[180px]">Entity</TableHead>
+   967→                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Use Tenant Default</TableHead>
+   968→                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Default Workflow</TableHead>
+   969→                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">HR Owner</TableHead>
+   970→                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</TableHead>
+   971→                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Effective From</TableHead>
+   972→                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Effective To</TableHead>
+   973→                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-right">Actions</TableHead>
+   974→                </TableRow>
+   975→              </TableHeader>
+   976→              <TableBody>
+   977→                {items.map((item) => (
+   978→                  <TableRow key={item.id} className="hover:bg-muted/30">
+   979→                    <TableCell className="text-sm">
+   980→                      <div className="flex flex-col">
+   981→                        <span className="font-medium text-foreground">{item.entity?.name || "—"}</span>
+   982→                        {item.entity?.code && (
+   983→                          <span className="text-xs text-muted-foreground">{item.entity.code}</span>
+   984→                        )}
+   985→                      </div>
+   986→                    </TableCell>
+   987→                    <TableCell>
+   988→                      {item.useTenantDefault ? (
+   989→                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 border-0">Yes</Badge>
+   990→                      ) : (
+   991→                        <Badge variant="outline" className="text-muted-foreground">No</Badge>
+   992→                      )}
+   993→                    </TableCell>
+   994→                    <TableCell className="text-sm text-muted-foreground">{item.defaultWorkflowId ? truncate(item.defaultWorkflowId) : "—"}</TableCell>
+   995→                    <TableCell className="text-sm text-muted-foreground">{item.defaultHrOwner ? truncate(item.defaultHrOwner) : "—"}</TableCell>
+   996→                    <TableCell><StatusBadge status={item.status} /></TableCell>
+   997→                    <TableCell className="text-sm text-muted-foreground">{formatDate(item.effectiveFrom)}</TableCell>
+   998→                    <TableCell className="text-sm text-muted-foreground">{formatDate(item.effectiveTo)}</TableCell>
+   999→                    <TableCell>
+  1000→                      <div className="flex items-center justify-end gap-1">
+  1001→                        <TooltipProvider delayDuration={200}>
+  1002→                          <Tooltip>
+  1003→                            <TooltipTrigger asChild>
+  1004→                              <Button
+  1005→                                size="icon"
+  1006→                                variant="ghost"
+  1007→                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+  1008→                                onClick={() => openEdit(item)}
+  1009→                                aria-label={`Edit ${item.entity?.name || "config"}`}
+  1010→                              >
+  1011→                                <Pencil className="h-3.5 w-3.5" />
+  1012→                              </Button>
+  1013→                            </TooltipTrigger>
+  1014→                            <TooltipContent>Edit</TooltipContent>
+  1015→                          </Tooltip>
+  1016→                        </TooltipProvider>
+  1017→                        <TooltipProvider delayDuration={200}>
+  1018→                          <Tooltip>
+  1019→                            <TooltipTrigger asChild>
+  1020→                              <Button
+  1021→                                size="icon"
+  1022→                                variant="ghost"
+  1023→                                className="h-8 w-8 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400"
+  1024→                                onClick={() => setDeleteTarget(item)}
+  1025→                                aria-label={`Delete ${item.entity?.name || "config"}`}
+  1026→                              >
+  1027→                                <Trash2 className="h-3.5 w-3.5" />
+  1028→                              </Button>
+  1029→                            </TooltipTrigger>
+  1030→                            <TooltipContent>Delete</TooltipContent>
+  1031→                          </Tooltip>
+  1032→                        </TooltipProvider>
+  1033→                      </div>
+  1034→                    </TableCell>
+  1035→                  </TableRow>
+  1036→                ))}
+  1037→              </TableBody>
+  1038→            </Table>
+  1039→          </div>
+  1040→        </div>
+  1041→      )}
+  1042→
+  1043→      {/* ---------- Add / Edit dialog ---------- */}
+  1044→      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+  1045→        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+  1046→          <DialogHeader>
+  1047→            <DialogTitle>{editing ? "Edit Entity Configuration" : "Add Entity Configuration"}</DialogTitle>
+  1048→            <DialogDescription>
+  1049→              {editing
+  1050→                ? "Update the default onboarding configuration for this entity."
+  1051→                : "Configure per-entity onboarding defaults. Toggle 'Use tenant default' to inherit tenant-level settings."}
+  1052→            </DialogDescription>
+  1053→          </DialogHeader>
+  1054→
+  1055→          <div className="flex flex-col gap-5 py-2">
+  1056→            {/* Entity + use-tenant-default + status row */}
+  1057→            <div className="grid gap-4 sm:grid-cols-2">
+  1058→              <div className="flex flex-col gap-1.5">
+  1059→                <Label className="text-xs font-medium">Entity</Label>
+  1060→                <Select value={form.entityId} onValueChange={(v) => setField("entityId", v)} disabled={!!editing}>
+  1061→                  <SelectTrigger className="w-full">
+  1062→                    <SelectValue placeholder="Select an entity" />
+  1063→                  </SelectTrigger>
+  1064→                  <SelectContent>
+  1065→                    {entities.map((e) => (
+  1066→                      <SelectItem key={e.id} value={e.id}>
+  1067→                        {e.tradeName || e.legalName} ({e.code})
+  1068→                      </SelectItem>
+  1069→                    ))}
+  1070→                  </SelectContent>
+  1071→                </Select>
+  1072→              </div>
+  1073→              <div className="flex flex-col gap-1.5">
+  1074→                <Label className="text-xs font-medium">Status</Label>
+  1075→                <Select value={form.status} onValueChange={(v) => setField("status", v)}>
+  1076→                  <SelectTrigger className="w-full">
+  1077→                    <SelectValue />
+  1078→                  </SelectTrigger>
+  1079→                  <SelectContent>
+  1080→                    {ENTITY_CONFIG_STATUSES.map((s) => (
+  1081→                      <SelectItem key={s} value={s}>{s}</SelectItem>
+  1082→                    ))}
+  1083→                  </SelectContent>
+  1084→                </Select>
+  1085→              </div>
+  1086→            </div>
+  1087→
+  1088→            {/* Use tenant default — special */}
+  1089→            <div className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+  1090→              <div className="min-w-0">
+  1091→                <div className="text-sm font-medium text-foreground">Use tenant default</div>
+  1092→                <p className="text-xs text-muted-foreground mt-0.5">
+  1093→                  When enabled, this entity inherits all tenant-level onboarding settings and the fields below are ignored.
+  1094→                </p>
+  1095→              </div>
+  1096→              <Switch
+  1097→                checked={form.useTenantDefault}
+  1098→                onCheckedChange={(v) => setField("useTenantDefault", v)}
+  1099→                className="data-[state=checked]:bg-emerald-600 dark:data-[state=checked]:bg-emerald-500 mt-0.5"
+  1100→              />
+  1101→            </div>
+  1102→
+  1103→            {form.useTenantDefault && (
+  1104→              <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+  1105→                <Check className="h-3.5 w-3.5" />
+  1106→                Using tenant defaults — fields below are disabled.
+  1107→              </div>
+  1108→            )}
+  1109→
+  1110→            {/* Default fields — disabled when useTenantDefault */}
+  1111→            <fieldset
+  1112→              disabled={form.useTenantDefault}
+  1113→              className={cn(
+  1114→                "grid gap-4 sm:grid-cols-2 transition-opacity",
+  1115→                form.useTenantDefault && "opacity-50",
+  1116→              )}
+  1117→            >
+  1118→              <EntityFormField label="Default Workflow ID" description="ID of the default workflow for this entity.">
+  1119→                <Input value={form.defaultWorkflowId} onChange={(e) => setField("defaultWorkflowId", e.target.value)} placeholder="wf_..." />
+  1120→              </EntityFormField>
+  1121→              <EntityFormField label="Default Kanban Board ID" description="Board to show for candidates of this entity.">
+  1122→                <Input value={form.defaultKanbanBoardId} onChange={(e) => setField("defaultKanbanBoardId", e.target.value)} placeholder="kb_..." />
+  1123→              </EntityFormField>
+  1124→              <EntityFormField label="Default Candidate Form ID" description="Form schema used for candidate intake.">
+  1125→                <Input value={form.defaultCandidateFormId} onChange={(e) => setField("defaultCandidateFormId", e.target.value)} placeholder="form_..." />
+  1126→              </EntityFormField>
+  1127→              <EntityFormField label="Default HR Owner" description="Employee ID or name of the default HR owner.">
+  1128→                <Input value={form.defaultHrOwner} onChange={(e) => setField("defaultHrOwner", e.target.value)} placeholder="emp_..." />
+  1129→              </EntityFormField>
+  1130→              <EntityFormField label="Default Recruiter" description="Employee ID or name of the default recruiter.">
+  1131→                <Input value={form.defaultRecruiter} onChange={(e) => setField("defaultRecruiter", e.target.value)} placeholder="emp_..." />
+  1132→              </EntityFormField>
+  1133→              <EntityFormField label="Default Reporting Manager Rule" description="Rule for picking the reporting manager.">
+  1134→                <Input value={form.defaultReportingManagerRule} onChange={(e) => setField("defaultReportingManagerRule", e.target.value)} placeholder="department_head" />
+  1135→              </EntityFormField>
+  1136→              <EntityFormField label="Default Verification Rule" description="Verification rule identifier.">
+  1137→                <Input value={form.defaultVerificationRule} onChange={(e) => setField("defaultVerificationRule", e.target.value)} placeholder="strict_v1" />
+  1138→              </EntityFormField>
+  1139→              <EntityFormField label="Default Approval Workflow" description="Approval workflow identifier.">
+  1140→                <Input value={form.defaultApprovalWorkflow} onChange={(e) => setField("defaultApprovalWorkflow", e.target.value)} placeholder="appr_std" />
+  1141→              </EntityFormField>
+  1142→              <EntityFormField label="Default Candidate Portal Setting" description="Portal setting identifier.">
+  1143→                <Input value={form.defaultCandidatePortalSetting} onChange={(e) => setField("defaultCandidatePortalSetting", e.target.value)} placeholder="portal_std" />
+  1144→              </EntityFormField>
+  1145→              <EntityFormField label="Default Employee Conversion Rule" description="Conversion rule identifier.">
+  1146→                <Input value={form.defaultEmployeeConversionRule} onChange={(e) => setField("defaultEmployeeConversionRule", e.target.value)} placeholder="conv_std" />
+  1147→              </EntityFormField>
+  1148→              <EntityFormField label="Default Setup Rule" description="Setup rule identifier (IT/HR provisioning).">
+  1149→                <Input value={form.defaultSetupRule} onChange={(e) => setField("defaultSetupRule", e.target.value)} placeholder="setup_std" />
+  1150→              </EntityFormField>
+  1151→              <EntityFormField label="Default Document Set" description="Comma-separated document template IDs.">
+  1152→                <Input value={form.defaultDocumentSet} onChange={(e) => setField("defaultDocumentSet", e.target.value)} placeholder="doc_1, doc_2" />
+  1153→              </EntityFormField>
+  1154→              <EntityFormField label="Default Checklist Set" description="Comma-separated checklist IDs.">
+  1155→                <Input value={form.defaultChecklistSet} onChange={(e) => setField("defaultChecklistSet", e.target.value)} placeholder="chk_1, chk_2" />
+  1156→              </EntityFormField>
+  1157→              <EntityFormField label="Default Email Group" description="Comma-separated email template IDs.">
+  1158→                <Input value={form.defaultEmailGroup} onChange={(e) => setField("defaultEmailGroup", e.target.value)} placeholder="eml_1, eml_2" />
+  1159→              </EntityFormField>
+  1160→              <EntityFormField label="Effective From" description="When this config becomes effective.">
+  1161→                <Input type="date" value={form.effectiveFrom} onChange={(e) => setField("effectiveFrom", e.target.value)} />
+  1162→              </EntityFormField>
+  1163→              <EntityFormField label="Effective To" description="When this config stops being effective.">
+  1164→                <Input type="date" value={form.effectiveTo} onChange={(e) => setField("effectiveTo", e.target.value)} />
+  1165→              </EntityFormField>
+  1166→            </fieldset>
+  1167→          </div>
+  1168→
+  1169→          <DialogFooter>
+  1170→            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+  1171→              Cancel
+  1172→            </Button>
+  1173→            <Button onClick={handleSubmit} disabled={saving} className="gap-1.5">
+  1174→              {saving ? "Saving..." : editing ? "Update Config" : "Create Config"}
+  1175→              {!saving && <Save className="h-4 w-4" />}
+  1176→            </Button>
+  1177→          </DialogFooter>
+  1178→        </DialogContent>
+  1179→      </Dialog>
+  1180→
+  1181→      {/* ---------- Delete confirm ---------- */}
+  1182→      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+  1183→        <AlertDialogContent>
+  1184→          <AlertDialogHeader>
+  1185→            <AlertDialogTitle>Delete entity configuration?</AlertDialogTitle>
+  1186→            <AlertDialogDescription>
+  1187→              This will permanently delete the configuration for <span className="font-medium text-foreground">{deleteTarget?.entity?.name || "this entity"}</span>. The entity will fall back to tenant defaults.
+  1188→            </AlertDialogDescription>
+  1189→          </AlertDialogHeader>
+  1190→          <AlertDialogFooter>
+  1191→            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+  1192→            <AlertDialogAction
+  1193→              onClick={handleDelete}
+  1194→              disabled={deleting}
+  1195→              className="bg-rose-600 hover:bg-rose-700 text-white"
+  1196→            >
+  1197→              {deleting ? "Deleting..." : "Delete"}
+  1198→            </AlertDialogAction>
+  1199→          </AlertDialogFooter>
+  1200→        </AlertDialogContent>
+  1201→      </AlertDialog>
+  1202→    </SectionCard>
+  1203→  )
+  1204→}
+  1205→
+  1206→function EntityFormField({
+  1207→  label, description, children,
+  1208→}: {
+  1209→  label: string
+  1210→  description?: string
+  1211→  children: React.ReactNode
+  1212→}) {
+  1213→  return (
+  1214→    <div className="flex flex-col gap-1.5">
+  1215→      <Label className="text-xs font-medium text-foreground">{label}</Label>
+  1216→      {description && <p className="text-xs text-muted-foreground">{description}</p>}
+  1217→      {children}
+  1218→    </div>
+  1219→  )
+  1220→}
+  1221→
+  1222→function truncate(s: string, n = 24): string {
+  1223→  if (s.length <= n) return s
+  1224→  return s.slice(0, n) + "…"
+  1225→}
+  1226→
+  1227→export default SettingsSection
+  1228→

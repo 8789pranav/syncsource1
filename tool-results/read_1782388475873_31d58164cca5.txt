@@ -1,0 +1,2002 @@
+     1→"use client"
+     2→
+     3→// ============================================================================
+     4→//  ChecklistsSection — Onboarding spec #10
+     5→//  Reusable task groups assigned per onboarding stage. Each checklist defines
+     6→//  who does what, by when. 9 categories (Candidate, HR, Manager, IT, Admin,
+     7→//  Payroll, Finance, Training, Compliance). Per checklist: name, code,
+     8→//  description, scope, default flag, status, version. Per task: 16 fields
+     9→//  (owner, due-date rule with offset, priority, mandatory/blocking/
+    10→//  attachment/comment/approval flags, auto-complete condition, reminder/
+    11→//  escalation rules, stage mapping, status) and drag-reorder.
+    12→// ============================================================================
+    13→
+    14→import * as React from "react"
+    15→import { useState, useMemo, useEffect, useCallback } from "react"
+    16→import type { DragEvent } from "react"
+    17→import { motion, AnimatePresence } from "framer-motion"
+    18→import { toast } from "sonner"
+    19→import {
+    20→  ListChecks, Plus, Search, Star, Pencil, Copy, Trash2, MoreHorizontal,
+    21→  ArrowLeft, GripVertical, ChevronDown, ChevronRight, Save, X, Hash,
+    22→  ShieldCheck, Clock, Flag, Paperclip, MessageSquare, CheckCheck,
+    23→  User as UserIcon, Building2, Network, Calendar, Layers, Eye, EyeOff,
+    24→  Sparkles, AlertCircle, Inbox, CheckCircle2, FileText, Briefcase,
+    25→  CreditCard, PiggyBank, GraduationCap, Scale, Settings2, Tag,
+    26→} from "lucide-react"
+    27→
+    28→import { cn } from "@/lib/utils"
+    29→import { Button } from "@/components/ui/button"
+    30→import { Input } from "@/components/ui/input"
+    31→import { Textarea } from "@/components/ui/textarea"
+    32→import { Label } from "@/components/ui/label"
+    33→import { Badge } from "@/components/ui/badge"
+    34→import { Switch } from "@/components/ui/switch"
+    35→import { Card, CardContent } from "@/components/ui/card"
+    36→import { Separator } from "@/components/ui/separator"
+    37→import { Skeleton } from "@/components/ui/skeleton"
+    38→import {
+    39→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    40→} from "@/components/ui/select"
+    41→import {
+    42→  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    43→} from "@/components/ui/dialog"
+    44→import {
+    45→  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    46→  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+    47→} from "@/components/ui/alert-dialog"
+    48→import {
+    49→  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+    50→  DropdownMenuTrigger, DropdownMenuLabel,
+    51→} from "@/components/ui/dropdown-menu"
+    52→import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+    53→
+    54→import { PageHeader, EmptyState, StatusBadge } from "@/components/hrms/ui"
+    55→import {
+    56→  useFetch, apiPost, apiPatch, apiDelete, safeToast, formatDate, timeAgo,
+    57→} from "@/components/hrms/onboarding/shared"
+    58→
+    59→// ============================================================================
+    60→//  Types — mirror the Prisma models OnboardingChecklist + OnboardingChecklistTask
+    61→// ============================================================================
+    62→
+    63→export interface Checklist {
+    64→  id: string
+    65→  name: string
+    66→  code: string
+    67→  description?: string | null
+    68→  category: string
+    69→  scopeType: string
+    70→  entityId?: string | null
+    71→  departmentId?: string | null
+    72→  employeeType?: string | null
+    73→  isDefault: boolean
+    74→  status: string
+    75→  version: number
+    76→  createdAt: string
+    77→  updatedAt: string
+    78→  _count?: { tasks: number }
+    79→  tasks?: ChecklistTask[]
+    80→}
+    81→
+    82→export interface ChecklistTask {
+    83→  id: string
+    84→  checklistId: string
+    85→  name: string
+    86→  code: string
+    87→  description?: string | null
+    88→  ownerType: string
+    89→  ownerId?: string | null
+    90→  dueDateRule: string
+    91→  dueDateOffset: number
+    92→  priority: string
+    93→  isMandatory: boolean
+    94→  isBlocking: boolean
+    95→  requiresAttachment: boolean
+    96→  requiresComment: boolean
+    97→  requiresApproval: boolean
+    98→  autoCompleteCondition?: string | null
+    99→  reminderRule?: string | null
+   100→  escalationRule?: string | null
+   101→  stageMapping?: string | null
+   102→  status: string
+   103→  order: number
+   104→  createdAt?: string
+   105→  updatedAt?: string
+   106→}
+   107→
+   108→// ============================================================================
+   109→//  Constants
+   110→// ============================================================================
+   111→
+   112→type LucideIcon = React.ComponentType<{ className?: string }>
+   113→
+   114→interface CategoryMeta {
+   115→  value: string
+   116→  label: string
+   117→  icon: LucideIcon
+   118→  color: ColorName
+   119→}
+   120→
+   121→const CATEGORIES: CategoryMeta[] = [
+   122→  { value: "Candidate", label: "Candidate", icon: UserIcon, color: "emerald" },
+   123→  { value: "HR", label: "HR", icon: Briefcase, color: "teal" },
+   124→  { value: "Manager", label: "Manager", icon: Network, color: "cyan" },
+   125→  { value: "IT", label: "IT", icon: Settings2, color: "amber" },
+   126→  { value: "Admin", label: "Admin", icon: Building2, color: "slate" },
+   127→  { value: "Payroll", label: "Payroll", icon: CreditCard, color: "lime" },
+   128→  { value: "Finance", label: "Finance", icon: PiggyBank, color: "orange" },
+   129→  { value: "Training", label: "Training", icon: GraduationCap, color: "violet" },
+   130→  { value: "Compliance", label: "Compliance", icon: Scale, color: "rose" },
+   131→]
+   132→
+   133→const CATEGORY_MAP: Record<string, CategoryMeta> = Object.fromEntries(
+   134→  CATEGORIES.map((c) => [c.value, c])
+   135→)
+   136→
+   137→const SCOPE_TYPES = [
+   138→  { value: "tenant", label: "Tenant-wide" },
+   139→  { value: "entity", label: "Specific Entity" },
+   140→  { value: "department", label: "Specific Department" },
+   141→  { value: "employee_type", label: "Employee Type" },
+   142→]
+   143→
+   144→interface OwnerTypeMeta {
+   145→  value: string
+   146→  label: string
+   147→  color: ColorName
+   148→}
+   149→
+   150→const OWNER_TYPES: OwnerTypeMeta[] = [
+   151→  { value: "candidate", label: "Candidate", color: "emerald" },
+   152→  { value: "hr_owner", label: "HR Owner", color: "teal" },
+   153→  { value: "recruiter", label: "Recruiter", color: "cyan" },
+   154→  { value: "reporting_manager", label: "Reporting Manager", color: "amber" },
+   155→  { value: "department_head", label: "Department Head", color: "violet" },
+   156→  { value: "it_admin", label: "IT Admin", color: "rose" },
+   157→  { value: "admin_team", label: "Admin Team", color: "slate" },
+   158→  { value: "payroll_admin", label: "Payroll Admin", color: "lime" },
+   159→  { value: "finance_admin", label: "Finance Admin", color: "orange" },
+   160→  { value: "training_owner", label: "Training Owner", color: "fuchsia" },
+   161→  { value: "specific_employee", label: "Specific Employee", color: "pink" },
+   162→  { value: "role_based", label: "Role-Based Owner", color: "slate" },
+   163→]
+   164→
+   165→const OWNER_TYPE_MAP: Record<string, OwnerTypeMeta> = Object.fromEntries(
+   166→  OWNER_TYPES.map((o) => [o.value, o])
+   167→)
+   168→
+   169→interface DueDateRuleMeta {
+   170→  value: string
+   171→  label: string
+   172→  hasOffset: boolean
+   173→  offsetLabel?: string
+   174→}
+   175→
+   176→const DUE_DATE_RULES: DueDateRuleMeta[] = [
+   177→  { value: "on_start", label: "On Onboarding Start Date", hasOffset: false },
+   178→  { value: "before_joining_X", label: "Before Joining Date - X Days", hasOffset: true, offsetLabel: "Days before" },
+   179→  { value: "on_joining", label: "On Joining Date", hasOffset: false },
+   180→  { value: "after_joining_X", label: "After Joining Date + X Days", hasOffset: true, offsetLabel: "Days after" },
+   181→  { value: "after_previous_X", label: "After Previous Task Completion + X Days", hasOffset: true, offsetLabel: "Days after previous" },
+   182→  { value: "manual", label: "Manual Date", hasOffset: false },
+   183→]
+   184→
+   185→const DUE_DATE_RULE_MAP: Record<string, DueDateRuleMeta> = Object.fromEntries(
+   186→  DUE_DATE_RULES.map((r) => [r.value, r])
+   187→)
+   188→
+   189→interface PriorityMeta {
+   190→  value: string
+   191→  color: ColorName
+   192→}
+   193→
+   194→const PRIORITIES: PriorityMeta[] = [
+   195→  { value: "Low", color: "slate" },
+   196→  { value: "Medium", color: "cyan" },
+   197→  { value: "High", color: "amber" },
+   198→  { value: "Critical", color: "rose" },
+   199→]
+   200→
+   201→const PRIORITY_MAP: Record<string, PriorityMeta> = Object.fromEntries(
+   202→  PRIORITIES.map((p) => [p.value, p])
+   203→)
+   204→
+   205→const CHECKLIST_STATUSES = ["Active", "Draft", "Archived"]
+   206→const TASK_STATUSES = ["Active", "Inactive", "Optional"]
+   207→
+   208→// ============================================================================
+   209→//  Color system — only emerald/teal/cyan/amber/violet/rose/slate/lime/
+   210→//  orange/fuchsia/pink. NO indigo. NO blue.
+   211→// ============================================================================
+   212→
+   213→type ColorName =
+   214→  | "emerald" | "teal" | "cyan" | "amber" | "violet" | "rose"
+   215→  | "slate" | "lime" | "orange" | "fuchsia" | "pink"
+   216→
+   217→const COLOR_BADGE: Record<ColorName, string> = {
+   218→  emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20",
+   219→  teal: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400 border-teal-200 dark:border-teal-500/20",
+   220→  cyan: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400 border-cyan-200 dark:border-cyan-500/20",
+   221→  amber: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400 border-amber-200 dark:border-amber-500/20",
+   222→  violet: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400 border-violet-200 dark:border-violet-500/20",
+   223→  rose: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400 border-rose-200 dark:border-rose-500/20",
+   224→  slate: "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300 border-slate-200 dark:border-slate-500/20",
+   225→  lime: "bg-lime-100 text-lime-700 dark:bg-lime-500/15 dark:text-lime-400 border-lime-200 dark:border-lime-500/20",
+   226→  orange: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400 border-orange-200 dark:border-orange-500/20",
+   227→  fuchsia: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-400 border-fuchsia-200 dark:border-fuchsia-500/20",
+   228→  pink: "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400 border-pink-200 dark:border-pink-500/20",
+   229→}
+   230→
+   231→const COLOR_DOT: Record<ColorName, string> = {
+   232→  emerald: "bg-emerald-500",
+   233→  teal: "bg-teal-500",
+   234→  cyan: "bg-cyan-500",
+   235→  amber: "bg-amber-500",
+   236→  violet: "bg-violet-500",
+   237→  rose: "bg-rose-500",
+   238→  slate: "bg-slate-500",
+   239→  lime: "bg-lime-500",
+   240→  orange: "bg-orange-500",
+   241→  fuchsia: "bg-fuchsia-500",
+   242→  pink: "bg-pink-500",
+   243→}
+   244→
+   245→const COLOR_SOFT_BG: Record<ColorName, string> = {
+   246→  emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+   247→  teal: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+   248→  cyan: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+   249→  amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+   250→  violet: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+   251→  rose: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+   252→  slate: "bg-slate-500/10 text-slate-600 dark:text-slate-300",
+   253→  lime: "bg-lime-500/10 text-lime-600 dark:text-lime-400",
+   254→  orange: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+   255→  fuchsia: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400",
+   256→  pink: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+   257→}
+   258→
+   259→// ============================================================================
+   260→//  Helpers
+   261→// ============================================================================
+   262→
+   263→function toCode(name: string): string {
+   264→  const v = name.trim().toUpperCase().replace(/[^A-Z0-9 ]/g, "").trim().replace(/\s+/g, "_")
+   265→  return v.slice(0, 32) || `CHK_${Date.now().toString().slice(-4)}`
+   266→}
+   267→
+   268→function categoryMeta(cat: string): CategoryMeta {
+   269→  return CATEGORY_MAP[cat] || { value: cat, label: cat, icon: Tag, color: "slate" }
+   270→}
+   271→
+   272→function ownerTypeMeta(t: string): OwnerTypeMeta {
+   273→  return OWNER_TYPE_MAP[t] || { value: t, label: t.replace(/_/g, " "), color: "slate" }
+   274→}
+   275→
+   276→function dueDateRuleMeta(r: string): DueDateRuleMeta {
+   277→  return DUE_DATE_RULE_MAP[r] || { value: r, label: r.replace(/_/g, " "), hasOffset: false }
+   278→}
+   279→
+   280→function dueDateRuleLabel(r: string, offset: number): string {
+   281→  const meta = dueDateRuleMeta(r)
+   282→  if (!meta.hasOffset) return meta.label
+   283→  return meta.label.replace("X", String(offset ?? 0))
+   284→}
+   285→
+   286→// ============================================================================
+   287→//  Small reusable badge components
+   288→// ============================================================================
+   289→
+   290→function ColorBadge({ color, children, className }: { color: ColorName; children: React.ReactNode; className?: string }) {
+   291→  return (
+   292→    <Badge variant="secondary" className={cn("font-medium border", COLOR_BADGE[color], className)}>
+   293→      {children}
+   294→    </Badge>
+   295→  )
+   296→}
+   297→
+   298→function FlagChip({ active, color, icon: Icon, label }: {
+   299→  active: boolean
+   300→  color: ColorName
+   301→  icon: LucideIcon
+   302→  label: string
+   303→}) {
+   304→  if (!active) return null
+   305→  return (
+   306→    <span className={cn("inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium border", COLOR_BADGE[color])}>
+   307→      <Icon className="h-2.5 w-2.5" />
+   308→      {label}
+   309→    </span>
+   310→  )
+   311→}
+   312→
+   313→// ============================================================================
+   314→//  Inline-editable text — click to edit, Enter to save, Esc to cancel
+   315→// ============================================================================
+   316→
+   317→function InlineEditableText({
+   318→  value, onSave, className, inputClassName,
+   319→}: {
+   320→  value: string
+   321→  onSave: (v: string) => void
+   322→  className?: string
+   323→  inputClassName?: string
+   324→}) {
+   325→  const [editing, setEditing] = useState(false)
+   326→  const [draft, setDraft] = useState(value)
+   327→  // Sync external value -> draft when the parent value changes (React's
+   328→  // "adjusting state during render" pattern — avoids useEffect).
+   329→  const [lastExternal, setLastExternal] = useState(value)
+   330→  if (value !== lastExternal) {
+   331→    setLastExternal(value)
+   332→    setDraft(value)
+   333→  }
+   334→
+   335→  const commit = () => {
+   336→    const v = draft.trim()
+   337→    if (!v) {
+   338→      setDraft(value)
+   339→      setEditing(false)
+   340→      return
+   341→    }
+   342→    if (v !== value) onSave(v)
+   343→    setEditing(false)
+   344→  }
+   345→
+   346→  if (editing) {
+   347→    return (
+   348→      <input
+   349→        autoFocus
+   350→        value={draft}
+   351→        onChange={(e) => setDraft(e.target.value)}
+   352→        onBlur={commit}
+   353→        onKeyDown={(e) => {
+   354→          if (e.key === "Enter") { e.preventDefault(); commit() }
+   355→          if (e.key === "Escape") { setDraft(value); setEditing(false) }
+   356→        }}
+   357→        className={cn(
+   358→          "bg-background border border-emerald-400/60 rounded-md px-2 py-1 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30",
+   359→          inputClassName
+   360→        )}
+   361→      />
+   362→    )
+   363→  }
+   364→
+   365→  return (
+   366→    <button
+   367→      type="button"
+   368→      onClick={() => setEditing(true)}
+   369→      className={cn(
+   370→        "group inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 hover:bg-muted/60 transition-colors text-left",
+   371→        className
+   372→      )}
+   373→      title="Click to edit"
+   374→    >
+   375→      <span className="truncate">{value}</span>
+   376→      <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+   377→    </button>
+   378→  )
+   379→}
+   380→
+   381→// ============================================================================
+   382→//  Category sidebar
+   383→// ============================================================================
+   384→
+   385→function CategorySidebar({
+   386→  categories,
+   387→  counts,
+   388→  active,
+   389→  onSelect,
+   390→  total,
+   391→}: {
+   392→  categories: CategoryMeta[]
+   393→  counts: Record<string, number>
+   394→  active: string | "all"
+   395→  onSelect: (v: string | "all") => void
+   396→  total: number
+   397→}) {
+   398→  return (
+   399→    <nav className="flex flex-col gap-1">
+   400→      <button
+   401→        onClick={() => onSelect("all")}
+   402→        className={cn(
+   403→          "flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+   404→          active === "all"
+   405→            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/20"
+   406→            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+   407→        )}
+   408→      >
+   409→        <span className="flex items-center gap-2">
+   410→          <ListChecks className="h-4 w-4" />
+   411→          All Checklists
+   412→        </span>
+   413→        <span className={cn(
+   414→          "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+   415→          active === "all" ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"
+   416→        )}>
+   417→          {total}
+   418→        </span>
+   419→      </button>
+   420→
+   421→      <Separator className="my-1" />
+   422→
+   423→      {categories.map((c) => {
+   424→        const Icon = c.icon
+   425→        const isActive = active === c.value
+   426→        const count = counts[c.value] ?? 0
+   427→        return (
+   428→          <button
+   429→            key={c.value}
+   430→            onClick={() => onSelect(c.value)}
+   431→            className={cn(
+   432→              "flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+   433→              isActive
+   434→                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/20"
+   435→                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+   436→            )}
+   437→          >
+   438→            <span className="flex items-center gap-2 min-w-0">
+   439→              <span className={cn("grid h-5 w-5 place-items-center rounded", COLOR_SOFT_BG[c.color])}>
+   440→                <Icon className="h-3 w-3" />
+   441→              </span>
+   442→              <span className="truncate">{c.label}</span>
+   443→            </span>
+   444→            <span className={cn(
+   445→              "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+   446→              isActive ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"
+   447→            )}>
+   448→              {count}
+   449→            </span>
+   450→          </button>
+   451→        )
+   452→      })}
+   453→    </nav>
+   454→  )
+   455→}
+   456→
+   457→// ============================================================================
+   458→//  Checklist card (list view)
+   459→// ============================================================================
+   460→
+   461→function ChecklistCard({
+   462→  checklist,
+   463→  onOpen,
+   464→  onEdit,
+   465→  onClone,
+   466→  onSetDefault,
+   467→  onDelete,
+   468→}: {
+   469→  checklist: Checklist
+   470→  onOpen: () => void
+   471→  onEdit: () => void
+   472→  onClone: () => void
+   473→  onSetDefault: () => void
+   474→  onDelete: () => void
+   475→}) {
+   476→  const cat = categoryMeta(checklist.category)
+   477→  const CatIcon = cat.icon
+   478→  const taskCount = checklist._count?.tasks ?? checklist.tasks?.length ?? 0
+   479→
+   480→  return (
+   481→    <motion.div
+   482→      layout
+   483→      initial={{ opacity: 0, y: 8 }}
+   484→      animate={{ opacity: 1, y: 0 }}
+   485→      exit={{ opacity: 0, y: -8 }}
+   486→      transition={{ duration: 0.15 }}
+   487→      className="group relative bg-card border border-border/60 rounded-xl shadow-soft hover:shadow-md hover:border-emerald-500/40 transition-all"
+   488→    >
+   489→      <div className="p-4 flex flex-col gap-3">
+   490→        {/* Top row: name + actions */}
+   491→        <div className="flex items-start justify-between gap-2">
+   492→          <div className="min-w-0 flex-1">
+   493→            <div className="flex items-center gap-1.5 flex-wrap">
+   494→              <h3 className="text-sm font-semibold text-foreground truncate">{checklist.name}</h3>
+   495→              {checklist.isDefault && (
+   496→                <Tooltip>
+   497→                  <TooltipTrigger asChild>
+   498→                    <span><Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /></span>
+   499→                  </TooltipTrigger>
+   500→                  <TooltipContent>Default checklist for {checklist.category}</TooltipContent>
+   501→                </Tooltip>
+   502→              )}
+   503→            </div>
+   504→            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+   505→              <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground">
+   506→                <Hash className="h-2.5 w-2.5" />
+   507→                {checklist.code}
+   508→              </span>
+   509→              <ColorBadge color={cat.color}>
+   510→                <CatIcon className="h-2.5 w-2.5 mr-0.5" />
+   511→                {cat.label}
+   512→              </ColorBadge>
+   513→            </div>
+   514→          </div>
+   515→
+   516→          <DropdownMenu>
+   517→            <DropdownMenuTrigger asChild>
+   518→              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 opacity-60 group-hover:opacity-100">
+   519→                <MoreHorizontal className="h-4 w-4" />
+   520→              </Button>
+   521→            </DropdownMenuTrigger>
+   522→            <DropdownMenuContent align="end" className="w-44">
+   523→              <DropdownMenuLabel className="text-[11px] text-muted-foreground">Actions</DropdownMenuLabel>
+   524→              <DropdownMenuItem onClick={onEdit}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</DropdownMenuItem>
+   525→              <DropdownMenuItem onClick={onClone}><Copy className="h-3.5 w-3.5 mr-2" /> Clone</DropdownMenuItem>
+   526→              <DropdownMenuItem
+   527→                onClick={onSetDefault}
+   528→                disabled={checklist.isDefault}
+   529→              >
+   530→                <Star className="h-3.5 w-3.5 mr-2" /> {checklist.isDefault ? "Default (set)" : "Set as Default"}
+   531→              </DropdownMenuItem>
+   532→              <DropdownMenuSeparator />
+   533→              <DropdownMenuItem onClick={onDelete} className="text-rose-600 dark:text-rose-400 focus:text-rose-700 dark:focus:text-rose-300">
+   534→                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+   535→              </DropdownMenuItem>
+   536→            </DropdownMenuContent>
+   537→          </DropdownMenu>
+   538→        </div>
+   539→
+   540→        {/* Description */}
+   541→        <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2rem]">
+   542→          {checklist.description || "No description provided."}
+   543→        </p>
+   544→
+   545→        {/* Task count + meta row */}
+   546→        <div className="flex items-end justify-between gap-2 pt-1">
+   547→          <div>
+   548→            <div className="flex items-baseline gap-1">
+   549→              <span className="text-2xl font-bold tabular-nums text-foreground">{taskCount}</span>
+   550→              <span className="text-[11px] text-muted-foreground">tasks</span>
+   551→            </div>
+   552→            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+   553→              <span className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground capitalize">
+   554→                <Layers className="h-2.5 w-2.5" />
+   555→                {checklist.scopeType.replace(/_/g, " ")}
+   556→              </span>
+   557→              <span className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+   558→                v{checklist.version}
+   559→              </span>
+   560→            </div>
+   561→          </div>
+   562→          <div className="flex items-center gap-1.5">
+   563→            <StatusBadge status={checklist.status} />
+   564→            <Button size="sm" variant="default" onClick={onOpen} className="gap-1.5 h-7">
+   565→              Open <ChevronRight className="h-3.5 w-3.5" />
+   566→            </Button>
+   567→          </div>
+   568→        </div>
+   569→      </div>
+   570→    </motion.div>
+   571→  )
+   572→}
+   573→
+   574→// ============================================================================
+   575→//  Checklist form dialog (Create + Edit)
+   576→// ============================================================================
+   577→
+   578→interface ChecklistFormValues {
+   579→  name: string
+   580→  code: string
+   581→  description: string
+   582→  category: string
+   583→  scopeType: string
+   584→  isDefault: boolean
+   585→  status: string
+   586→  version: number
+   587→}
+   588→
+   589→function ChecklistFormDialog({
+   590→  open, onOpenChange, editing, onSaved,
+   591→}: {
+   592→  open: boolean
+   593→  onOpenChange: (v: boolean) => void
+   594→  editing: Checklist | null
+   595→  onSaved: () => void
+   596→}) {
+   597→  const isEdit = !!editing
+   598→  const [values, setValues] = useState<ChecklistFormValues>({
+   599→    name: "", code: "", description: "", category: "HR",
+   600→    scopeType: "tenant", isDefault: false, status: "Active", version: 1,
+   601→  })
+   602→  const [saving, setSaving] = useState(false)
+   603→  const [codeTouched, setCodeTouched] = useState(false)
+   604→
+   605→  useEffect(() => {
+   606→    if (open) {
+   607→      setCodeTouched(false)
+   608→      if (editing) {
+   609→        setValues({
+   610→          name: editing.name,
+   611→          code: editing.code,
+   612→          description: editing.description || "",
+   613→          category: editing.category,
+   614→          scopeType: editing.scopeType,
+   615→          isDefault: editing.isDefault,
+   616→          status: editing.status,
+   617→          version: editing.version,
+   618→        })
+   619→      } else {
+   620→        setValues({
+   621→          name: "", code: "", description: "", category: "HR",
+   622→          scopeType: "tenant", isDefault: false, status: "Active", version: 1,
+   623→        })
+   624→      }
+   625→    }
+   626→  }, [open, editing])
+   627→
+   628→  // Auto-suggest code from name
+   629→  useEffect(() => {
+   630→    if (!isEdit && !codeTouched && values.name) {
+   631→      setValues((v) => ({ ...v, code: toCode(v.name) }))
+   632→    }
+   633→  }, [values.name, isEdit, codeTouched])
+   634→
+   635→  const handleSave = async () => {
+   636→    if (!values.name.trim() || !values.code.trim() || !values.category) {
+   637→      toast.error("Name, code and category are required")
+   638→      return
+   639→    }
+   640→    setSaving(true)
+   641→    try {
+   642→      const payload = {
+   643→        name: values.name.trim(),
+   644→        code: values.code.trim(),
+   645→        description: values.description.trim() || null,
+   646→        category: values.category,
+   647→        scopeType: values.scopeType,
+   648→        isDefault: values.isDefault,
+   649→        status: values.status,
+   650→        version: values.version,
+   651→      }
+   652→      if (isEdit && editing) {
+   653→        await safeToast(
+   654→          apiPatch(`/api/onboarding-checklists/${editing.id}`, payload),
+   655→          "Checklist updated",
+   656→          "Failed to update checklist"
+   657→        )
+   658→      } else {
+   659→        await safeToast(
+   660→          apiPost("/api/onboarding-checklists", payload),
+   661→          "Checklist created",
+   662→          "Failed to create checklist"
+   663→        )
+   664→      }
+   665→      onOpenChange(false)
+   666→      onSaved()
+   667→    } catch {
+   668→      // toast handled by safeToast
+   669→    } finally {
+   670→      setSaving(false)
+   671→    }
+   672→  }
+   673→
+   674→  return (
+   675→    <Dialog open={open} onOpenChange={onOpenChange}>
+   676→      <DialogContent className="sm:max-w-[560px]">
+   677→        <DialogHeader>
+   678→          <DialogTitle className="flex items-center gap-2">
+   679→            <ListChecks className="h-4 w-4 text-emerald-500" />
+   680→            {isEdit ? "Edit Checklist" : "New Checklist"}
+   681→          </DialogTitle>
+   682→          <DialogDescription>
+   683→            {isEdit
+   684→              ? "Update the checklist metadata. Tasks are managed in the detail view."
+   685→              : "Define a reusable task group. You can add tasks after creating it."}
+   686→          </DialogDescription>
+   687→        </DialogHeader>
+   688→
+   689→        <div className="grid gap-4 py-2">
+   690→          <div className="grid grid-cols-2 gap-3">
+   691→            <div className="col-span-2 sm:col-span-1 grid gap-1.5">
+   692→              <Label htmlFor="chk-name">Checklist Name *</Label>
+   693→              <Input
+   694→                id="chk-name"
+   695→                value={values.name}
+   696→                onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
+   697→                placeholder="e.g. HR Day-1 Onboarding"
+   698→              />
+   699→            </div>
+   700→            <div className="col-span-2 sm:col-span-1 grid gap-1.5">
+   701→              <Label htmlFor="chk-code">Checklist Code *</Label>
+   702→              <Input
+   703→                id="chk-code"
+   704→                value={values.code}
+   705→                onChange={(e) => {
+   706→                  setCodeTouched(true)
+   707→                  setValues((v) => ({ ...v, code: e.target.value.toUpperCase() }))
+   708→                }}
+   709→                placeholder="HR_DAY1_ONBOARDING"
+   710→                className="font-mono text-sm"
+   711→              />
+   712→            </div>
+   713→          </div>
+   714→
+   715→          <div className="grid gap-1.5">
+   716→            <Label htmlFor="chk-desc">Description</Label>
+   717→            <Textarea
+   718→              id="chk-desc"
+   719→              value={values.description}
+   720→              onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
+   721→              placeholder="What this checklist covers, who it applies to..."
+   722→              rows={2}
+   723→            />
+   724→          </div>
+   725→
+   726→          <div className="grid grid-cols-2 gap-3">
+   727→            <div className="grid gap-1.5">
+   728→              <Label>Category *</Label>
+   729→              <Select
+   730→                value={values.category}
+   731→                onValueChange={(v) => setValues((s) => ({ ...s, category: v }))}
+   732→              >
+   733→                <SelectTrigger><SelectValue /></SelectTrigger>
+   734→                <SelectContent>
+   735→                  {CATEGORIES.map((c) => (
+   736→                    <SelectItem key={c.value} value={c.value}>
+   737→                      <span className="flex items-center gap-2">
+   738→                        <span className={cn("h-2 w-2 rounded-full", COLOR_DOT[c.color])} />
+   739→                        {c.label}
+   740→                      </span>
+   741→                    </SelectItem>
+   742→                  ))}
+   743→                </SelectContent>
+   744→              </Select>
+   745→            </div>
+   746→            <div className="grid gap-1.5">
+   747→              <Label>Scope Type</Label>
+   748→              <Select
+   749→                value={values.scopeType}
+   750→                onValueChange={(v) => setValues((s) => ({ ...s, scopeType: v }))}
+   751→              >
+   752→                <SelectTrigger><SelectValue /></SelectTrigger>
+   753→                <SelectContent>
+   754→                  {SCOPE_TYPES.map((s) => (
+   755→                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+   756→                  ))}
+   757→                </SelectContent>
+   758→              </Select>
+   759→            </div>
+   760→          </div>
+   761→
+   762→          <div className="grid grid-cols-2 gap-3">
+   763→            <div className="grid gap-1.5">
+   764→              <Label>Status</Label>
+   765→              <Select
+   766→                value={values.status}
+   767→                onValueChange={(v) => setValues((s) => ({ ...s, status: v }))}
+   768→              >
+   769→                <SelectTrigger><SelectValue /></SelectTrigger>
+   770→                <SelectContent>
+   771→                  {CHECKLIST_STATUSES.map((s) => (
+   772→                    <SelectItem key={s} value={s}>{s}</SelectItem>
+   773→                  ))}
+   774→                </SelectContent>
+   775→              </Select>
+   776→            </div>
+   777→            <div className="grid gap-1.5">
+   778→              <Label htmlFor="chk-version">Version</Label>
+   779→              <Input
+   780→                id="chk-version"
+   781→                type="number"
+   782→                min={1}
+   783→                value={values.version}
+   784→                onChange={(e) => setValues((v) => ({ ...v, version: Math.max(1, Number(e.target.value) || 1) }))}
+   785→              />
+   786→            </div>
+   787→          </div>
+   788→
+   789→          <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5">
+   790→            <div>
+   791→              <Label className="cursor-pointer">Default Checklist</Label>
+   792→              <p className="text-[11px] text-muted-foreground mt-0.5">
+   793→                Mark as the default for the {values.category} category.
+   794→              </p>
+   795→            </div>
+   796→            <Switch
+   797→              checked={values.isDefault}
+   798→              onCheckedChange={(v) => setValues((s) => ({ ...s, isDefault: v }))}
+   799→            />
+   800→          </div>
+   801→        </div>
+   802→
+   803→        <DialogFooter>
+   804→          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+   805→          <Button onClick={handleSave} disabled={saving} className="gap-1.5">
+   806→            {saving ? <Save className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />}
+   807→            {isEdit ? "Save Changes" : "Create Checklist"}
+   808→          </Button>
+   809→        </DialogFooter>
+   810→      </DialogContent>
+   811→    </Dialog>
+   812→  )
+   813→}
+   814→
+   815→// ============================================================================
+   816→//  Task form (inline add / edit)
+   817→// ============================================================================
+   818→
+   819→interface TaskFormValues {
+   820→  name: string
+   821→  code: string
+   822→  description: string
+   823→  ownerType: string
+   824→  dueDateRule: string
+   825→  dueDateOffset: number
+   826→  priority: string
+   827→  isMandatory: boolean
+   828→  isBlocking: boolean
+   829→  requiresAttachment: boolean
+   830→  requiresComment: boolean
+   831→  requiresApproval: boolean
+   832→  stageMapping: string
+   833→  status: string
+   834→}
+   835→
+   836→const EMPTY_TASK: TaskFormValues = {
+   837→  name: "", code: "", description: "",
+   838→  ownerType: "hr_owner",
+   839→  dueDateRule: "on_joining",
+   840→  dueDateOffset: 0,
+   841→  priority: "Medium",
+   842→  isMandatory: false, isBlocking: false,
+   843→  requiresAttachment: false, requiresComment: false, requiresApproval: false,
+   844→  stageMapping: "",
+   845→  status: "Active",
+   846→}
+   847→
+   848→function taskToForm(t: ChecklistTask): TaskFormValues {
+   849→  return {
+   850→    name: t.name,
+   851→    code: t.code,
+   852→    description: t.description || "",
+   853→    ownerType: t.ownerType,
+   854→    dueDateRule: t.dueDateRule,
+   855→    dueDateOffset: t.dueDateOffset ?? 0,
+   856→    priority: t.priority,
+   857→    isMandatory: t.isMandatory,
+   858→    isBlocking: t.isBlocking,
+   859→    requiresAttachment: t.requiresAttachment,
+   860→    requiresComment: t.requiresComment,
+   861→    requiresApproval: t.requiresApproval,
+   862→    stageMapping: t.stageMapping || "",
+   863→    status: t.status,
+   864→  }
+   865→}
+   866→
+   867→function TaskForm({
+   868→  initial,
+   869→  checklistId,
+   870→  editingTaskId,
+   871→  onSaved,
+   872→  onCancel,
+   873→  isEdit,
+   874→}: {
+   875→  initial: TaskFormValues
+   876→  checklistId: string
+   877→  editingTaskId?: string | null
+   878→  onSaved: (task: ChecklistTask) => void
+   879→  onCancel: () => void
+   880→  isEdit: boolean
+   881→}) {
+   882→  const [values, setValues] = useState<TaskFormValues>(initial)
+   883→  const [saving, setSaving] = useState(false)
+   884→  const [codeTouched, setCodeTouched] = useState(false)
+   885→
+   886→  useEffect(() => {
+   887→    setValues(initial)
+   888→  }, [JSON.stringify(initial)])
+   889→
+   890→  // Auto-suggest code from name (only for new tasks)
+   891→  useEffect(() => {
+   892→    if (!isEdit && !codeTouched && values.name) {
+   893→      setValues((v) => ({ ...v, code: toCode(v.name) }))
+   894→    }
+   895→  }, [values.name, isEdit, codeTouched])
+   896→
+   897→  const handleSubmit = async () => {
+   898→    if (!values.name.trim() || !values.code.trim()) {
+   899→      toast.error("Task name and code are required")
+   900→      return
+   901→    }
+   902→    setSaving(true)
+   903→    try {
+   904→      const payload = {
+   905→        name: values.name.trim(),
+   906→        code: values.code.trim(),
+   907→        description: values.description.trim() || null,
+   908→        ownerType: values.ownerType,
+   909→        dueDateRule: values.dueDateRule,
+   910→        dueDateOffset: Number(values.dueDateOffset) || 0,
+   911→        priority: values.priority,
+   912→        isMandatory: values.isMandatory,
+   913→        isBlocking: values.isBlocking,
+   914→        requiresAttachment: values.requiresAttachment,
+   915→        requiresComment: values.requiresComment,
+   916→        requiresApproval: values.requiresApproval,
+   917→        stageMapping: values.stageMapping.trim() || null,
+   918→        status: values.status,
+   919→      }
+   920→      let result: ChecklistTask
+   921→      if (isEdit && editingTaskId) {
+   922→        result = await safeToast(
+   923→          apiPatch(`/api/onboarding-checklists/${checklistId}/tasks/${editingTaskId}`, payload),
+   924→          "Task updated",
+   925→          "Failed to update task"
+   926→        ) as ChecklistTask
+   927→      } else {
+   928→        result = await safeToast(
+   929→          apiPost(`/api/onboarding-checklists/${checklistId}/tasks`, payload),
+   930→          "Task added",
+   931→          "Failed to add task"
+   932→        ) as ChecklistTask
+   933→      }
+   934→      onSaved(result)
+   935→    } catch {
+   936→      // handled
+   937→    } finally {
+   938→      setSaving(false)
+   939→    }
+   940→  }
+   941→
+   942→  const dueMeta = dueDateRuleMeta(values.dueDateRule)
+   943→
+   944→  return (
+   945→    <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.03] p-3 space-y-3">
+   946→      <div className="flex items-center justify-between">
+   947→        <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+   948→          <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+   949→          {isEdit ? "Edit Task" : "Add Task"}
+   950→        </h4>
+   951→        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onCancel} disabled={saving}>
+   952→          <X className="h-3.5 w-3.5" />
+   953→        </Button>
+   954→      </div>
+   955→
+   956→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   957→        <div className="grid gap-1.5">
+   958→          <Label className="text-xs">Task Name *</Label>
+   959→          <Input
+   960→            value={values.name}
+   961→            onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
+   962→            placeholder="e.g. Issue laptop & credentials"
+   963→            className="h-8 text-sm"
+   964→          />
+   965→        </div>
+   966→        <div className="grid gap-1.5">
+   967→          <Label className="text-xs">Task Code *</Label>
+   968→          <Input
+   969→            value={values.code}
+   970→            onChange={(e) => {
+   971→              setCodeTouched(true)
+   972→              setValues((v) => ({ ...v, code: e.target.value.toUpperCase() }))
+   973→            }}
+   974→            placeholder="ISSUE_LAPTOP"
+   975→            className="h-8 text-sm font-mono"
+   976→          />
+   977→        </div>
+   978→      </div>
+   979→
+   980→      <div className="grid gap-1.5">
+   981→        <Label className="text-xs">Description</Label>
+   982→        <Textarea
+   983→          value={values.description}
+   984→          onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
+   985→          placeholder="What needs to be done..."
+   986→          rows={2}
+   987→          className="text-sm"
+   988→        />
+   989→      </div>
+   990→
+   991→      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+   992→        <div className="grid gap-1.5">
+   993→          <Label className="text-xs">Owner Type</Label>
+   994→          <Select
+   995→            value={values.ownerType}
+   996→            onValueChange={(v) => setValues((s) => ({ ...s, ownerType: v }))}
+   997→          >
+   998→            <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+   999→            <SelectContent>
+  1000→              {OWNER_TYPES.map((o) => (
+  1001→                <SelectItem key={o.value} value={o.value}>
+  1002→                  <span className="flex items-center gap-2">
+  1003→                    <span className={cn("h-2 w-2 rounded-full", COLOR_DOT[o.color])} />
+  1004→                    {o.label}
+  1005→                  </span>
+  1006→                </SelectItem>
+  1007→              ))}
+  1008→            </SelectContent>
+  1009→          </Select>
+  1010→        </div>
+  1011→        <div className="grid gap-1.5">
+  1012→          <Label className="text-xs">Due Date Rule</Label>
+  1013→          <Select
+  1014→            value={values.dueDateRule}
+  1015→            onValueChange={(v) => setValues((s) => ({ ...s, dueDateRule: v }))}
+  1016→          >
+  1017→            <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+  1018→            <SelectContent>
+  1019→              {DUE_DATE_RULES.map((r) => (
+  1020→                <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+  1021→              ))}
+  1022→            </SelectContent>
+  1023→          </Select>
+  1024→        </div>
+  1025→        {dueMeta.hasOffset ? (
+  1026→          <div className="grid gap-1.5">
+  1027→            <Label className="text-xs">{dueMeta.offsetLabel || "Offset (days)"}</Label>
+  1028→            <Input
+  1029→              type="number"
+  1030→              value={values.dueDateOffset}
+  1031→              onChange={(e) => setValues((v) => ({ ...v, dueDateOffset: Number(e.target.value) || 0 }))}
+  1032→              className="h-8 text-sm"
+  1033→              min={0}
+  1034→            />
+  1035→          </div>
+  1036→        ) : (
+  1037→          <div className="grid gap-1.5">
+  1038→            <Label className="text-xs">Priority</Label>
+  1039→            <Select
+  1040→              value={values.priority}
+  1041→              onValueChange={(v) => setValues((s) => ({ ...s, priority: v }))}
+  1042→            >
+  1043→              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+  1044→              <SelectContent>
+  1045→                {PRIORITIES.map((p) => (
+  1046→                  <SelectItem key={p.value} value={p.value}>
+  1047→                    <span className="flex items-center gap-2">
+  1048→                      <span className={cn("h-2 w-2 rounded-full", COLOR_DOT[p.color])} />
+  1049→                      {p.value}
+  1050→                    </span>
+  1051→                  </SelectItem>
+  1052→                ))}
+  1053→              </SelectContent>
+  1054→            </Select>
+  1055→          </div>
+  1056→        )}
+  1057→      </div>
+  1058→
+  1059→      {dueMeta.hasOffset && (
+  1060→        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+  1061→          <div className="grid gap-1.5">
+  1062→            <Label className="text-xs">Priority</Label>
+  1063→            <Select
+  1064→              value={values.priority}
+  1065→              onValueChange={(v) => setValues((s) => ({ ...s, priority: v }))}
+  1066→            >
+  1067→              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+  1068→              <SelectContent>
+  1069→                {PRIORITIES.map((p) => (
+  1070→                  <SelectItem key={p.value} value={p.value}>
+  1071→                    <span className="flex items-center gap-2">
+  1072→                      <span className={cn("h-2 w-2 rounded-full", COLOR_DOT[p.color])} />
+  1073→                      {p.value}
+  1074→                    </span>
+  1075→                  </SelectItem>
+  1076→                ))}
+  1077→              </SelectContent>
+  1078→            </Select>
+  1079→          </div>
+  1080→          <div className="grid gap-1.5 col-span-1 sm:col-span-2">
+  1081→            <Label className="text-xs">Stage Mapping (optional)</Label>
+  1082→            <Input
+  1083→              value={values.stageMapping}
+  1084→              onChange={(e) => setValues((v) => ({ ...v, stageMapping: e.target.value }))}
+  1085→              placeholder="e.g. DAY1"
+  1086→              className="h-8 text-sm"
+  1087→            />
+  1088→          </div>
+  1089→        </div>
+  1090→      )}
+  1091→
+  1092→      {!dueMeta.hasOffset && (
+  1093→        <div className="grid gap-1.5">
+  1094→          <Label className="text-xs">Stage Mapping (optional)</Label>
+  1095→          <Input
+  1096→            value={values.stageMapping}
+  1097→            onChange={(e) => setValues((v) => ({ ...v, stageMapping: e.target.value }))}
+  1098→            placeholder="e.g. DAY1"
+  1099→            className="h-8 text-sm"
+  1100→          />
+  1101→        </div>
+  1102→      )}
+  1103→
+  1104→      {/* Flags */}
+  1105→      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+  1106→        <FlagSwitch
+  1107→          label="Mandatory" color="emerald" icon={ShieldCheck}
+  1108→          checked={values.isMandatory}
+  1109→          onChange={(v) => setValues((s) => ({ ...s, isMandatory: v }))}
+  1110→        />
+  1111→        <FlagSwitch
+  1112→          label="Blocking" color="rose" icon={AlertCircle}
+  1113→          checked={values.isBlocking}
+  1114→          onChange={(v) => setValues((s) => ({ ...s, isBlocking: v }))}
+  1115→        />
+  1116→        <FlagSwitch
+  1117→          label="Attachment" color="amber" icon={Paperclip}
+  1118→          checked={values.requiresAttachment}
+  1119→          onChange={(v) => setValues((s) => ({ ...s, requiresAttachment: v }))}
+  1120→        />
+  1121→        <FlagSwitch
+  1122→          label="Comment" color="cyan" icon={MessageSquare}
+  1123→          checked={values.requiresComment}
+  1124→          onChange={(v) => setValues((s) => ({ ...s, requiresComment: v }))}
+  1125→        />
+  1126→        <FlagSwitch
+  1127→          label="Approval" color="violet" icon={CheckCheck}
+  1128→          checked={values.requiresApproval}
+  1129→          onChange={(v) => setValues((s) => ({ ...s, requiresApproval: v }))}
+  1130→        />
+  1131→        <div className="flex items-center justify-between rounded-md border border-border/60 px-2.5 py-1.5">
+  1132→          <Label className="text-[11px] flex items-center gap-1.5">
+  1133→            <span className="h-2 w-2 rounded-full bg-slate-500" />
+  1134→            Status
+  1135→          </Label>
+  1136→          <Select
+  1137→            value={values.status}
+  1138→            onValueChange={(v) => setValues((s) => ({ ...s, status: v }))}
+  1139→          >
+  1140→            <SelectTrigger className="h-6 w-[105px] text-[11px] border-0 px-1 py-0"><SelectValue /></SelectTrigger>
+  1141→            <SelectContent>
+  1142→              {TASK_STATUSES.map((s) => (
+  1143→                <SelectItem key={s} value={s}>{s}</SelectItem>
+  1144→              ))}
+  1145→            </SelectContent>
+  1146→          </Select>
+  1147→        </div>
+  1148→      </div>
+  1149→
+  1150→      <div className="flex items-center justify-end gap-2 pt-1">
+  1151→        <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>Cancel</Button>
+  1152→        <Button size="sm" onClick={handleSubmit} disabled={saving} className="gap-1.5">
+  1153→          {saving ? <Save className="h-3.5 w-3.5 animate-pulse" /> : <Save className="h-3.5 w-3.5" />}
+  1154→          {isEdit ? "Save Task" : "Add Task"}
+  1155→        </Button>
+  1156→      </div>
+  1157→    </div>
+  1158→  )
+  1159→}
+  1160→
+  1161→function FlagSwitch({
+  1162→  label, color, icon: Icon, checked, onChange,
+  1163→}: {
+  1164→  label: string
+  1165→  color: ColorName
+  1166→  icon: LucideIcon
+  1167→  checked: boolean
+  1168→  onChange: (v: boolean) => void
+  1169→}) {
+  1170→  return (
+  1171→    <div className={cn(
+  1172→      "flex items-center justify-between rounded-md border px-2.5 py-1.5 transition-colors",
+  1173→      checked ? cn(COLOR_BADGE[color], "border-current/40") : "border-border/60"
+  1174→    )}>
+  1175→      <Label className="text-[11px] flex items-center gap-1.5 cursor-pointer">
+  1176→        <Icon className="h-3 w-3" />
+  1177→        {label}
+  1178→      </Label>
+  1179→      <Switch checked={checked} onCheckedChange={onChange} className="scale-90" />
+  1180→    </div>
+  1181→  )
+  1182→}
+  1183→
+  1184→// ============================================================================
+  1185→//  Task card (in detail view, drag-reorderable)
+  1186→// ============================================================================
+  1187→
+  1188→function TaskCard({
+  1189→  task,
+  1190→  index,
+  1191→  isDragging,
+  1192→  isDragOver,
+  1193→  onDragStart,
+  1194→  onDragEnter,
+  1195→  onDragEnd,
+  1196→  onDrop,
+  1197→  onEdit,
+  1198→  onDelete,
+  1199→}: {
+  1200→  task: ChecklistTask
+  1201→  index: number
+  1202→  isDragging: boolean
+  1203→  isDragOver: boolean
+  1204→  onDragStart: () => void
+  1205→  onDragEnter: () => void
+  1206→  onDragEnd: () => void
+  1207→  onDrop: () => void
+  1208→  onEdit: () => void
+  1209→  onDelete: () => void
+  1210→}) {
+  1211→  const [expanded, setExpanded] = useState(false)
+  1212→  const owner = ownerTypeMeta(task.ownerType)
+  1213→  const prio = PRIORITY_MAP[task.priority] || PRIORITY_MAP.Medium
+  1214→  const dueLabel = dueDateRuleLabel(task.dueDateRule, task.dueDateOffset)
+  1215→
+  1216→  return (
+  1217→    <motion.div
+  1218→      layout
+  1219→      initial={{ opacity: 0 }}
+  1220→      animate={{ opacity: 1 }}
+  1221→      transition={{ duration: 0.15 }}
+  1222→      draggable
+  1223→      onDragStart={onDragStart}
+  1224→      onDragEnd={onDragEnd}
+  1225→      onDragOver={(e: DragEvent<HTMLDivElement>) => { e.preventDefault(); onDragEnter() }}
+  1226→      onDrop={(e: DragEvent<HTMLDivElement>) => { e.preventDefault(); onDrop() }}
+  1227→      className={cn(
+  1228→        "group relative bg-card border rounded-lg shadow-soft transition-all",
+  1229→        isDragging && "opacity-50 ring-2 ring-emerald-500/50",
+  1230→        isDragOver && "border-emerald-500 ring-2 ring-emerald-500/40",
+  1231→        !isDragging && !isDragOver && "border-border/60 hover:border-emerald-500/40"
+  1232→      )}
+  1233→    >
+  1234→      <div className="flex items-start gap-2 p-3">
+  1235→        {/* Drag handle */}
+  1236→        <div className="flex flex-col items-center gap-0.5 pt-0.5 shrink-0 cursor-grab active:cursor-grabbing">
+  1237→          <GripVertical className="h-4 w-4 text-muted-foreground/60" />
+  1238→          <span className="text-[10px] font-mono text-muted-foreground tabular-nums">{index + 1}</span>
+  1239→        </div>
+  1240→
+  1241→        {/* Body */}
+  1242→        <div className="min-w-0 flex-1">
+  1243→          <div className="flex items-start justify-between gap-2">
+  1244→            <div className="min-w-0 flex-1">
+  1245→              <button
+  1246→                onClick={() => setExpanded((e) => !e)}
+  1247→                className="flex items-center gap-1.5 text-left"
+  1248→              >
+  1249→                {expanded
+  1250→                  ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+  1251→                  : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+  1252→                <h4 className="text-sm font-semibold text-foreground truncate hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+  1253→                  {task.name}
+  1254→                </h4>
+  1255→              </button>
+  1256→              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+  1257→                <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground">
+  1258→                  <Hash className="h-2.5 w-2.5" />
+  1259→                  {task.code}
+  1260→                </span>
+  1261→                <ColorBadge color={owner.color}>{owner.label}</ColorBadge>
+  1262→                <ColorBadge color={prio.color}>{task.priority}</ColorBadge>
+  1263→                <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+  1264→                  <Clock className="h-2.5 w-2.5" />
+  1265→                  {dueLabel}
+  1266→                </span>
+  1267→                {task.stageMapping && (
+  1268→                  <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+  1269→                    <Layers className="h-2.5 w-2.5" />
+  1270→                    {task.stageMapping}
+  1271→                  </span>
+  1272→                )}
+  1273→              </div>
+  1274→              {/* Flag chips */}
+  1275→              <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+  1276→                <FlagChip active={task.isMandatory} color="emerald" icon={ShieldCheck} label="Mandatory" />
+  1277→                <FlagChip active={task.isBlocking} color="rose" icon={AlertCircle} label="Blocking" />
+  1278→                <FlagChip active={task.requiresAttachment} color="amber" icon={Paperclip} label="Attachment" />
+  1279→                <FlagChip active={task.requiresComment} color="cyan" icon={MessageSquare} label="Comment" />
+  1280→                <FlagChip active={task.requiresApproval} color="violet" icon={CheckCheck} label="Approval" />
+  1281→                {!task.isMandatory && !task.isBlocking && !task.requiresAttachment && !task.requiresComment && !task.requiresApproval && (
+  1282→                  <span className="text-[10px] text-muted-foreground/60 italic">No flags</span>
+  1283→                )}
+  1284→              </div>
+  1285→            </div>
+  1286→            <div className="flex items-center gap-1 shrink-0">
+  1287→              <StatusBadge status={task.status} />
+  1288→              <DropdownMenu>
+  1289→                <DropdownMenuTrigger asChild>
+  1290→                  <Button variant="ghost" size="icon" className="h-7 w-7 opacity-60 group-hover:opacity-100">
+  1291→                    <MoreHorizontal className="h-4 w-4" />
+  1292→                  </Button>
+  1293→                </DropdownMenuTrigger>
+  1294→                <DropdownMenuContent align="end" className="w-36">
+  1295→                  <DropdownMenuItem onClick={() => setExpanded(true)}>
+  1296→                    <Eye className="h-3.5 w-3.5 mr-2" /> View / Edit
+  1297→                  </DropdownMenuItem>
+  1298→                  <DropdownMenuItem onClick={onEdit}>
+  1299→                    <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+  1300→                  </DropdownMenuItem>
+  1301→                  <DropdownMenuSeparator />
+  1302→                  <DropdownMenuItem onClick={onDelete} className="text-rose-600 dark:text-rose-400 focus:text-rose-700 dark:focus:text-rose-300">
+  1303→                    <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+  1304→                  </DropdownMenuItem>
+  1305→                </DropdownMenuContent>
+  1306→              </DropdownMenu>
+  1307→            </div>
+  1308→          </div>
+  1309→
+  1310→          {/* Expanded view */}
+  1311→          <AnimatePresence>
+  1312→            {expanded && (
+  1313→              <motion.div
+  1314→                initial={{ height: 0, opacity: 0 }}
+  1315→                animate={{ height: "auto", opacity: 1 }}
+  1316→                exit={{ height: 0, opacity: 0 }}
+  1317→                transition={{ duration: 0.15 }}
+  1318→                className="overflow-hidden"
+  1319→              >
+  1320→                <div className="mt-3 pt-3 border-t border-border/60 space-y-3">
+  1321→                  <div>
+  1322→                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">Description</Label>
+  1323→                    <p className="text-xs text-foreground mt-0.5 whitespace-pre-wrap">
+  1324→                      {task.description || <span className="italic text-muted-foreground/60">No description provided.</span>}
+  1325→                    </p>
+  1326→                  </div>
+  1327→                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+  1328→                    <div>
+  1329→                      <span className="text-muted-foreground text-[11px] uppercase">Owner</span>
+  1330→                      <p className="text-foreground mt-0.5">{owner.label}</p>
+  1331→                    </div>
+  1332→                    <div>
+  1333→                      <span className="text-muted-foreground text-[11px] uppercase">Due</span>
+  1334→                      <p className="text-foreground mt-0.5">{dueLabel}</p>
+  1335→                    </div>
+  1336→                    <div>
+  1337→                      <span className="text-muted-foreground text-[11px] uppercase">Priority</span>
+  1338→                      <p className="text-foreground mt-0.5">{task.priority}</p>
+  1339→                    </div>
+  1340→                    <div>
+  1341→                      <span className="text-muted-foreground text-[11px] uppercase">Status</span>
+  1342→                      <p className="text-foreground mt-0.5">{task.status}</p>
+  1343→                    </div>
+  1344→                  </div>
+  1345→                  {task.autoCompleteCondition && (
+  1346→                    <div>
+  1347→                      <span className="text-muted-foreground text-[11px] uppercase">Auto-complete condition</span>
+  1348→                      <p className="text-xs text-foreground mt-0.5 font-mono">{task.autoCompleteCondition}</p>
+  1349→                    </div>
+  1350→                  )}
+  1351→                  <div className="flex items-center gap-2 pt-1">
+  1352→                    <Button size="sm" variant="outline" onClick={onEdit} className="gap-1.5 h-7">
+  1353→                      <Pencil className="h-3 w-3" /> Edit
+  1354→                    </Button>
+  1355→                    <Button size="sm" variant="ghost" onClick={() => setExpanded(false)} className="gap-1.5 h-7">
+  1356→                      <EyeOff className="h-3 w-3" /> Collapse
+  1357→                    </Button>
+  1358→                  </div>
+  1359→                </div>
+  1360→              </motion.div>
+  1361→            )}
+  1362→          </AnimatePresence>
+  1363→        </div>
+  1364→      </div>
+  1365→    </motion.div>
+  1366→  )
+  1367→}
+  1368→
+  1369→// ============================================================================
+  1370→//  Checklist detail view (replaces the grid)
+  1371→// ============================================================================
+  1372→
+  1373→function ChecklistDetailView({
+  1374→  checklistId,
+  1375→  onBack,
+  1376→  onEdit,
+  1377→  onDeleted,
+  1378→}: {
+  1379→  checklistId: string
+  1380→  onBack: () => void
+  1381→  onEdit: (c: Checklist) => void
+  1382→  onDeleted: () => void
+  1383→}) {
+  1384→  const { data: checklist, loading, reload, setData } = useFetch<Checklist>(
+  1385→    `/api/onboarding-checklists/${checklistId}`
+  1386→  )
+  1387→
+  1388→  const [tasks, setTasks] = useState<ChecklistTask[]>([])
+  1389→  const [showAddForm, setShowAddForm] = useState(false)
+  1390→  const [editingTask, setEditingTask] = useState<ChecklistTask | null>(null)
+  1391→  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null)
+  1392→  const [deleteOpen, setDeleteOpen] = useState(false)
+  1393→  const [draggingId, setDraggingId] = useState<string | null>(null)
+  1394→  const [dragOverId, setDragOverId] = useState<string | null>(null)
+  1395→  const [reordering, setReordering] = useState(false)
+  1396→  const [confirmDelete, setConfirmDelete] = useState(false)
+  1397→
+  1398→  useEffect(() => {
+  1399→    if (checklist?.tasks) {
+  1400→      setTasks([...checklist.tasks].sort((a, b) => a.order - b.order))
+  1401→    } else {
+  1402→      setTasks([])
+  1403→    }
+  1404→  }, [checklist?.tasks])
+  1405→
+  1406→  const handleRename = async (newName: string) => {
+  1407→    if (!checklist) return
+  1408→    try {
+  1409→      await safeToast(
+  1410→        apiPatch(`/api/onboarding-checklists/${checklist.id}`, { name: newName }),
+  1411→        "Checklist renamed",
+  1412→        "Failed to rename"
+  1413→      )
+  1414→      setData({ ...checklist, name: newName })
+  1415→    } catch { /* handled */ }
+  1416→  }
+  1417→
+  1418→  const handleSetDefault = async () => {
+  1419→    if (!checklist) return
+  1420→    try {
+  1421→      await safeToast(
+  1422→        apiPatch(`/api/onboarding-checklists/${checklist.id}`, { isDefault: true }),
+  1423→        "Marked as default",
+  1424→        "Failed to set default"
+  1425→      )
+  1426→      setData({ ...checklist, isDefault: true })
+  1427→    } catch { /* handled */ }
+  1428→  }
+  1429→
+  1430→  const handleDelete = async () => {
+  1431→    if (!checklist) return
+  1432→    try {
+  1433→      await safeToast(
+  1434→        apiDelete(`/api/onboarding-checklists/${checklist.id}`),
+  1435→        "Checklist deleted",
+  1436→        "Failed to delete"
+  1437→      )
+  1438→      onDeleted()
+  1439→    } catch { /* handled */ }
+  1440→  }
+  1441→
+  1442→  const handleTaskSaved = () => {
+  1443→    setShowAddForm(false)
+  1444→    setEditingTask(null)
+  1445→    reload()
+  1446→  }
+  1447→
+  1448→  const handleDeleteTask = async (taskId: string) => {
+  1449→    try {
+  1450→      await safeToast(
+  1451→        apiDelete(`/api/onboarding-checklists/${checklistId}/tasks/${taskId}`),
+  1452→        "Task deleted",
+  1453→        "Failed to delete task"
+  1454→      )
+  1455→      setTasks((prev) => prev.filter((t) => t.id !== taskId))
+  1456→      setDeleteTaskId(null)
+  1457→      reload()
+  1458→    } catch { /* handled */ }
+  1459→  }
+  1460→
+  1461→  // ----- Drag reorder -----
+  1462→  const handleDragStart = (taskId: string) => {
+  1463→    setDraggingId(taskId)
+  1464→  }
+  1465→  const handleDragEnter = (taskId: string) => {
+  1466→    if (taskId === draggingId) return
+  1467→    setDragOverId(taskId)
+  1468→    setTasks((prev) => {
+  1469→      const fromIdx = prev.findIndex((t) => t.id === draggingId)
+  1470→      const toIdx = prev.findIndex((t) => t.id === taskId)
+  1471→      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return prev
+  1472→      const next = [...prev]
+  1473→      const [moved] = next.splice(fromIdx, 1)
+  1474→      next.splice(toIdx, 0, moved)
+  1475→      return next
+  1476→    })
+  1477→  }
+  1478→  const handleDragEnd = async () => {
+  1479→    const dragged = draggingId
+  1480→    setDraggingId(null)
+  1481→    setDragOverId(null)
+  1482→    if (!dragged) return
+  1483→    const orderedIds = tasks.map((t) => t.id)
+  1484→    setReordering(true)
+  1485→    try {
+  1486→      await safeToast(
+  1487→        apiPatch(`/api/onboarding-checklists/${checklistId}/tasks`, { orderedIds }),
+  1488→        undefined, // silent success — too noisy otherwise
+  1489→        "Failed to reorder tasks"
+  1490→      )
+  1491→    } catch {
+  1492→      reload() // revert on failure
+  1493→    } finally {
+  1494→      setReordering(false)
+  1495→    }
+  1496→  }
+  1497→
+  1498→  if (loading) {
+  1499→    return (
+  1500→      <div className="space-y-4">
+  1501→        <Skeleton className="h-10 w-32" />
+  1502→        <Skeleton className="h-32 w-full" />
+  1503→        <Skeleton className="h-8 w-40" />
+  1504→        {Array.from({ length: 3 }).map((_, i) => (
+  1505→          <Skeleton key={i} className="h-20 w-full" />
+  1506→        ))}
+  1507→      </div>
+  1508→    )
+  1509→  }
+  1510→
+  1511→  if (!checklist) {
+  1512→    return (
+  1513→      <EmptyState
+  1514→        icon={AlertCircle}
+  1515→        title="Checklist not found"
+  1516→        description="It may have been deleted or you don't have access."
+  1517→        action={<Button onClick={onBack} variant="outline" size="sm">Back to list</Button>}
+  1518→      />
+  1519→    )
+  1520→  }
+  1521→
+  1522→  const cat = categoryMeta(checklist.category)
+  1523→  const CatIcon = cat.icon
+  1524→
+  1525→  return (
+  1526→    <div className="space-y-4">
+  1527→      {/* Top bar */}
+  1528→      <div className="flex items-center gap-2 flex-wrap">
+  1529→        <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5">
+  1530→          <ArrowLeft className="h-4 w-4" /> Back to Checklists
+  1531→        </Button>
+  1532→        <div className="flex-1" />
+  1533→        {reordering && (
+  1534→          <span className="text-[11px] text-muted-foreground animate-pulse">Saving order…</span>
+  1535→        )}
+  1536→        <Button variant="outline" size="sm" onClick={() => onEdit(checklist)} className="gap-1.5">
+  1537→          <Pencil className="h-3.5 w-3.5" /> Edit
+  1538→        </Button>
+  1539→        <Button
+  1540→          variant="outline" size="sm"
+  1541→          onClick={() => setConfirmDelete(true)}
+  1542→          className="gap-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-700 dark:hover:text-rose-300"
+  1543→        >
+  1544→          <Trash2 className="h-3.5 w-3.5" /> Delete
+  1545→        </Button>
+  1546→      </div>
+  1547→
+  1548→      {/* Header card */}
+  1549→      <Card className="bg-card border border-border/60 rounded-xl shadow-soft">
+  1550→        <CardContent className="p-5 space-y-4">
+  1551→          <div className="flex items-start gap-3 flex-wrap">
+  1552→            <div className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", COLOR_SOFT_BG[cat.color])}>
+  1553→              <CatIcon className="h-5 w-5" />
+  1554→            </div>
+  1555→            <div className="min-w-0 flex-1">
+  1556→              <div className="flex items-center gap-2 flex-wrap">
+  1557→                <InlineEditableText
+  1558→                  value={checklist.name}
+  1559→                  onSave={handleRename}
+  1560→                  className="text-xl font-semibold text-foreground"
+  1561→                  inputClassName="text-xl font-semibold"
+  1562→                />
+  1563→                {checklist.isDefault && (
+  1564→                  <Tooltip>
+  1565→                    <TooltipTrigger asChild>
+  1566→                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-medium border border-amber-200 dark:border-amber-500/20">
+  1567→                        <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
+  1568→                        Default
+  1569→                      </span>
+  1570→                    </TooltipTrigger>
+  1571→                    <TooltipContent>Default checklist for {checklist.category}</TooltipContent>
+  1572→                  </Tooltip>
+  1573→                )}
+  1574→              </div>
+  1575→              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+  1576→                <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground">
+  1577→                  <Hash className="h-2.5 w-2.5" />
+  1578→                  {checklist.code}
+  1579→                </span>
+  1580→                <ColorBadge color={cat.color}>
+  1581→                  <CatIcon className="h-2.5 w-2.5 mr-0.5" />
+  1582→                  {cat.label}
+  1583→                </ColorBadge>
+  1584→                <StatusBadge status={checklist.status} />
+  1585→                {!checklist.isDefault && (
+  1586→                  <Button
+  1587→                    variant="ghost" size="sm"
+  1588→                    onClick={handleSetDefault}
+  1589→                    className="h-6 px-2 text-[11px] gap-1 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+  1590→                  >
+  1591→                    <Star className="h-3 w-3" /> Set as Default
+  1592→                  </Button>
+  1593→                )}
+  1594→              </div>
+  1595→            </div>
+  1596→          </div>
+  1597→
+  1598→          {/* Meta row */}
+  1599→          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-border/60">
+  1600→            <MetaItem icon={Layers} label="Scope" value={SCOPE_TYPES.find((s) => s.value === checklist.scopeType)?.label || checklist.scopeType} />
+  1601→            <MetaItem icon={Tag} label="Version" value={`v${checklist.version}`} />
+  1602→            <MetaItem icon={Calendar} label="Created" value={formatDate(checklist.createdAt)} />
+  1603→            <MetaItem icon={Clock} label="Updated" value={timeAgo(checklist.updatedAt)} />
+  1604→          </div>
+  1605→
+  1606→          {checklist.description && (
+  1607→            <div className="pt-2 border-t border-border/60">
+  1608→              <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">Description</Label>
+  1609→              <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{checklist.description}</p>
+  1610→            </div>
+  1611→          )}
+  1612→        </CardContent>
+  1613→      </Card>
+  1614→
+  1615→      {/* Tasks section */}
+  1616→      <div className="rounded-xl border border-border/60 bg-card shadow-soft">
+  1617→        <div className="flex items-center justify-between p-4 border-b border-border/60">
+  1618→          <div className="flex items-center gap-2">
+  1619→            <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+  1620→              <ListChecks className="h-4 w-4 text-emerald-500" />
+  1621→              Tasks
+  1622→            </h3>
+  1623→            <span className="rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 text-[11px] font-semibold tabular-nums">
+  1624→              {tasks.length}
+  1625→            </span>
+  1626→            <span className="text-[11px] text-muted-foreground hidden sm:inline">
+  1627→              · drag to reorder
+  1628→            </span>
+  1629→          </div>
+  1630→          <Button
+  1631→            size="sm"
+  1632→            onClick={() => { setEditingTask(null); setShowAddForm((s) => !s) }}
+  1633→            className="gap-1.5"
+  1634→          >
+  1635→            {showAddForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+  1636→            {showAddForm ? "Cancel" : "Add Task"}
+  1637→          </Button>
+  1638→        </div>
+  1639→
+  1640→        <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+  1641→          <AnimatePresence>
+  1642→            {showAddForm && (
+  1643→              <motion.div
+  1644→                initial={{ opacity: 0, height: 0 }}
+  1645→                animate={{ opacity: 1, height: "auto" }}
+  1646→                exit={{ opacity: 0, height: 0 }}
+  1647→                transition={{ duration: 0.15 }}
+  1648→                className="overflow-hidden"
+  1649→              >
+  1650→                <TaskForm
+  1651→                  initial={EMPTY_TASK}
+  1652→                  checklistId={checklistId}
+  1653→                  isEdit={false}
+  1654→                  onSaved={handleTaskSaved}
+  1655→                  onCancel={() => setShowAddForm(false)}
+  1656→                />
+  1657→              </motion.div>
+  1658→            )}
+  1659→          </AnimatePresence>
+  1660→
+  1661→          {editingTask && (
+  1662→            <TaskForm
+  1663→              initial={taskToForm(editingTask)}
+  1664→              checklistId={checklistId}
+  1665→              editingTaskId={editingTask.id}
+  1666→              isEdit
+  1667→              onSaved={handleTaskSaved}
+  1668→              onCancel={() => setEditingTask(null)}
+  1669→              key={`edit-${editingTask.id}`}
+  1670→            />
+  1671→          )}
+  1672→
+  1673→          {tasks.length === 0 && !showAddForm ? (
+  1674→            <EmptyState
+  1675→              icon={ListChecks}
+  1676→              title="No tasks yet"
+  1677→              description="Add the first task to this checklist. Tasks define who does what, by when."
+  1678→              action={
+  1679→                <Button size="sm" onClick={() => setShowAddForm(true)} className="gap-1.5">
+  1680→                  <Plus className="h-3.5 w-3.5" /> Add First Task
+  1681→                </Button>
+  1682→              }
+  1683→            />
+  1684→          ) : (
+  1685→            tasks.map((task, i) => (
+  1686→              <TaskCard
+  1687→                key={task.id}
+  1688→                task={task}
+  1689→                index={i}
+  1690→                isDragging={draggingId === task.id}
+  1691→                isDragOver={dragOverId === task.id && draggingId !== task.id}
+  1692→                onDragStart={() => handleDragStart(task.id)}
+  1693→                onDragEnter={() => handleDragEnter(task.id)}
+  1694→                onDragEnd={handleDragEnd}
+  1695→                onDrop={handleDragEnd}
+  1696→                onEdit={() => {
+  1697→                  setEditingTask(task)
+  1698→                  setShowAddForm(false)
+  1699→                }}
+  1700→                onDelete={() => { setDeleteTaskId(task.id); setDeleteOpen(true) }}
+  1701→              />
+  1702→            ))
+  1703→          )}
+  1704→        </div>
+  1705→      </div>
+  1706→
+  1707→      {/* Delete checklist confirmation */}
+  1708→      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+  1709→        <AlertDialogContent>
+  1710→          <AlertDialogHeader>
+  1711→            <AlertDialogTitle>Delete this checklist?</AlertDialogTitle>
+  1712→            <AlertDialogDescription>
+  1713→              This will permanently delete <strong>{checklist.name}</strong> ({checklist.code}) and all {tasks.length} task{tasks.length === 1 ? "" : "s"} inside it. This cannot be undone.
+  1714→            </AlertDialogDescription>
+  1715→          </AlertDialogHeader>
+  1716→          <AlertDialogFooter>
+  1717→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+  1718→            <AlertDialogAction
+  1719→              onClick={handleDelete}
+  1720→              className="bg-rose-600 hover:bg-rose-700 text-white"
+  1721→            >
+  1722→              Delete Checklist
+  1723→            </AlertDialogAction>
+  1724→          </AlertDialogFooter>
+  1725→        </AlertDialogContent>
+  1726→      </AlertDialog>
+  1727→
+  1728→      {/* Delete task confirmation */}
+  1729→      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+  1730→        <AlertDialogContent>
+  1731→          <AlertDialogHeader>
+  1732→            <AlertDialogTitle>Delete task?</AlertDialogTitle>
+  1733→            <AlertDialogDescription>
+  1734→              {deleteTaskId && tasks.find((t) => t.id === deleteTaskId)?.name
+  1735→                ? <>Remove <strong>{tasks.find((t) => t.id === deleteTaskId)?.name}</strong> from this checklist?</>
+  1736→                : "Remove this task from the checklist?"}
+  1737→            </AlertDialogDescription>
+  1738→          </AlertDialogHeader>
+  1739→          <AlertDialogFooter>
+  1740→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+  1741→            <AlertDialogAction
+  1742→              onClick={() => deleteTaskId && handleDeleteTask(deleteTaskId)}
+  1743→              className="bg-rose-600 hover:bg-rose-700 text-white"
+  1744→            >
+  1745→              Delete Task
+  1746→            </AlertDialogAction>
+  1747→          </AlertDialogFooter>
+  1748→        </AlertDialogContent>
+  1749→      </AlertDialog>
+  1750→    </div>
+  1751→  )
+  1752→}
+  1753→
+  1754→function MetaItem({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  1755→  return (
+  1756→    <div className="flex items-start gap-2">
+  1757→      <Icon className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+  1758→      <div className="min-w-0">
+  1759→        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+  1760→        <p className="text-xs font-medium text-foreground truncate">{value}</p>
+  1761→      </div>
+  1762→    </div>
+  1763→  )
+  1764→}
+  1765→
+  1766→// ============================================================================
+  1767→//  Main: ChecklistsSection
+  1768→// ============================================================================
+  1769→
+  1770→export function ChecklistsSection() {
+  1771→  const [selectedCategory, setSelectedCategory] = useState<string | "all">("all")
+  1772→  const [search, setSearch] = useState("")
+  1773→  const [selectedId, setSelectedId] = useState<string | null>(null)
+  1774→  const [formOpen, setFormOpen] = useState(false)
+  1775→  const [editingChecklist, setEditingChecklist] = useState<Checklist | null>(null)
+  1776→  const [deleteTarget, setDeleteTarget] = useState<Checklist | null>(null)
+  1777→  const [deleteOpen, setDeleteOpen] = useState(false)
+  1778→  const [reloadKey, setReloadKey] = useState(0)
+  1779→
+  1780→  // Fetch all checklists (we filter on the client to compute counts per category)
+  1781→  const { data, loading, reload } = useFetch<{ items: Checklist[] }>(
+  1782→    "/api/onboarding-checklists",
+  1783→    [reloadKey]
+  1784→  )
+  1785→
+  1786→  const allItems = data?.items ?? []
+  1787→
+  1788→  // Counts per category
+  1789→  const counts = useMemo(() => {
+  1790→    const m: Record<string, number> = {}
+  1791→    for (const c of allItems) m[c.category] = (m[c.category] ?? 0) + 1
+  1792→    return m
+  1793→  }, [allItems])
+  1794→
+  1795→  // Filtered items
+  1796→  const filtered = useMemo(() => {
+  1797→    let items = allItems
+  1798→    if (selectedCategory !== "all") {
+  1799→      items = items.filter((c) => c.category === selectedCategory)
+  1800→    }
+  1801→    if (search.trim()) {
+  1802→      const q = search.toLowerCase()
+  1803→      items = items.filter(
+  1804→        (c) =>
+  1805→          c.name.toLowerCase().includes(q) ||
+  1806→          c.code.toLowerCase().includes(q) ||
+  1807→          (c.description || "").toLowerCase().includes(q)
+  1808→      )
+  1809→    }
+  1810→    return items
+  1811→  }, [allItems, selectedCategory, search])
+  1812→
+  1813→  const reloadAll = useCallback(() => {
+  1814→    setReloadKey((k) => k + 1)
+  1815→    reload()
+  1816→  }, [reload])
+  1817→
+  1818→  // ----- Handlers -----
+  1819→  const handleOpen = (c: Checklist) => setSelectedId(c.id)
+  1820→  const handleBack = () => setSelectedId(null)
+  1821→
+  1822→  const handleEdit = (c: Checklist) => {
+  1823→    setEditingChecklist(c)
+  1824→    setFormOpen(true)
+  1825→  }
+  1826→
+  1827→  const handleNew = () => {
+  1828→    setEditingChecklist(null)
+  1829→    setFormOpen(true)
+  1830→  }
+  1831→
+  1832→  const handleClone = async (c: Checklist) => {
+  1833→    const cat = c.category
+  1834→    const baseCode = `${c.code}_COPY`
+  1835→    let code = baseCode
+  1836→    let n = 1
+  1837→    const existingCodes = new Set(allItems.map((x) => x.code))
+  1838→    while (existingCodes.has(code)) {
+  1839→      code = `${baseCode}_${n++}`
+  1840→    }
+  1841→    try {
+  1842→      await safeToast(
+  1843→        apiPost("/api/onboarding-checklists", {
+  1844→          name: `${c.name} (Copy)`,
+  1845→          code,
+  1846→          description: c.description,
+  1847→          category: cat,
+  1848→          scopeType: c.scopeType,
+  1849→          isDefault: false,
+  1850→          status: "Draft",
+  1851→          version: 1,
+  1852→          tasks: (c.tasks ?? []).map((t, i) => ({
+  1853→            name: t.name,
+  1854→            code: `${t.code}_COPY`,
+  1855→            description: t.description,
+  1856→            ownerType: t.ownerType,
+  1857→            dueDateRule: t.dueDateRule,
+  1858→            dueDateOffset: t.dueDateOffset,
+  1859→            priority: t.priority,
+  1860→            isMandatory: t.isMandatory,
+  1861→            isBlocking: t.isBlocking,
+  1862→            requiresAttachment: t.requiresAttachment,
+  1863→            requiresComment: t.requiresComment,
+  1864→            requiresApproval: t.requiresApproval,
+  1865→            stageMapping: t.stageMapping,
+  1866→            status: t.status,
+  1867→            order: i,
+  1868→          })),
+  1869→        }),
+  1870→        "Checklist cloned",
+  1871→        "Failed to clone checklist"
+  1872→      )
+  1873→      reloadAll()
+  1874→    } catch { /* handled */ }
+  1875→  }
+  1876→
+  1877→  const handleSetDefault = async (c: Checklist) => {
+  1878→    try {
+  1879→      await safeToast(
+  1880→        apiPatch(`/api/onboarding-checklists/${c.id}`, { isDefault: true }),
+  1881→        `${c.name} set as default for ${c.category}`,
+  1882→        "Failed to set default"
+  1883→      )
+  1884→      reloadAll()
+  1885→    } catch { /* handled */ }
+  1886→  }
+  1887→
+  1888→  const handleDeleteRequest = (c: Checklist) => {
+  1889→    setDeleteTarget(c)
+  1890→    setDeleteOpen(true)
+  1891→  }
+  1892→
+  1893→  const handleDeleteConfirm = async () => {
+  1894→    if (!deleteTarget) return
+  1895→    try {
+  1896→      await safeToast(
+  1897→        apiDelete(`/api/onboarding-checklists/${deleteTarget.id}`),
+  1898→        "Checklist deleted",
+  1899→        "Failed to delete checklist"
+  1900→      )
+  1901→      setDeleteOpen(false)
+  1902→      setDeleteTarget(null)
+  1903→      reloadAll()
+  1904→    } catch { /* handled */ }
+  1905→  }
+  1906→
+  1907→  // ----- Render -----
+  1908→  return (
+  1909→    <div className="flex flex-col gap-4">
+  1910→      <PageHeader
+  1911→        title="Checklists"
+  1912→        description="Reusable task groups assigned per onboarding stage. Each checklist defines who does what, by when."
+  1913→        icon={ListChecks}
+  1914→      />
+  1915→
+  1916→      <AnimatePresence mode="wait">
+  1917→        {selectedId ? (
+  1918→          <motion.div
+  1919→            key={`detail-${selectedId}`}
+  1920→            initial={{ opacity: 0, y: 8 }}
+  1921→            animate={{ opacity: 1, y: 0 }}
+  1922→            exit={{ opacity: 0, y: -8 }}
+  1923→            transition={{ duration: 0.15 }}
+  1924→          >
+  1925→            <ChecklistDetailView
+  1926→              checklistId={selectedId}
+  1927→              onBack={handleBack}
+  1928→              onEdit={(c) => { setSelectedId(null); handleEdit(c) }}
+  1929→              onDeleted={() => { setSelectedId(null); reloadAll() }}
+  1930→            />
+  1931→          </motion.div>
+  1932→        ) : (
+  1933→          <motion.div
+  1934→            key="list"
+  1935→            initial={{ opacity: 0, y: 8 }}
+  1936→            animate={{ opacity: 1, y: 0 }}
+  1937→            exit={{ opacity: 0, y: -8 }}
+  1938→            transition={{ duration: 0.15 }}
+  1939→            className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4"
+  1940→          >
+  1941→            {/* Sidebar */}
+  1942→            <aside className="lg:sticky lg:top-4 lg:self-start">
+  1943→              <Card className="bg-card border border-border/60 rounded-xl shadow-soft">
+  1944→                <CardContent className="p-3">
+  1945→                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-2 pb-2">
+  1946→                    Categories
+  1947→                  </p>
+  1948→                  <CategorySidebar
+  1949→                    categories={CATEGORIES}
+  1950→                    counts={counts}
+  1951→                    active={selectedCategory}
+  1952→                    onSelect={setSelectedCategory}
+  1953→                    total={allItems.length}
+  1954→                  />
+  1955→                </CardContent>
+  1956→              </Card>
+  1957→            </aside>
+  1958→
+  1959→            {/* Grid */}
+  1960→            <div className="space-y-3">
+  1961→              {/* Toolbar */}
+  1962→              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+  1963→                <div className="relative w-full sm:max-w-xs">
+  1964→                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  1965→                  <Input
+  1966→                    value={search}
+  1967→                    onChange={(e) => setSearch(e.target.value)}
+  1968→                    placeholder="Search by name, code, description..."
+  1969→                    className="pl-9 h-9 bg-background"
+  1970→                  />
+  1971→                </div>
+  1972→                <div className="flex items-center gap-2">
+  1973→                  <span className="text-xs text-muted-foreground hidden sm:inline">
+  1974→                    {filtered.length} of {allItems.length} checklists
+  1975→                  </span>
+  1976→                  <Button size="sm" onClick={handleNew} className="gap-1.5">
+  1977→                    <Plus className="h-4 w-4" /> New Checklist
+  1978→                  </Button>
+  1979→                </div>
+  1980→              </div>
+  1981→
+  1982→              {/* Loading skeletons */}
+  1983→              {loading ? (
+  1984→                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+  1985→                  {Array.from({ length: 6 }).map((_, i) => (
+  1986→                    <Skeleton key={i} className="h-44 w-full rounded-xl" />
+  1987→                  ))}
+  1988→                </div>
+  1989→              ) : filtered.length === 0 ? (
+  1990→                <EmptyState
+  1991→                  icon={Inbox}
+  1992→                  title={allItems.length === 0 ? "No checklists yet" : "No matches found"}
+  1993→                  description={
+  1994→                    allItems.length === 0
+  1995→                      ? "Create your first reusable checklist to define tasks for onboarding stages."
+  1996→                      : "Try adjusting your search or category filter."
+  1997→                  }
+  1998→                  action={
+  1999→                    allItems.length === 0 ? (
+  2000→                      <Button size="sm" onClick={handleNew} className="gap-1.5">
+
+[showing lines 1-2000 of 2078; use offset=2001 with limit to continue reading]

@@ -1,0 +1,1756 @@
+     1→"use client"
+     2→
+     3→// ============================================================================
+     4→//  WorkflowsSection — Onboarding Workflow Builder
+     5→//  Admins create/edit onboarding pipelines (boards) with deeply
+     6→//  customizable stages. The "engine" that drives the Kanban board.
+     7→// ============================================================================
+     8→
+     9→import { useState, useMemo, useEffect } from "react"
+    10→import type { ReactNode, DragEvent } from "react"
+    11→import {
+    12→  Plus, Trash2, GripVertical, ChevronUp, ChevronDown,
+    13→  Circle, PlayCircle, CheckCircle2, ShieldCheck, Clock, Users, FileText,
+    14→  Zap, Star, ArrowLeft, LayoutGrid, Sparkles, Save, Hash, Calendar,
+    15→  Layers, AlertTriangle, Workflow as WorkflowIcon, Pencil, Search,
+    16→  Check, Loader2, Settings2,
+    17→} from "lucide-react"
+    18→import {
+    19→  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    20→} from "@/components/ui/dialog"
+    21→import { Button } from "@/components/ui/button"
+    22→import { Input } from "@/components/ui/input"
+    23→import { Textarea } from "@/components/ui/textarea"
+    24→import {
+    25→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    26→} from "@/components/ui/select"
+    27→import { Label } from "@/components/ui/label"
+    28→import { Badge } from "@/components/ui/badge"
+    29→import { Switch } from "@/components/ui/switch"
+    30→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+    31→import { Separator } from "@/components/ui/separator"
+    32→import {
+    33→  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+    34→} from "@/components/ui/accordion"
+    35→import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+    36→import {
+    37→  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+    38→} from "@/components/ui/dropdown-menu"
+    39→import {
+    40→  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+    41→  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+    42→} from "@/components/ui/alert-dialog"
+    43→import { PageHeader, StatCard, EmptyState, StatusBadge } from "@/components/hrms/ui"
+    44→import {
+    45→  OnboardingWorkflow, OnboardingStage, OnboardingTaskTemplate,
+    46→  STAGE_COLORS, STAGE_TYPE_META, STAGE_CATEGORIES, WORKFLOW_CATEGORIES,
+    47→  useFetch, apiPost, apiPatch, apiDelete, safeToast, safeParseJson,
+    48→} from "@/components/hrms/onboarding/shared"
+    49→import { cn } from "@/lib/utils"
+    50→
+    51→// ============================================================================
+    52→//  Constants
+    53→// ============================================================================
+    54→
+    55→const WORKFLOW_STATUSES = ["Active", "Draft", "Archived"]
+    56→
+    57→const STAGE_TYPES = [
+    58→  { value: "start", label: "Start" },
+    59→  { value: "standard", label: "Standard" },
+    60→  { value: "gate", label: "Gate" },
+    61→  { value: "end", label: "End" },
+    62→]
+    63→
+    64→const OWNER_TYPES = [
+    65→  { value: "assignee", label: "Assignee" },
+    66→  { value: "default", label: "Default Owner" },
+    67→  { value: "role", label: "By Role" },
+    68→  { value: "dynamic", label: "Dynamic" },
+    69→]
+    70→
+    71→const CARD_COLOR_BY_OPTIONS = [
+    72→  { value: "stage", label: "Stage Color" },
+    73→  { value: "candidateType", label: "Candidate Type" },
+    74→  { value: "priority", label: "Priority" },
+    75→]
+    76→
+    77→const TASK_PRIORITIES = ["Low", "Medium", "High", "Critical"]
+    78→const TASK_CATEGORIES = ["General", "Documentation", "IT Setup", "HR", "Admin", "Compliance", "Orientation"]
+    79→
+    80→const PRESET_STAGES = [
+    81→  { name: "Application Received", code: "APP_RECV", color: "#22c55e", icon: "FileText", stageType: "start", category: "intake", slaDays: 1, isMilestone: false, isRequired: true },
+    82→  { name: "Document Verification", code: "DOC_VERIFY", color: "#0ea5e9", icon: "ShieldCheck", stageType: "standard", category: "process", slaDays: 3, isMilestone: false, isRequired: true },
+    83→  { name: "Offer Rollout", code: "OFFER", color: "#f59e0b", icon: "FileText", stageType: "gate", category: "review", slaDays: 2, isMilestone: true, isRequired: true },
+    84→  { name: "Day 1 Onboarding", code: "DAY1", color: "#10b981", icon: "CheckCircle2", stageType: "end", category: "completion", slaDays: 1, isMilestone: true, isRequired: true },
+    85→]
+    86→
+    87→// ============================================================================
+    88→//  Helpers
+    89→// ============================================================================
+    90→
+    91→function toCode(name: string): string {
+    92→  return (
+    93→    name.trim()
+    94→      .toUpperCase()
+    95→      .replace(/[^A-Z0-9 ]/g, "")
+    96→      .trim()
+    97→      .replace(/\s+/g, "_")
+    98→      .slice(0, 32) || `WF_${Date.now().toString().slice(-4)}`
+    99→  )
+   100→}
+   101→
+   102→function docsToText(docs?: string | null): string {
+   103→  const arr = safeParseJson<string[]>(docs, [])
+   104→  return Array.isArray(arr) ? arr.join(", ") : ""
+   105→}
+   106→
+   107→function textToDocs(text: string): string[] {
+   108→  return text.split(",").map((s) => s.trim()).filter(Boolean)
+   109→}
+   110→
+   111→function jsonToText<T>(str: string | null | undefined, fallback: T): string {
+   112→  const v = safeParseJson<T>(str, fallback)
+   113→  try {
+   114→    return JSON.stringify(v, null, 2)
+   115→  } catch {
+   116→    return ""
+   117→  }
+   118→}
+   119→
+   120→function tryParseJsonText(text: string): { ok: true; value: any } | { ok: false; error: string } {
+   121→  if (!text.trim()) return { ok: true, value: null }
+   122→  try {
+   123→    return { ok: true, value: JSON.parse(text) }
+   124→  } catch (e: any) {
+   125→    return { ok: false, error: e?.message || "Invalid JSON" }
+   126→  }
+   127→}
+   128→
+   129→// ============================================================================
+   130→//  Small UI primitives
+   131→// ============================================================================
+   132→
+   133→function ColorSwatch({ color, selected, onClick, size = "md" }: {
+   134→  color: string
+   135→  selected?: boolean
+   136→  onClick?: (c: string) => void
+   137→  size?: "sm" | "md"
+   138→}) {
+   139→  const dim = size === "sm" ? "h-5 w-5" : "h-7 w-7"
+   140→  return (
+   141→    <button
+   142→      type="button"
+   143→      onClick={() => onClick?.(color)}
+   144→      className={cn(
+   145→        "rounded-full border-2 transition-all hover:scale-110 cursor-pointer",
+   146→        dim,
+   147→        selected
+   148→          ? "border-foreground ring-2 ring-foreground/20"
+   149→          : "border-white/60 dark:border-background/60 shadow-sm"
+   150→      )}
+   151→      style={{ backgroundColor: color }}
+   152→      aria-label={`Color ${color}`}
+   153→    />
+   154→  )
+   155→}
+   156→
+   157→function ColorSwatches({ value, onChange, size = "md" }: {
+   158→  value?: string
+   159→  onChange: (c: string) => void
+   160→  size?: "sm" | "md"
+   161→}) {
+   162→  return (
+   163→    <div className="flex flex-wrap gap-2">
+   164→      {STAGE_COLORS.map((c) => (
+   165→        <ColorSwatch
+   166→          key={c.value}
+   167→          color={c.value}
+   168→          selected={value === c.value}
+   169→          onClick={onChange}
+   170→          size={size}
+   171→        />
+   172→      ))}
+   173→    </div>
+   174→  )
+   175→}
+   176→
+   177→function SwitchRow({ label, description, checked, onChange }: {
+   178→  label: string
+   179→  description?: string
+   180→  checked: boolean
+   181→  onChange: (v: boolean) => void
+   182→}) {
+   183→  return (
+   184→    <div className="flex items-center justify-between gap-3 py-1.5">
+   185→      <div className="min-w-0">
+   186→        <p className="text-sm font-medium text-foreground">{label}</p>
+   187→        {description && <p className="text-xs text-muted-foreground">{description}</p>}
+   188→      </div>
+   189→      <Switch checked={checked} onCheckedChange={onChange} />
+   190→    </div>
+   191→  )
+   192→}
+   193→
+   194→const ICON_MAP: Record<string, any> = {
+   195→  PlayCircle, Circle, CheckCircle2, ShieldCheck, Clock, Users, FileText,
+   196→  Zap, Star, LayoutGrid, Hash, Calendar, Layers, Sparkles,
+   197→}
+   198→
+   199→function IconByName({ name, className }: { name?: string | null; className?: string }) {
+   200→  const Ic = (name && ICON_MAP[name]) || Circle
+   201→  return <Ic className={className} />
+   202→}
+   203→
+   204→function StageTypeIcon({ type, className }: { type: string; className?: string }) {
+   205→  const meta = STAGE_TYPE_META[type] || STAGE_TYPE_META.standard
+   206→  const Ic = ICON_MAP[meta.icon] || Circle
+   207→  return <Ic className={className} style={{ color: meta.color }} />
+   208→}
+   209→
+   210→function FieldLabel({ children, hint }: { children: ReactNode; hint?: string }) {
+   211→  return (
+   212→    <div className="flex items-center gap-1.5">
+   213→      <Label className="text-xs font-medium text-foreground">{children}</Label>
+   214→      {hint && (
+   215→        <TooltipProvider>
+   216→          <Tooltip>
+   217→            <TooltipTrigger asChild>
+   218→              <span className="text-muted-foreground cursor-help text-[10px]">ⓘ</span>
+   219→            </TooltipTrigger>
+   220→            <TooltipContent className="max-w-xs">{hint}</TooltipContent>
+   221→          </Tooltip>
+   222→        </TooltipProvider>
+   223→      )}
+   224→    </div>
+   225→  )
+   226→}
+   227→
+   228→// ============================================================================
+   229→//  New Workflow Dialog
+   230→// ============================================================================
+   231→
+   232→function NewWorkflowDialog({ open, onOpenChange, onCreated }: {
+   233→  open: boolean
+   234→  onOpenChange: (v: boolean) => void
+   235→  onCreated: (wf: OnboardingWorkflow) => void
+   236→}) {
+   237→  const [name, setName] = useState("")
+   238→  const [code, setCode] = useState("")
+   239→  const [description, setDescription] = useState("")
+   240→  const [category, setCategory] = useState("General")
+   241→  const [color, setColor] = useState("#10b981")
+   242→  const [icon, setIcon] = useState("LayoutGrid")
+   243→  const [useTemplate, setUseTemplate] = useState(true)
+   244→  const [saving, setSaving] = useState(false)
+   245→
+   246→  const handleNameChange = (v: string) => {
+   247→    setName(v)
+   248→    setCode(toCode(v))
+   249→  }
+   250→
+   251→  const reset = () => {
+   252→    setName(""); setCode(""); setDescription(""); setCategory("General")
+   253→    setColor("#10b981"); setIcon("LayoutGrid"); setUseTemplate(true)
+   254→  }
+   255→
+   256→  const handleCreate = async () => {
+   257→    if (!name.trim() || !code.trim()) return
+   258→    setSaving(true)
+   259→    const payload: any = {
+   260→      name: name.trim(),
+   261→      code: code.trim(),
+   262→      description: description.trim() || undefined,
+   263→      category,
+   264→      color,
+   265→      icon: icon || "LayoutGrid",
+   266→    }
+   267→    if (useTemplate) payload.stages = PRESET_STAGES
+   268→    try {
+   269→      const wf = await safeToast(
+   270→        apiPost("/api/onboarding-workflows", payload),
+   271→        "Workflow created",
+   272→        "Could not create workflow"
+   273→      )
+   274→      reset()
+   275→      onOpenChange(false)
+   276→      onCreated(wf as OnboardingWorkflow)
+   277→    } catch {
+   278→      /* toast shown */
+   279→    } finally {
+   280→      setSaving(false)
+   281→    }
+   282→  }
+   283→
+   284→  return (
+   285→    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o) }}>
+   286→      <DialogContent className="sm:max-w-lg">
+   287→        <DialogHeader>
+   288→          <DialogTitle className="flex items-center gap-2">
+   289→            <Sparkles className="h-5 w-5 text-emerald-500" /> New Onboarding Workflow
+   290→          </DialogTitle>
+   291→          <DialogDescription>Define a customizable pipeline that drives a Kanban board.</DialogDescription>
+   292→        </DialogHeader>
+   293→
+   294→        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+   295→          <div className="grid grid-cols-2 gap-3">
+   296→            <div className="space-y-1.5">
+   297→              <Label htmlFor="wf-name">Name</Label>
+   298→              <Input id="wf-name" value={name} onChange={(e) => handleNameChange(e.target.value)} placeholder="e.g. Lateral Onboarding" />
+   299→            </div>
+   300→            <div className="space-y-1.5">
+   301→              <Label htmlFor="wf-code">Code</Label>
+   302→              <Input id="wf-code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="LATERAL_ONB" className="font-mono text-xs" />
+   303→            </div>
+   304→          </div>
+   305→
+   306→          <div className="space-y-1.5">
+   307→            <Label htmlFor="wf-desc">Description</Label>
+   308→            <Textarea id="wf-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Brief description of this workflow" />
+   309→          </div>
+   310→
+   311→          <div className="grid grid-cols-2 gap-3">
+   312→            <div className="space-y-1.5">
+   313→              <Label>Category</Label>
+   314→              <Select value={category} onValueChange={setCategory}>
+   315→                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+   316→                <SelectContent>
+   317→                  {WORKFLOW_CATEGORIES.map((c) => (
+   318→                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+   319→                  ))}
+   320→                </SelectContent>
+   321→              </Select>
+   322→            </div>
+   323→            <div className="space-y-1.5">
+   324→              <Label htmlFor="wf-icon">Icon (lucide name)</Label>
+   325→              <Input id="wf-icon" value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="LayoutGrid" className="font-mono text-xs" />
+   326→            </div>
+   327→          </div>
+   328→
+   329→          <div className="space-y-1.5">
+   330→            <Label>Color</Label>
+   331→            <ColorSwatches value={color} onChange={setColor} />
+   332→          </div>
+   333→
+   334→          <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
+   335→            <SwitchRow
+   336→              label="Start with default template"
+   337→              description="Pre-loads 4 stages: Application → Document Verification → Offer → Day 1"
+   338→              checked={useTemplate}
+   339→              onChange={setUseTemplate}
+   340→            />
+   341→          </div>
+   342→        </div>
+   343→
+   344→        <DialogFooter>
+   345→          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+   346→          <Button onClick={handleCreate} disabled={saving || !name.trim() || !code.trim()} className="gap-1.5">
+   347→            <Plus className="h-4 w-4" /> {saving ? "Creating..." : "Create Workflow"}
+   348→          </Button>
+   349→        </DialogFooter>
+   350→      </DialogContent>
+   351→    </Dialog>
+   352→  )
+   353→}
+   354→
+   355→// ============================================================================
+   356→//  Task Template row + add form
+   357→// ============================================================================
+   358→
+   359→function TaskTemplateRow({ task, stageId, workflowId, onChanged }: {
+   360→  task: OnboardingTaskTemplate
+   361→  stageId: string
+   362→  workflowId: string
+   363→  onChanged: () => void
+   364→}) {
+   365→  const [deleting, setDeleting] = useState(false)
+   366→
+   367→  const priorityColor: Record<string, string> = {
+   368→    Low: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300",
+   369→    Medium: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300",
+   370→    High: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+   371→    Critical: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+   372→  }
+   373→
+   374→  const handleDelete = async () => {
+   375→    setDeleting(true)
+   376→    // No dedicated DELETE endpoint per current API surface.
+   377→    // Attempt a graceful DELETE on the resource — surface friendly error if unsupported.
+   378→    try {
+   379→      await safeToast(
+   380→        apiDelete(`/api/onboarding-workflows/${workflowId}/stages/${stageId}/tasks/${task.id}`),
+   381→        "Task removed",
+   382→        "Task deletion is not supported by the current API"
+   383→      )
+   384→      onChanged()
+   385→    } catch {
+   386→      /* toast shown */
+   387→    } finally {
+   388→      setDeleting(false)
+   389→    }
+   390→  }
+   391→
+   392→  return (
+   393→    <div className="flex items-start gap-2 rounded-md border border-border/60 bg-background px-3 py-2">
+   394→      <div className="flex-1 min-w-0">
+   395→        <div className="flex items-center gap-2 flex-wrap">
+   396→          <span className="text-sm font-medium text-foreground truncate">{task.title}</span>
+   397→          {task.isBlocking && (
+   398→            <Badge variant="outline" className="text-[10px] py-0 h-4 border-rose-300 text-rose-600 dark:border-rose-500/40 dark:text-rose-400">
+   399→              Blocking
+   400→            </Badge>
+   401→          )}
+   402→          <Badge variant="secondary" className={cn("text-[10px] py-0 h-4", priorityColor[task.priority] || "")}>
+   403→            {task.priority}
+   404→          </Badge>
+   405→        </div>
+   406→        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
+   407→          <span className="font-mono">{task.category}</span>
+   408→          <span>·</span>
+   409→          <span>{task.daysFromStage}d from stage start</span>
+   410→        </div>
+   411→      </div>
+   412→      <Tooltip>
+   413→        <TooltipTrigger asChild>
+   414→          <Button
+   415→            variant="ghost"
+   416→            size="icon"
+   417→            className="h-7 w-7 text-muted-foreground hover:text-rose-600"
+   418→            onClick={handleDelete}
+   419→            disabled={deleting}
+   420→          >
+   421→            {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+   422→          </Button>
+   423→        </TooltipTrigger>
+   424→        <TooltipContent>Delete task template</TooltipContent>
+   425→      </Tooltip>
+   426→    </div>
+   427→  )
+   428→}
+   429→
+   430→function TaskTemplateAddForm({ stageId, workflowId, onAdded }: {
+   431→  stageId: string
+   432→  workflowId: string
+   433→  onAdded: () => void
+   434→}) {
+   435→  const [open, setOpen] = useState(false)
+   436→  const [title, setTitle] = useState("")
+   437→  const [daysFromStage, setDaysFromStage] = useState(0)
+   438→  const [priority, setPriority] = useState("Medium")
+   439→  const [isBlocking, setIsBlocking] = useState(false)
+   440→  const [category, setCategory] = useState("General")
+   441→  const [saving, setSaving] = useState(false)
+   442→
+   443→  const reset = () => {
+   444→    setTitle(""); setDaysFromStage(0); setPriority("Medium")
+   445→    setIsBlocking(false); setCategory("General")
+   446→  }
+   447→
+   448→  const handleAdd = async () => {
+   449→    if (!title.trim()) return
+   450→    setSaving(true)
+   451→    try {
+   452→      await safeToast(
+   453→        apiPost(`/api/onboarding-workflows/${workflowId}/stages/${stageId}/tasks`, {
+   454→          title: title.trim(),
+   455→          daysFromStage: Number(daysFromStage) || 0,
+   456→          priority,
+   457→          isBlocking,
+   458→          category,
+   459→          order: 0,
+   460→        }),
+   461→        "Task added",
+   462→        "Could not add task"
+   463→      )
+   464→      reset()
+   465→      setOpen(false)
+   466→      onAdded()
+   467→    } catch {
+   468→      /* toast shown */
+   469→    } finally {
+   470→      setSaving(false)
+   471→    }
+   472→  }
+   473→
+   474→  if (!open) {
+   475→    return (
+   476→      <Button variant="outline" size="sm" className="w-full border-dashed gap-1.5" onClick={() => setOpen(true)}>
+   477→        <Plus className="h-3.5 w-3.5" /> Add task template
+   478→      </Button>
+   479→    )
+   480→  }
+   481→
+   482→  return (
+   483→    <div className="rounded-md border border-emerald-200/60 bg-emerald-500/5 p-3 space-y-2">
+   484→      <Input
+   485→        value={title}
+   486→        onChange={(e) => setTitle(e.target.value)}
+   487→        placeholder="Task title (e.g. Create email account)"
+   488→        className="h-8 text-sm"
+   489→        autoFocus
+   490→      />
+   491→      <div className="grid grid-cols-2 gap-2">
+   492→        <div className="space-y-1">
+   493→          <Label className="text-[10px] text-muted-foreground">Days from stage start</Label>
+   494→          <Input
+   495→            type="number"
+   496→            value={daysFromStage}
+   497→            onChange={(e) => setDaysFromStage(Number(e.target.value))}
+   498→            min={0}
+   499→            className="h-8 text-sm"
+   500→          />
+   501→        </div>
+   502→        <div className="space-y-1">
+   503→          <Label className="text-[10px] text-muted-foreground">Priority</Label>
+   504→          <Select value={priority} onValueChange={setPriority}>
+   505→            <SelectTrigger className="h-8 text-sm w-full"><SelectValue /></SelectTrigger>
+   506→            <SelectContent>
+   507→              {TASK_PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+   508→            </SelectContent>
+   509→          </Select>
+   510→        </div>
+   511→      </div>
+   512→      <div className="grid grid-cols-2 gap-2 items-end">
+   513→        <div className="space-y-1">
+   514→          <Label className="text-[10px] text-muted-foreground">Category</Label>
+   515→          <Select value={category} onValueChange={setCategory}>
+   516→            <SelectTrigger className="h-8 text-sm w-full"><SelectValue /></SelectTrigger>
+   517→            <SelectContent>
+   518→              {TASK_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+   519→            </SelectContent>
+   520→          </Select>
+   521→        </div>
+   522→        <div className="flex items-center gap-2 pb-1">
+   523→          <Switch checked={isBlocking} onCheckedChange={setIsBlocking} id={`blk-${stageId}`} />
+   524→          <Label htmlFor={`blk-${stageId}`} className="text-xs">Blocking</Label>
+   525→        </div>
+   526→      </div>
+   527→      <div className="flex items-center justify-end gap-2 pt-1">
+   528→        <Button variant="ghost" size="sm" onClick={() => { reset(); setOpen(false) }}>Cancel</Button>
+   529→        <Button size="sm" onClick={handleAdd} disabled={saving || !title.trim()} className="gap-1.5">
+   530→          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+   531→          Add task
+   532→        </Button>
+   533→      </div>
+   534→    </div>
+   535→  )
+   536→}
+   537→
+   538→// ============================================================================
+   539→//  Stage Card — deep customization form (collapsed/expanded)
+   540→// ============================================================================
+   541→
+   542→interface StageFormState {
+   543→  name: string
+   544→  code: string
+   545→  description: string
+   546→  color: string
+   547→  icon: string
+   548→  stageType: string
+   549→  category: string
+   550→  slaDays: string
+   551→  slaWarningDays: string
+   552→  isMilestone: boolean
+   553→  wipLimit: string
+   554→  blockOnOverflow: boolean
+   555→  ownerType: string
+   556→  ownerRole: string
+   557→  defaultOwnerId: string
+   558→  entryGatesText: string
+   559→  exitGatesText: string
+   560→  automationsText: string
+   561→  requiresForm: boolean
+   562→  formSchemaId: string
+   563→  requiredDocumentsText: string
+   564→  isSkippable: boolean
+   565→  isRequired: boolean
+   566→  autoAdvance: boolean
+   567→}
+   568→
+   569→function stageToFormState(s: OnboardingStage): StageFormState {
+   570→  return {
+   571→    name: s.name || "",
+   572→    code: s.code || "",
+   573→    description: s.description || "",
+   574→    color: s.color || "#64748b",
+   575→    icon: s.icon || "Circle",
+   576→    stageType: s.stageType || "standard",
+   577→    category: s.category || "process",
+   578→    slaDays: s.slaDays == null ? "" : String(s.slaDays),
+   579→    slaWarningDays: s.slaWarningDays == null ? "" : String(s.slaWarningDays),
+   580→    isMilestone: !!s.isMilestone,
+   581→    wipLimit: s.wipLimit == null ? "" : String(s.wipLimit),
+   582→    blockOnOverflow: !!s.blockOnOverflow,
+   583→    ownerType: s.ownerType || "assignee",
+   584→    ownerRole: s.ownerRole || "",
+   585→    defaultOwnerId: s.defaultOwnerId || "",
+   586→    entryGatesText: jsonToText<any[]>(s.entryGates, []),
+   587→    exitGatesText: jsonToText<any[]>(s.exitGates, []),
+   588→    automationsText: jsonToText<any[]>(s.automations, []),
+   589→    requiresForm: !!s.requiresForm,
+   590→    formSchemaId: s.formSchemaId || "",
+   591→    requiredDocumentsText: docsToText(s.requiredDocuments),
+   592→    isSkippable: !!s.isSkippable,
+   593→    isRequired: s.isRequired ?? true,
+   594→    autoAdvance: !!s.autoAdvance,
+   595→  }
+   596→}
+   597→
+   598→function StageCard({
+   599→  stage, order, total, workflowId, onSaved, onDeleted, onMoveUp, onMoveDown,
+   600→}: {
+   601→  stage: OnboardingStage
+   602→  order: number
+   603→  total: number
+   604→  workflowId: string
+   605→  onSaved: () => void
+   606→  onDeleted: () => void
+   607→  onMoveUp: () => void
+   608→  onMoveDown: () => void
+   609→}) {
+   610→  const [expanded, setExpanded] = useState(false)
+   611→  const [form, setForm] = useState<StageFormState>(() => stageToFormState(stage))
+   612→  const [saving, setSaving] = useState(false)
+   613→  const [deleteOpen, setDeleteOpen] = useState(false)
+   614→  const [deleting, setDeleting] = useState(false)
+   615→  const [jsonError, setJsonError] = useState<string | null>(null)
+   616→
+   617→  // Re-sync form when stage prop changes (e.g. after reload)
+   618→  useEffect(() => {
+   619→    setForm(stageToFormState(stage))
+   620→  }, [stage.id, stage.updatedAt])
+   621→
+   622→  const set = <K extends keyof StageFormState>(k: K, v: StageFormState[K]) =>
+   623→    setForm((f) => ({ ...f, [k]: v }))
+   624→
+   625→  const typeMeta = STAGE_TYPE_META[form.stageType] || STAGE_TYPE_META.standard
+   626→
+   627→  const handleSave = async () => {
+   628→    setSaving(true)
+   629→    setJsonError(null)
+   630→
+   631→    // Validate JSON textareas
+   632→    const entryParsed = tryParseJsonText(form.entryGatesText)
+   633→    if (!entryParsed.ok) {
+   634→      setJsonError(`Entry Gates: ${entryParsed.error}`)
+   635→      setSaving(false)
+   636→      return
+   637→    }
+   638→    const exitParsed = tryParseJsonText(form.exitGatesText)
+   639→    if (!exitParsed.ok) {
+   640→      setJsonError(`Exit Gates: ${exitParsed.error}`)
+   641→      setSaving(false)
+   642→      return
+   643→    }
+   644→    const autoParsed = tryParseJsonText(form.automationsText)
+   645→    if (!autoParsed.ok) {
+   646→      setJsonError(`Automations: ${autoParsed.error}`)
+   647→      setSaving(false)
+   648→      return
+   649→    }
+   650→
+   651→    const docs = textToDocs(form.requiredDocumentsText)
+   652→
+   653→    const payload: any = {
+   654→      name: form.name.trim(),
+   655→      code: form.code.trim(),
+   656→      description: form.description.trim() || null,
+   657→      color: form.color,
+   658→      icon: form.icon || "Circle",
+   659→      stageType: form.stageType,
+   660→      category: form.category,
+   661→      slaDays: form.slaDays === "" ? null : Number(form.slaDays),
+   662→      slaWarningDays: form.slaWarningDays === "" ? null : Number(form.slaWarningDays),
+   663→      isMilestone: form.isMilestone,
+   664→      wipLimit: form.wipLimit === "" ? null : Number(form.wipLimit),
+   665→      blockOnOverflow: form.blockOnOverflow,
+   666→      ownerType: form.ownerType,
+   667→      ownerRole: form.ownerRole.trim() || null,
+   668→      defaultOwnerId: form.defaultOwnerId.trim() || null,
+   669→      entryGates: entryParsed.value,
+   670→      exitGates: exitParsed.value,
+   671→      automations: autoParsed.value,
+   672→      requiresForm: form.requiresForm,
+   673→      formSchemaId: form.formSchemaId.trim() || null,
+   674→      requiredDocuments: docs.length ? docs : null,
+   675→      isSkippable: form.isSkippable,
+   676→      isRequired: form.isRequired,
+   677→      autoAdvance: form.autoAdvance,
+   678→    }
+   679→
+   680→    try {
+   681→      await safeToast(
+   682→        apiPatch(`/api/onboarding-workflows/${workflowId}/stages/${stage.id}`, payload),
+   683→        "Stage saved",
+   684→        "Could not save stage"
+   685→      )
+   686→      onSaved()
+   687→    } catch {
+   688→      /* toast shown */
+   689→    } finally {
+   690→      setSaving(false)
+   691→    }
+   692→  }
+   693→
+   694→  const handleDelete = async () => {
+   695→    setDeleting(true)
+   696→    try {
+   697→      await safeToast(
+   698→        apiDelete(`/api/onboarding-workflows/${workflowId}/stages/${stage.id}`),
+   699→        "Stage deleted",
+   700→        "Could not delete stage"
+   701→      )
+   702→      onDeleted()
+   703→    } catch {
+   704→      /* toast shown */
+   705→    } finally {
+   706→      setDeleting(false)
+   707→      setDeleteOpen(false)
+   708→    }
+   709→  }
+   710→
+   711→  return (
+   712→    <div className="rounded-xl border border-border/60 bg-card shadow-soft overflow-hidden">
+   713→      {/* Header row */}
+   714→      <div className="flex items-center gap-2 px-3 py-2.5">
+   715→        <div className="flex flex-col">
+   716→          <Button
+   717→            variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground"
+   718→            onClick={onMoveUp} disabled={order === 0}
+   719→          >
+   720→            <ChevronUp className="h-3.5 w-3.5" />
+   721→          </Button>
+   722→          <Button
+   723→            variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground"
+   724→            onClick={onMoveDown} disabled={order === total - 1}
+   725→          >
+   726→            <ChevronDown className="h-3.5 w-3.5" />
+   727→          </Button>
+   728→        </div>
+   729→
+   730→        <GripVertical className="h-4 w-4 text-muted-foreground/50 cursor-grab" />
+   731→
+   732→        <span className="text-xs font-mono text-muted-foreground w-6 text-center">{order + 1}</span>
+   733→
+   734→        <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: form.color }} />
+   735→        <StageTypeIcon type={form.stageType} className="h-4 w-4 shrink-0" />
+   736→
+   737→        <button
+   738→          onClick={() => setExpanded((e) => !e)}
+   739→          className="flex-1 min-w-0 text-left"
+   740→        >
+   741→          <span className="text-sm font-semibold text-foreground truncate block">
+   742→            {form.name || "(unnamed stage)"}
+   743→          </span>
+   744→        </button>
+   745→
+   746→        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+   747→          <Badge variant="outline" className="text-[10px] py-0 h-5 font-mono" style={{ color: typeMeta.color, borderColor: typeMeta.color + "55" }}>
+   748→            {typeMeta.label}
+   749→          </Badge>
+   750→          {form.slaDays !== "" && (
+   751→            <Tooltip><TooltipTrigger asChild>
+   752→              <Badge variant="secondary" className="text-[10px] py-0 h-5 gap-0.5">
+   753→                <Clock className="h-3 w-3" /> {form.slaDays}d
+   754→              </Badge>
+   755→            </TooltipTrigger><TooltipContent>SLA: {form.slaDays} days</TooltipContent></Tooltip>
+   756→          )}
+   757→          {form.wipLimit !== "" && (
+   758→            <Tooltip><TooltipTrigger asChild>
+   759→              <Badge variant="secondary" className="text-[10px] py-0 h-5 gap-0.5">
+   760→                <Layers className="h-3 w-3" /> WIP {form.wipLimit}
+   761→              </Badge>
+   762→            </TooltipTrigger><TooltipContent>WIP limit: {form.wipLimit}</TooltipContent></Tooltip>
+   763→          )}
+   764→          {form.isMilestone && (
+   765→            <Tooltip><TooltipTrigger asChild>
+   766→              <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+   767→            </TooltipTrigger><TooltipContent>Milestone stage</TooltipContent></Tooltip>
+   768→          )}
+   769→        </div>
+   770→
+   771→        <Button
+   772→          variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"
+   773→          onClick={() => setExpanded((e) => !e)}
+   774→        >
+   775→          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+   776→        </Button>
+   777→      </div>
+   778→
+   779→      {/* Expanded form */}
+   780→      {expanded && (
+   781→        <div className="border-t border-border/60 bg-muted/20 p-4 space-y-5">
+   782→          {/* Basics */}
+   783→          <div>
+   784→            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
+   785→              <Circle className="h-3 w-3" /> Basics
+   786→            </h4>
+   787→            <div className="grid grid-cols-2 gap-3">
+   788→              <div className="space-y-1">
+   789→                <Label className="text-xs">Name</Label>
+   790→                <Input value={form.name} onChange={(e) => set("name", e.target.value)} className="h-8 text-sm" />
+   791→              </div>
+   792→              <div className="space-y-1">
+   793→                <Label className="text-xs">Code</Label>
+   794→                <Input value={form.code} onChange={(e) => set("code", e.target.value.toUpperCase())} className="h-8 text-sm font-mono" />
+   795→              </div>
+   796→              <div className="col-span-2 space-y-1">
+   797→                <Label className="text-xs">Description</Label>
+   798→                <Textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={2} className="text-sm" />
+   799→              </div>
+   800→              <div className="space-y-1">
+   801→                <Label className="text-xs">Stage Type</Label>
+   802→                <Select value={form.stageType} onValueChange={(v) => set("stageType", v)}>
+   803→                  <SelectTrigger className="h-8 text-sm w-full"><SelectValue /></SelectTrigger>
+   804→                  <SelectContent>
+   805→                    {STAGE_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+   806→                  </SelectContent>
+   807→                </Select>
+   808→              </div>
+   809→              <div className="space-y-1">
+   810→                <Label className="text-xs">Category</Label>
+   811→                <Select value={form.category} onValueChange={(v) => set("category", v)}>
+   812→                  <SelectTrigger className="h-8 text-sm w-full"><SelectValue /></SelectTrigger>
+   813→                  <SelectContent>
+   814→                    {STAGE_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+   815→                  </SelectContent>
+   816→                </Select>
+   817→              </div>
+   818→              <div className="space-y-1">
+   819→                <Label className="text-xs">Icon (lucide)</Label>
+   820→                <Input value={form.icon} onChange={(e) => set("icon", e.target.value)} className="h-8 text-sm font-mono" />
+   821→              </div>
+   822→              <div className="space-y-1">
+   823→                <Label className="text-xs">Color</Label>
+   824→                <ColorSwatches value={form.color} onChange={(c) => set("color", c)} size="sm" />
+   825→              </div>
+   826→            </div>
+   827→          </div>
+   828→
+   829→          <Separator />
+   830→
+   831→          {/* Timing & Capacity */}
+   832→          <div className="grid grid-cols-2 gap-4">
+   833→            <div>
+   834→              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
+   835→                <Clock className="h-3 w-3" /> Timing
+   836→              </h4>
+   837→              <div className="space-y-2">
+   838→                <div className="space-y-1">
+   839→                  <Label className="text-xs">SLA days (blank = none)</Label>
+   840→                  <Input type="number" min={0} value={form.slaDays} onChange={(e) => set("slaDays", e.target.value)} className="h-8 text-sm" />
+   841→                </div>
+   842→                <div className="space-y-1">
+   843→                  <Label className="text-xs">SLA warning days</Label>
+   844→                  <Input type="number" min={0} value={form.slaWarningDays} onChange={(e) => set("slaWarningDays", e.target.value)} className="h-8 text-sm" />
+   845→                </div>
+   846→                <SwitchRow label="Milestone" description="Marks a key stage in the journey" checked={form.isMilestone} onChange={(v) => set("isMilestone", v)} />
+   847→              </div>
+   848→            </div>
+   849→            <div>
+   850→              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
+   851→                <Layers className="h-3 w-3" /> Capacity
+   852→              </h4>
+   853→              <div className="space-y-2">
+   854→                <div className="space-y-1">
+   855→                  <Label className="text-xs">WIP limit (blank = unlimited)</Label>
+   856→                  <Input type="number" min={0} value={form.wipLimit} onChange={(e) => set("wipLimit", e.target.value)} className="h-8 text-sm" />
+   857→                </div>
+   858→                <SwitchRow label="Block on overflow" description="Prevent new cards when WIP is exceeded" checked={form.blockOnOverflow} onChange={(v) => set("blockOnOverflow", v)} />
+   859→              </div>
+   860→            </div>
+   861→          </div>
+   862→
+   863→          <Separator />
+   864→
+   865→          {/* Ownership */}
+   866→          <div>
+   867→            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
+   868→              <Users className="h-3 w-3" /> Ownership
+   869→            </h4>
+   870→            <div className="grid grid-cols-3 gap-3">
+   871→              <div className="space-y-1">
+   872→                <Label className="text-xs">Owner type</Label>
+   873→                <Select value={form.ownerType} onValueChange={(v) => set("ownerType", v)}>
+   874→                  <SelectTrigger className="h-8 text-sm w-full"><SelectValue /></SelectTrigger>
+   875→                  <SelectContent>
+   876→                    {OWNER_TYPES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+   877→                  </SelectContent>
+   878→                </Select>
+   879→              </div>
+   880→              <div className="space-y-1">
+   881→                <Label className="text-xs">Owner role</Label>
+   882→                <Input value={form.ownerRole} onChange={(e) => set("ownerRole", e.target.value)} placeholder="e.g. HR_ADMIN" className="h-8 text-sm" />
+   883→              </div>
+   884→              <div className="space-y-1">
+   885→                <Label className="text-xs">Default owner ID</Label>
+   886→                <Input value={form.defaultOwnerId} onChange={(e) => set("defaultOwnerId", e.target.value)} placeholder="employee id" className="h-8 text-sm font-mono" />
+   887→              </div>
+   888→            </div>
+   889→          </div>
+   890→
+   891→          <Separator />
+   892→
+   893→          {/* Gates */}
+   894→          <div className="grid grid-cols-2 gap-3">
+   895→            <div className="space-y-1">
+   896→              <FieldLabel hint='JSON array of gate rules, e.g. [{"type":"approval","role":"HR"}]'>Entry Gates (JSON)</FieldLabel>
+   897→              <Textarea value={form.entryGatesText} onChange={(e) => set("entryGatesText", e.target.value)} rows={4} className="text-xs font-mono" />
+   898→            </div>
+   899→            <div className="space-y-1">
+   900→              <FieldLabel hint="JSON array of gate rules required to leave this stage">Exit Gates (JSON)</FieldLabel>
+   901→              <Textarea value={form.exitGatesText} onChange={(e) => set("exitGatesText", e.target.value)} rows={4} className="text-xs font-mono" />
+   902→            </div>
+   903→          </div>
+   904→
+   905→          <Separator />
+   906→
+   907→          {/* Requirements */}
+   908→          <div>
+   909→            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
+   910→              <FileText className="h-3 w-3" /> Requirements
+   911→            </h4>
+   912→            <div className="grid grid-cols-2 gap-3">
+   913→              <div className="col-span-2">
+   914→                <SwitchRow label="Requires form" checked={form.requiresForm} onChange={(v) => set("requiresForm", v)} />
+   915→              </div>
+   916→              <div className="space-y-1">
+   917→                <Label className="text-xs">Form schema ID</Label>
+   918→                <Input value={form.formSchemaId} onChange={(e) => set("formSchemaId", e.target.value)} placeholder="form schema id" className="h-8 text-sm font-mono" disabled={!form.requiresForm} />
+   919→              </div>
+   920→              <div className="space-y-1">
+   921→                <Label className="text-xs">Required documents (comma-sep)</Label>
+   922→                <Input value={form.requiredDocumentsText} onChange={(e) => set("requiredDocumentsText", e.target.value)} placeholder="PAN, Aadhaar, Photo" className="h-8 text-sm" />
+   923→              </div>
+   924→            </div>
+   925→          </div>
+   926→
+   927→          <Separator />
+   928→
+   929→          {/* Automations */}
+   930→          <div className="space-y-1">
+   931→            <FieldLabel hint='JSON array of automation steps, e.g. [{"trigger":"onEnter","action":"sendEmail","template":"welcome"}]'>
+   932→              <span className="flex items-center gap-1.5"><Zap className="h-3 w-3" /> Automations (JSON)</span>
+   933→            </FieldLabel>
+   934→            <Textarea value={form.automationsText} onChange={(e) => set("automationsText", e.target.value)} rows={4} className="text-xs font-mono" />
+   935→          </div>
+   936→
+   937→          <Separator />
+   938→
+   939→          {/* Behavior */}
+   940→          <div>
+   941→            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
+   942→              <ShieldCheck className="h-3 w-3" /> Behavior
+   943→            </h4>
+   944→            <div className="grid grid-cols-1 gap-1">
+   945→              <SwitchRow label="Skippable" description="Allow candidates to bypass this stage" checked={form.isSkippable} onChange={(v) => set("isSkippable", v)} />
+   946→              <SwitchRow label="Required" description="Stage must be completed for onboarding to finish" checked={form.isRequired} onChange={(v) => set("isRequired", v)} />
+   947→              <SwitchRow label="Auto-advance" description="Automatically advance to next stage when gates pass" checked={form.autoAdvance} onChange={(v) => set("autoAdvance", v)} />
+   948→            </div>
+   949→          </div>
+   950→
+   951→          <Separator />
+   952→
+   953→          {/* Task Templates */}
+   954→          <div>
+   955→            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
+   956→              <CheckCircle2 className="h-3 w-3" /> Task Templates
+   957→            </h4>
+   958→            <div className="space-y-2">
+   959→              {stage.taskTemplates && stage.taskTemplates.length > 0 ? (
+   960→                stage.taskTemplates.map((t) => (
+   961→                  <TaskTemplateRow
+   962→                    key={t.id}
+   963→                    task={t}
+   964→                    stageId={stage.id}
+   965→                    workflowId={workflowId}
+   966→                    onChanged={onSaved}
+   967→                  />
+   968→                ))
+   969→              ) : (
+   970→                <p className="text-xs text-muted-foreground italic py-1">No task templates yet.</p>
+   971→              )}
+   972→              <TaskTemplateAddForm stageId={stage.id} workflowId={workflowId} onAdded={onSaved} />
+   973→            </div>
+   974→          </div>
+   975→
+   976→          {/* Error + actions */}
+   977→          {jsonError && (
+   978→            <div className="flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 dark:bg-rose-500/10 dark:border-rose-500/40 px-3 py-2 text-xs text-rose-700 dark:text-rose-300">
+   979→              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+   980→              <span className="font-mono">{jsonError}</span>
+   981→            </div>
+   982→          )}
+   983→          <div className="flex items-center justify-between pt-1">
+   984→            <Button
+   985→              variant="ghost" size="sm"
+   986→              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+   987→              onClick={() => setDeleteOpen(true)}
+   988→            >
+   989→              <Trash2 className="h-3.5 w-3.5" /> Delete stage
+   990→            </Button>
+   991→            <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
+   992→              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+   993→              Save stage
+   994→            </Button>
+   995→          </div>
+   996→        </div>
+   997→      )}
+   998→
+   999→      {/* Delete confirm */}
+  1000→      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+  1001→        <AlertDialogContent>
+  1002→          <AlertDialogHeader>
+  1003→            <AlertDialogTitle>Delete stage "{form.name}"?</AlertDialogTitle>
+  1004→            <AlertDialogDescription>
+  1005→              This will permanently remove the stage and its task templates. Candidates currently in this stage may be affected.
+  1006→            </AlertDialogDescription>
+  1007→          </AlertDialogHeader>
+  1008→          <AlertDialogFooter>
+  1009→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+  1010→            <AlertDialogAction
+  1011→              onClick={handleDelete}
+  1012→              disabled={deleting}
+  1013→              className="bg-rose-600 hover:bg-rose-700 text-white"
+  1014→            >
+  1015→              {deleting ? "Deleting..." : "Delete"}
+  1016→            </AlertDialogAction>
+  1017→          </AlertDialogFooter>
+  1018→        </AlertDialogContent>
+  1019→      </AlertDialog>
+  1020→    </div>
+  1021→  )
+  1022→}
+  1023→
+  1024→// ============================================================================
+  1025→//  Workflow Editor — left meta panel + right stages list
+  1026→// ============================================================================
+  1027→
+  1028→function WorkflowEditor({ workflow, onBack, onChanged }: {
+  1029→  workflow: OnboardingWorkflow
+  1030→  onBack: () => void
+  1031→  onChanged: () => void
+  1032→}) {
+  1033→  const [meta, setMeta] = useState({
+  1034→    name: workflow.name,
+  1035→    description: workflow.description || "",
+  1036→    status: workflow.status,
+  1037→    category: workflow.category,
+  1038→    icon: workflow.icon,
+  1039→    color: workflow.color,
+  1040→    isDefault: workflow.isDefault,
+  1041→    cardColorBy: workflow.cardColorBy,
+  1042→    showSla: workflow.showSla,
+  1043→    showOwner: workflow.showOwner,
+  1044→    showTaskCount: workflow.showTaskCount,
+  1045→    allowBackward: workflow.allowBackward,
+  1046→  })
+  1047→  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle")
+  1048→  const [stages, setStages] = useState<OnboardingStage[]>(workflow.stages || [])
+  1049→  const [addingStage, setAddingStage] = useState(false)
+  1050→  const [draggedId, setDraggedId] = useState<string | null>(null)
+  1051→
+  1052→  // Re-sync when workflow prop changes
+  1053→  useEffect(() => {
+  1054→    setMeta({
+  1055→      name: workflow.name,
+  1056→      description: workflow.description || "",
+  1057→      status: workflow.status,
+  1058→      category: workflow.category,
+  1059→      icon: workflow.icon,
+  1060→      color: workflow.color,
+  1061→      isDefault: workflow.isDefault,
+  1062→      cardColorBy: workflow.cardColorBy,
+  1063→      showSla: workflow.showSla,
+  1064→      showOwner: workflow.showOwner,
+  1065→      showTaskCount: workflow.showTaskCount,
+  1066→      allowBackward: workflow.allowBackward,
+  1067→    })
+  1068→    setStages(workflow.stages || [])
+  1069→  }, [workflow.id, workflow.updatedAt])
+  1070→
+  1071→  const patchMeta = async (partial: Record<string, any>, label?: string) => {
+  1072→    setSaveState("saving")
+  1073→    try {
+  1074→      await safeToast(
+  1075→        apiPatch(`/api/onboarding-workflows/${workflow.id}`, partial),
+  1076→        label ? `${label} updated` : "Workflow updated",
+  1077→        "Could not update workflow"
+  1078→      )
+  1079→      setSaveState("saved")
+  1080→      setTimeout(() => setSaveState("idle"), 1500)
+  1081→      onChanged()
+  1082→    } catch {
+  1083→      setSaveState("idle")
+  1084→    }
+  1085→  }
+  1086→
+  1087→  const updateMeta = <K extends keyof typeof meta>(k: K, v: (typeof meta)[K]) => {
+  1088→    setMeta((m) => ({ ...m, [k]: v }))
+  1089→  }
+  1090→
+  1091→  // Debounced name/description save on blur
+  1092→  const saveName = () => {
+  1093→    if (meta.name.trim() && meta.name !== workflow.name) patchMeta({ name: meta.name.trim() }, "Name")
+  1094→  }
+  1095→  const saveDescription = () => {
+  1096→    if (meta.description !== (workflow.description || "")) patchMeta({ description: meta.description || null }, "Description")
+  1097→  }
+  1098→  const saveIcon = () => {
+  1099→    if (meta.icon !== workflow.icon) patchMeta({ icon: meta.icon || "LayoutGrid" }, "Icon")
+  1100→  }
+  1101→
+  1102→  // ---- Stage operations ----
+  1103→  const handleAddStage = async () => {
+  1104→    setAddingStage(true)
+  1105→    const n = (stages.length || 0) + 1
+  1106→    try {
+  1107→      await safeToast(
+  1108→        apiPost(`/api/onboarding-workflows/${workflow.id}/stages`, {
+  1109→          name: `New Stage ${n}`,
+  1110→          code: `STAGE_${n}`,
+  1111→          color: STAGE_COLORS[n % STAGE_COLORS.length].value,
+  1112→          icon: "Circle",
+  1113→          stageType: "standard",
+  1114→          category: "process",
+  1115→        }),
+  1116→        "Stage added",
+  1117→        "Could not add stage"
+  1118→      )
+  1119→      onChanged()
+  1120→    } catch {
+  1121→      /* toast shown */
+  1122→    } finally {
+  1123→      setAddingStage(false)
+  1124→    }
+  1125→  }
+  1126→
+  1127→  const moveStage = async (index: number, direction: -1 | 1) => {
+  1128→    const newIndex = index + direction
+  1129→    if (newIndex < 0 || newIndex >= stages.length) return
+  1130→    const next = [...stages]
+  1131→    const [moved] = next.splice(index, 1)
+  1132→    next.splice(newIndex, 0, moved)
+  1133→    const orderedIds = next.map((s) => s.id)
+  1134→    setStages(next) // optimistic
+  1135→    try {
+  1136→      await safeToast(
+  1137→        apiPatch(`/api/onboarding-workflows/${workflow.id}/stages`, { orderedIds }),
+  1138→        undefined, "Could not reorder stages"
+  1139→      )
+  1140→      onChanged()
+  1141→    } catch {
+  1142→      /* toast shown */
+  1143→      onChanged()
+  1144→    }
+  1145→  }
+  1146→
+  1147→  const handleDragStart = (id: string) => setDraggedId(id)
+  1148→  const handleDragOver = (e: DragEvent, overId: string) => {
+  1149→    e.preventDefault()
+  1150→    if (!draggedId || draggedId === overId) return
+  1151→  }
+  1152→  const handleDrop = async (overId: string) => {
+  1153→    if (!draggedId || draggedId === overId) { setDraggedId(null); return }
+  1154→    const fromIdx = stages.findIndex((s) => s.id === draggedId)
+  1155→    const toIdx = stages.findIndex((s) => s.id === overId)
+  1156→    if (fromIdx < 0 || toIdx < 0) { setDraggedId(null); return }
+  1157→    const next = [...stages]
+  1158→    const [moved] = next.splice(fromIdx, 1)
+  1159→    next.splice(toIdx, 0, moved)
+  1160→    const orderedIds = next.map((s) => s.id)
+  1161→    setStages(next)
+  1162→    setDraggedId(null)
+  1163→    try {
+  1164→      await safeToast(
+  1165→        apiPatch(`/api/onboarding-workflows/${workflow.id}/stages`, { orderedIds }),
+  1166→        undefined, "Could not reorder stages"
+  1167→      )
+  1168→      onChanged()
+  1169→    } catch {
+  1170→      onChanged()
+  1171→    }
+  1172→  }
+  1173→
+  1174→  return (
+  1175→    <div className="space-y-4">
+  1176→      {/* Top bar */}
+  1177→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-border/60">
+  1178→        <div className="flex items-center gap-3 min-w-0">
+  1179→          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5 shrink-0">
+  1180→            <ArrowLeft className="h-4 w-4" /> Back
+  1181→          </Button>
+  1182→          <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: meta.color }} />
+  1183→          <Input
+  1184→            value={meta.name}
+  1185→            onChange={(e) => updateMeta("name", e.target.value)}
+  1186→            onBlur={saveName}
+  1187→            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur() }}
+  1188→            className="h-9 text-base font-semibold border-transparent hover:border-input focus-visible:border-input bg-transparent px-1 max-w-md"
+  1189→          />
+  1190→          <Badge variant="outline" className="font-mono text-[10px] shrink-0">{workflow.code}</Badge>
+  1191→          <StatusBadge status={meta.status} />
+  1192→        </div>
+  1193→        <div className="flex items-center gap-2 shrink-0">
+  1194→          <SaveIndicator state={saveState} />
+  1195→          <Tooltip>
+  1196→            <TooltipTrigger asChild>
+  1197→              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => patchMeta({ isDefault: true }, "Default workflow")}>
+  1198→                <Star className={cn("h-3.5 w-3.5", meta.isDefault ? "fill-amber-400 text-amber-500" : "")} />
+  1199→                {meta.isDefault ? "Default" : "Set default"}
+  1200→              </Button>
+  1201→            </TooltipTrigger>
+  1202→            <TooltipContent>Make this the default workflow for new candidates</TooltipContent>
+  1203→          </Tooltip>
+  1204→        </div>
+  1205→      </div>
+  1206→
+  1207→      {/* Two columns */}
+  1208→      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+  1209→        {/* LEFT — workflow properties */}
+  1210→        <div className="lg:col-span-2">
+  1211→          <Card className="border-border/60 shadow-soft">
+  1212→            <CardHeader className="pb-3">
+  1213→              <CardTitle className="text-sm flex items-center gap-1.5">
+  1214→                <Settings2 className="h-4 w-4 text-emerald-500" /> Workflow Properties
+  1215→              </CardTitle>
+  1216→              <CardDescription className="text-xs">Configure how this pipeline behaves and looks.</CardDescription>
+  1217→            </CardHeader>
+  1218→            <CardContent className="pt-0">
+  1219→              <Accordion type="multiple" defaultValue={["general"]} className="w-full">
+  1220→                {/* General */}
+  1221→                <AccordionItem value="general">
+  1222→                  <AccordionTrigger className="text-sm">General</AccordionTrigger>
+  1223→                  <AccordionContent className="space-y-3">
+  1224→                    <div className="space-y-1">
+  1225→                      <Label className="text-xs">Description</Label>
+  1226→                      <Textarea
+  1227→                        value={meta.description}
+  1228→                        onChange={(e) => updateMeta("description", e.target.value)}
+  1229→                        onBlur={saveDescription}
+  1230→                        rows={2}
+  1231→                        className="text-sm"
+  1232→                        placeholder="What is this workflow for?"
+  1233→                      />
+  1234→                    </div>
+  1235→                    <div className="grid grid-cols-2 gap-3">
+  1236→                      <div className="space-y-1">
+  1237→                        <Label className="text-xs">Category</Label>
+  1238→                        <Select
+  1239→                          value={meta.category}
+  1240→                          onValueChange={(v) => { updateMeta("category", v); patchMeta({ category: v }, "Category") }}
+  1241→                        >
+  1242→                          <SelectTrigger className="h-8 text-sm w-full"><SelectValue /></SelectTrigger>
+  1243→                          <SelectContent>
+  1244→                            {WORKFLOW_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+  1245→                          </SelectContent>
+  1246→                        </Select>
+  1247→                      </div>
+  1248→                      <div className="space-y-1">
+  1249→                        <Label className="text-xs">Status</Label>
+  1250→                        <Select
+  1251→                          value={meta.status}
+  1252→                          onValueChange={(v) => { updateMeta("status", v); patchMeta({ status: v }, "Status") }}
+  1253→                        >
+  1254→                          <SelectTrigger className="h-8 text-sm w-full"><SelectValue /></SelectTrigger>
+  1255→                          <SelectContent>
+  1256→                            {WORKFLOW_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+  1257→                          </SelectContent>
+  1258→                        </Select>
+  1259→                      </div>
+  1260→                    </div>
+  1261→                    <SwitchRow
+  1262→                      label="Default workflow"
+  1263→                      description="Used when no workflow is explicitly chosen"
+  1264→                      checked={meta.isDefault}
+  1265→                      onChange={(v) => { updateMeta("isDefault", v); patchMeta({ isDefault: v }, "Default workflow") }}
+  1266→                    />
+  1267→                  </AccordionContent>
+  1268→                </AccordionItem>
+  1269→
+  1270→                {/* Appearance */}
+  1271→                <AccordionItem value="appearance">
+  1272→                  <AccordionTrigger className="text-sm">Appearance</AccordionTrigger>
+  1273→                  <AccordionContent className="space-y-3">
+  1274→                    <div className="space-y-1">
+  1275→                      <Label className="text-xs">Icon (lucide name)</Label>
+  1276→                      <div className="flex items-center gap-2">
+  1277→                        <Input
+  1278→                          value={meta.icon}
+  1279→                          onChange={(e) => updateMeta("icon", e.target.value)}
+  1280→                          onBlur={saveIcon}
+  1281→                          className="h-8 text-sm font-mono"
+  1282→                          placeholder="LayoutGrid"
+  1283→                        />
+  1284→                        <div className="grid h-8 w-8 place-items-center rounded-md bg-muted">
+  1285→                          <IconByName name={meta.icon} className="h-4 w-4" />
+  1286→                        </div>
+  1287→                      </div>
+  1288→                    </div>
+  1289→                    <div className="space-y-1">
+  1290→                      <Label className="text-xs">Color</Label>
+  1291→                      <ColorSwatches
+  1292→                        value={meta.color}
+  1293→                        onChange={(c) => { updateMeta("color", c); patchMeta({ color: c }, "Color") }}
+  1294→                      />
+  1295→                    </div>
+  1296→                  </AccordionContent>
+  1297→                </AccordionItem>
+  1298→
+  1299→                {/* Board Settings */}
+  1300→                <AccordionItem value="board">
+  1301→                  <AccordionTrigger className="text-sm">Board Settings</AccordionTrigger>
+  1302→                  <AccordionContent className="space-y-3">
+  1303→                    <div className="space-y-1">
+  1304→                      <Label className="text-xs">Card color by</Label>
+  1305→                      <Select
+  1306→                        value={meta.cardColorBy}
+  1307→                        onValueChange={(v) => { updateMeta("cardColorBy", v); patchMeta({ cardColorBy: v }, "Card color") }}
+  1308→                      >
+  1309→                        <SelectTrigger className="h-8 text-sm w-full"><SelectValue /></SelectTrigger>
+  1310→                        <SelectContent>
+  1311→                          {CARD_COLOR_BY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+  1312→                        </SelectContent>
+  1313→                      </Select>
+  1314→                    </div>
+  1315→                    <div className="rounded-lg border border-border/60 divide-y divide-border/60">
+  1316→                      <SwitchRow label="Show SLA" checked={meta.showSla} onChange={(v) => { updateMeta("showSla", v); patchMeta({ showSla: v }) }} />
+  1317→                      <SwitchRow label="Show owner" checked={meta.showOwner} onChange={(v) => { updateMeta("showOwner", v); patchMeta({ showOwner: v }) }} />
+  1318→                      <SwitchRow label="Show task count" checked={meta.showTaskCount} onChange={(v) => { updateMeta("showTaskCount", v); patchMeta({ showTaskCount: v }) }} />
+  1319→                      <SwitchRow label="Allow backward moves" description="Let candidates move to a previous stage" checked={meta.allowBackward} onChange={(v) => { updateMeta("allowBackward", v); patchMeta({ allowBackward: v }) }} />
+  1320→                    </div>
+  1321→                  </AccordionContent>
+  1322→                </AccordionItem>
+  1323→              </Accordion>
+  1324→            </CardContent>
+  1325→          </Card>
+  1326→        </div>
+  1327→
+  1328→        {/* RIGHT — stages list */}
+  1329→        <div className="lg:col-span-3 space-y-3">
+  1330→          <div className="flex items-center justify-between">
+  1331→            <div>
+  1332→              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+  1333→                <Layers className="h-4 w-4 text-emerald-500" /> Stages
+  1334→                <Badge variant="secondary" className="text-[10px] h-5 ml-1">{stages.length}</Badge>
+  1335→              </h3>
+  1336→              <p className="text-xs text-muted-foreground">Drag to reorder, click a stage to customize.</p>
+  1337→            </div>
+  1338→            <Button size="sm" onClick={handleAddStage} disabled={addingStage} className="gap-1.5">
+  1339→              {addingStage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+  1340→              Add Stage
+  1341→            </Button>
+  1342→          </div>
+  1343→
+  1344→          {stages.length === 0 ? (
+  1345→            <EmptyState
+  1346→              icon={Layers}
+  1347→              title="No stages yet"
+  1348→              description="Add your first stage to start building the pipeline."
+  1349→              action={
+  1350→                <Button size="sm" onClick={handleAddStage} disabled={addingStage} className="gap-1.5">
+  1351→                  <Plus className="h-3.5 w-3.5" /> Add first stage
+  1352→                </Button>
+  1353→              }
+  1354→            />
+  1355→          ) : (
+  1356→            <div className="space-y-2">
+  1357→              {stages.map((s, i) => (
+  1358→                <div
+  1359→                  key={s.id}
+  1360→                  draggable
+  1361→                  onDragStart={() => handleDragStart(s.id)}
+  1362→                  onDragOver={(e) => handleDragOver(e, s.id)}
+  1363→                  onDrop={() => handleDrop(s.id)}
+  1364→                  className={cn(
+  1365→                    "transition-opacity",
+  1366→                    draggedId === s.id && "opacity-40"
+  1367→                  )}
+  1368→                >
+  1369→                  <StageCard
+  1370→                    stage={s}
+  1371→                    order={i}
+  1372→                    total={stages.length}
+  1373→                    workflowId={workflow.id}
+  1374→                    onSaved={onChanged}
+  1375→                    onDeleted={onChanged}
+  1376→                    onMoveUp={() => moveStage(i, -1)}
+  1377→                    onMoveDown={() => moveStage(i, 1)}
+  1378→                  />
+  1379→                </div>
+  1380→              ))}
+  1381→            </div>
+  1382→          )}
+  1383→        </div>
+  1384→      </div>
+  1385→    </div>
+  1386→  )
+  1387→}
+  1388→
+  1389→function SaveIndicator({ state }: { state: "idle" | "saving" | "saved" }) {
+  1390→  if (state === "saving") {
+  1391→    return (
+  1392→      <Badge variant="outline" className="text-[10px] gap-1 text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-500/40">
+  1393→        <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+  1394→      </Badge>
+  1395→    )
+  1396→  }
+  1397→  if (state === "saved") {
+  1398→    return (
+  1399→      <Badge variant="outline" className="text-[10px] gap-1 text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-500/40">
+  1400→        <Check className="h-3 w-3" /> Saved
+  1401→      </Badge>
+  1402→    )
+  1403→  }
+  1404→  return (
+  1405→    <Badge variant="outline" className="text-[10px] gap-1 text-muted-foreground">
+  1406→      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> All changes saved
+  1407→    </Badge>
+  1408→  )
+  1409→}
+  1410→
+  1411→// ============================================================================
+  1412→//  Workflow Card (grid item)
+  1413→// ============================================================================
+  1414→
+  1415→function WorkflowCard({ wf, onOpen, onDelete, onSetDefault }: {
+  1416→  wf: OnboardingWorkflow
+  1417→  onOpen: () => void
+  1418→  onDelete: () => void
+  1419→  onSetDefault: () => void
+  1420→}) {
+  1421→  const stageCount = wf._count?.stages ?? wf.stages?.length ?? 0
+  1422→  const candidateCount = wf._count?.candidates ?? 0
+  1423→  const stages = wf.stages || []
+  1424→
+  1425→  return (
+  1426→    <Card className="group relative overflow-hidden border-border/60 shadow-soft hover:shadow-card transition-all hover:-translate-y-0.5 cursor-pointer" onClick={onOpen}>
+  1427→      {/* Color stripe */}
+  1428→      <div className="h-1.5 w-full" style={{ backgroundColor: wf.color }} />
+  1429→      <CardContent className="p-4 space-y-3">
+  1430→        <div className="flex items-start gap-3">
+  1431→          <div
+  1432→            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white"
+  1433→            style={{ backgroundColor: wf.color }}
+  1434→          >
+  1435→            <IconByName name={wf.icon} className="h-4 w-4" />
+  1436→          </div>
+  1437→          <div className="min-w-0 flex-1">
+  1438→            <div className="flex items-center gap-1.5">
+  1439→              <h3 className="text-sm font-semibold text-foreground truncate">{wf.name}</h3>
+  1440→              {wf.isDefault && (
+  1441→                <Tooltip>
+  1442→                  <TooltipTrigger asChild>
+  1443→                    <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />
+  1444→                  </TooltipTrigger>
+  1445→                  <TooltipContent>Default workflow</TooltipContent>
+  1446→                </Tooltip>
+  1447→              )}
+  1448→            </div>
+  1449→            <p className="text-xs text-muted-foreground truncate">
+  1450→              {wf.description || "No description"}
+  1451→            </p>
+  1452→          </div>
+  1453→          <DropdownMenu>
+  1454→            <DropdownMenuTrigger asChild>
+  1455→              <Button
+  1456→                variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100"
+  1457→                onClick={(e) => e.stopPropagation()}
+  1458→              >
+  1459→                <Settings2 className="h-4 w-4" />
+  1460→              </Button>
+  1461→            </DropdownMenuTrigger>
+  1462→            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+  1463→              <DropdownMenuItem onClick={onOpen}>
+  1464→                <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+  1465→              </DropdownMenuItem>
+  1466→              {!wf.isDefault && (
+  1467→                <DropdownMenuItem onClick={onSetDefault}>
+  1468→                  <Star className="h-3.5 w-3.5 mr-2" /> Set as default
+  1469→                </DropdownMenuItem>
+  1470→              )}
+  1471→              <DropdownMenuSeparator />
+  1472→              <DropdownMenuItem onClick={onDelete} className="text-rose-600 focus:text-rose-700 focus:bg-rose-50 dark:focus:bg-rose-500/10">
+  1473→                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+  1474→              </DropdownMenuItem>
+  1475→            </DropdownMenuContent>
+  1476→          </DropdownMenu>
+  1477→        </div>
+  1478→
+  1479→        <div className="flex items-center gap-2 flex-wrap">
+  1480→          <Badge variant="outline" className="font-mono text-[10px] py-0 h-4">{wf.code}</Badge>
+  1481→          <Badge variant="secondary" className="text-[10px] py-0 h-4">{wf.category}</Badge>
+  1482→          <StatusBadge status={wf.status} />
+  1483→        </div>
+  1484→
+  1485→        {/* Stage mini-preview */}
+  1486→        <div>
+  1487→          <div className="flex items-center gap-1 mb-1.5">
+  1488→            <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">
+  1489→              {stageCount} stage{stageCount === 1 ? "" : "s"} · {candidateCount} candidate{candidateCount === 1 ? "" : "s"}
+  1490→            </span>
+  1491→          </div>
+  1492→          {stages.length > 0 ? (
+  1493→            <div className="flex items-center gap-1 flex-wrap">
+  1494→              {stages.slice(0, 12).map((s, i) => (
+  1495→                <Tooltip key={s.id}>
+  1496→                  <TooltipTrigger asChild>
+  1497→                    <span
+  1498→                      className="h-2.5 w-2.5 rounded-full ring-1 ring-background"
+  1499→                      style={{ backgroundColor: s.color }}
+  1500→                    />
+  1501→                  </TooltipTrigger>
+  1502→                  <TooltipContent side="bottom">
+  1503→                    <span className="text-xs">{i + 1}. {s.name}</span>
+  1504→                  </TooltipContent>
+  1505→                </Tooltip>
+  1506→              ))}
+  1507→              {stages.length > 12 && (
+  1508→                <span className="text-[10px] text-muted-foreground ml-1">+{stages.length - 12}</span>
+  1509→              )}
+  1510→            </div>
+  1511→          ) : (
+  1512→            <p className="text-[11px] text-muted-foreground italic">No stages configured</p>
+  1513→          )}
+  1514→        </div>
+  1515→      </CardContent>
+  1516→    </Card>
+  1517→  )
+  1518→}
+  1519→
+  1520→// ============================================================================
+  1521→//  WorkflowsSection — main exported component
+  1522→// ============================================================================
+  1523→
+  1524→export function WorkflowsSection() {
+  1525→  const { data, loading, error, reload } = useFetch<{ items: OnboardingWorkflow[] }>(
+  1526→    "/api/onboarding-workflows"
+  1527→  )
+  1528→
+  1529→  const [search, setSearch] = useState("")
+  1530→  const [newOpen, setNewOpen] = useState(false)
+  1531→  const [selectedId, setSelectedId] = useState<string | null>(null)
+  1532→  const [deleteTarget, setDeleteTarget] = useState<OnboardingWorkflow | null>(null)
+  1533→  const [deleting, setDeleting] = useState(false)
+  1534→
+  1535→  // Editor detail fetch (only when a workflow is selected)
+  1536→  const {
+  1537→    data: detailData,
+  1538→    loading: detailLoading,
+  1539→    error: detailError,
+  1540→    reload: detailReload,
+  1541→  } = useFetch<OnboardingWorkflow>(
+  1542→    selectedId ? `/api/onboarding-workflows/${selectedId}` : null
+  1543→  )
+  1544→
+  1545→  const workflows = data?.items || []
+  1546→  const filtered = useMemo(() => {
+  1547→    const q = search.trim().toLowerCase()
+  1548→    if (!q) return workflows
+  1549→    return workflows.filter((w) =>
+  1550→      w.name.toLowerCase().includes(q) ||
+  1551→      w.code.toLowerCase().includes(q) ||
+  1552→      w.category.toLowerCase().includes(q)
+  1553→    )
+  1554→  }, [workflows, search])
+  1555→
+  1556→  const totals = useMemo(() => {
+  1557→    const active = workflows.filter((w) => w.status === "Active").length
+  1558→    const stages = workflows.reduce((sum, w) => sum + (w._count?.stages ?? w.stages?.length ?? 0), 0)
+  1559→    const candidates = workflows.reduce((sum, w) => sum + (w._count?.candidates ?? 0), 0)
+  1560→    return { total: workflows.length, active, stages, candidates }
+  1561→  }, [workflows])
+  1562→
+  1563→  const handleSetDefault = async (wf: OnboardingWorkflow) => {
+  1564→    try {
+  1565→      await safeToast(
+  1566→        apiPatch(`/api/onboarding-workflows/${wf.id}`, { isDefault: true }),
+  1567→        `${wf.name} set as default`,
+  1568→        "Could not set default"
+  1569→      )
+  1570→      reload()
+  1571→    } catch { /* toast shown */ }
+  1572→  }
+  1573→
+  1574→  const handleDelete = async () => {
+  1575→    if (!deleteTarget) return
+  1576→    setDeleting(true)
+  1577→    try {
+  1578→      await safeToast(
+  1579→        apiDelete(`/api/onboarding-workflows/${deleteTarget.id}`),
+  1580→        "Workflow deleted",
+  1581→        "Could not delete workflow"
+  1582→      )
+  1583→      setDeleteTarget(null)
+  1584→      reload()
+  1585→    } catch { /* toast shown */ }
+  1586→    finally { setDeleting(false) }
+  1587→  }
+  1588→
+  1589→  // ----- Editor view -----
+  1590→  if (selectedId) {
+  1591→    if (detailLoading && !detailData) {
+  1592→      return (
+  1593→        <div className="flex items-center justify-center py-20">
+  1594→          <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+  1595→          <span className="ml-2 text-sm text-muted-foreground">Loading workflow…</span>
+  1596→        </div>
+  1597→      )
+  1598→    }
+  1599→    if (detailError || !detailData) {
+  1600→      return (
+  1601→        <div className="space-y-4">
+  1602→          <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)} className="gap-1.5">
+  1603→            <ArrowLeft className="h-4 w-4" /> Back
+  1604→          </Button>
+  1605→          <EmptyState
+  1606→            icon={AlertTriangle}
+  1607→            title="Could not load workflow"
+  1608→            description={detailError || "Unknown error"}
+  1609→            action={<Button size="sm" onClick={detailReload}>Retry</Button>}
+  1610→          />
+  1611→        </div>
+  1612→      )
+  1613→    }
+  1614→    return (
+  1615→      <WorkflowEditor
+  1616→        workflow={detailData}
+  1617→        onBack={() => setSelectedId(null)}
+  1618→        onChanged={detailReload}
+  1619→      />
+  1620→    )
+  1621→  }
+  1622→
+  1623→  // ----- List view -----
+  1624→  return (
+  1625→    <div className="space-y-4">
+  1626→      <PageHeader
+  1627→        title="Onboarding Workflows"
+  1628→        description="Design customizable onboarding pipelines that drive Kanban boards"
+  1629→        icon={WorkflowIcon}
+  1630→        badge={<Badge variant="secondary" className="text-xs">{totals.total} total</Badge>}
+  1631→        actions={
+  1632→          <Button size="sm" onClick={() => setNewOpen(true)} className="gap-1.5">
+  1633→            <Plus className="h-4 w-4" /> New Workflow
+  1634→          </Button>
+  1635→        }
+  1636→      />
+  1637→
+  1638→      {/* Stats */}
+  1639→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+  1640→        <StatCard label="Total Workflows" value={totals.total} icon={WorkflowIcon} accent="emerald" />
+  1641→        <StatCard label="Active" value={totals.active} icon={PlayCircle} accent="cyan" />
+  1642→        <StatCard label="Total Stages" value={totals.stages} icon={Layers} accent="amber" />
+  1643→        <StatCard label="Total Candidates" value={totals.candidates} icon={Users} accent="fuchsia" />
+  1644→      </div>
+  1645→
+  1646→      {/* Toolbar */}
+  1647→      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+  1648→        <div className="relative w-full sm:max-w-xs">
+  1649→          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  1650→          <Input
+  1651→            value={search}
+  1652→            onChange={(e) => setSearch(e.target.value)}
+  1653→            placeholder="Search by name, code, category…"
+  1654→            className="pl-9 h-9 bg-background"
+  1655→          />
+  1656→        </div>
+  1657→        <div className="flex items-center gap-2">
+  1658→          <Button variant="outline" size="sm" onClick={reload} className="gap-1.5">
+  1659→            <Loader2 className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+  1660→            Refresh
+  1661→          </Button>
+  1662→          <Button size="sm" onClick={() => setNewOpen(true)} className="gap-1.5">
+  1663→            <Plus className="h-4 w-4" /> New Workflow
+  1664→          </Button>
+  1665→        </div>
+  1666→      </div>
+  1667→
+  1668→      {/* Grid */}
+  1669→      {loading && !data ? (
+  1670→        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+  1671→          {Array.from({ length: 6 }).map((_, i) => (
+  1672→            <Card key={i} className="border-border/60 shadow-soft">
+  1673→              <div className="h-1.5 w-full bg-muted animate-pulse" />
+  1674→              <CardContent className="p-4 space-y-3">
+  1675→                <div className="flex gap-3">
+  1676→                  <div className="h-9 w-9 rounded-lg bg-muted animate-pulse" />
+  1677→                  <div className="flex-1 space-y-1.5">
+  1678→                    <div className="h-3.5 w-3/4 rounded bg-muted animate-pulse" />
+  1679→                    <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
+  1680→                  </div>
+  1681→                </div>
+  1682→                <div className="h-2 w-full rounded bg-muted animate-pulse" />
+  1683→              </CardContent>
+  1684→            </Card>
+  1685→          ))}
+  1686→        </div>
+  1687→      ) : error ? (
+  1688→        <EmptyState
+  1689→          icon={AlertTriangle}
+  1690→          title="Could not load workflows"
+  1691→          description={error}
+  1692→          action={<Button size="sm" onClick={reload}>Retry</Button>}
+  1693→        />
+  1694→      ) : filtered.length === 0 ? (
+  1695→        <EmptyState
+  1696→          icon={WorkflowIcon}
+  1697→          title={search ? "No workflows match your search" : "No workflows yet"}
+  1698→          description={search ? "Try a different search term." : "Create your first onboarding workflow to get started."}
+  1699→          action={
+  1700→            <Button size="sm" onClick={() => setNewOpen(true)} className="gap-1.5">
+  1701→              <Plus className="h-4 w-4" /> New Workflow
+  1702→            </Button>
+  1703→          }
+  1704→        />
+  1705→      ) : (
+  1706→        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+  1707→          {filtered.map((wf) => (
+  1708→            <WorkflowCard
+  1709→              key={wf.id}
+  1710→              wf={wf}
+  1711→              onOpen={() => setSelectedId(wf.id)}
+  1712→              onDelete={() => setDeleteTarget(wf)}
+  1713→              onSetDefault={() => handleSetDefault(wf)}
+  1714→            />
+  1715→          ))}
+  1716→        </div>
+  1717→      )}
+  1718→
+  1719→      {/* New workflow dialog */}
+  1720→      <NewWorkflowDialog
+  1721→        open={newOpen}
+  1722→        onOpenChange={setNewOpen}
+  1723→        onCreated={() => {
+  1724→          reload()
+  1725→          // Auto-open the new workflow in the editor
+  1726→          // (we don't have its id directly here; reload will surface it on next render)
+  1727→        }}
+  1728→      />
+  1729→
+  1730→      {/* Delete confirm */}
+  1731→      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+  1732→        <AlertDialogContent>
+  1733→          <AlertDialogHeader>
+  1734→            <AlertDialogTitle>Delete workflow "{deleteTarget?.name}"?</AlertDialogTitle>
+  1735→            <AlertDialogDescription>
+  1736→              This will permanently delete the workflow, all its stages, task templates, and related candidate instances. This action cannot be undone.
+  1737→            </AlertDialogDescription>
+  1738→          </AlertDialogHeader>
+  1739→          <AlertDialogFooter>
+  1740→            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+  1741→            <AlertDialogAction
+  1742→              onClick={handleDelete}
+  1743→              disabled={deleting}
+  1744→              className="bg-rose-600 hover:bg-rose-700 text-white"
+  1745→            >
+  1746→              {deleting ? "Deleting…" : "Delete workflow"}
+  1747→            </AlertDialogAction>
+  1748→          </AlertDialogFooter>
+  1749→        </AlertDialogContent>
+  1750→      </AlertDialog>
+  1751→    </div>
+  1752→  )
+  1753→}
+  1754→
+  1755→export default WorkflowsSection
+  1756→
