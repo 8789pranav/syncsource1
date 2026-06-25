@@ -27,7 +27,7 @@ import {
   ShieldCheck, CalendarClock, PartyPopper, PlayCircle, Award, UserMinus,
   Plus, Search, Pencil, Copy, Star, Eye, Trash2, MoreHorizontal,
   Loader2, Inbox, Code2, Sparkles, ChevronDown, X, AtSign, Users,
-  Type, AlignLeft, PanelTop, PanelBottom, Palette, Languages, Hash,
+  Type, Palette, Languages, Hash,
   Clock, User, Building2, ArrowRight, Layers, Tag, Briefcase,
 } from "lucide-react"
 
@@ -41,7 +41,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
@@ -49,9 +48,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  Tabs, TabsList, TabsTrigger, TabsContent,
-} from "@/components/ui/tabs"
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select"
@@ -70,6 +66,11 @@ import {
 import {
   useFetch, apiPost, apiPatch, apiDelete, safeToast, safeParseJson, timeAgo,
 } from "@/components/hrms/onboarding/shared"
+import {
+  SectionedRichEditor,
+  type RichEditorHandle,
+  type EditorSection,
+} from "@/components/hrms/onboarding/rich-editor"
 
 // ============================================================================
 //  Types
@@ -1029,65 +1030,63 @@ function EditorDialog({
   onSubmit: () => void
   saving: boolean
 }) {
-  const [activeTab, setActiveTab] = useState<"header" | "body" | "footer">("body")
   const [showPreview, setShowPreview] = useState(true)
-  const [focusedField, setFocusedField] = useState<"header" | "body" | "footer" | null>(null)
+  const [subjectFocused, setSubjectFocused] = useState(false)
 
-  // Refs to the three textareas — used to insert variables at cursor
-  const headerRef = useRef<HTMLTextAreaElement | null>(null)
-  const bodyRef = useRef<HTMLTextAreaElement | null>(null)
-  const footerRef = useRef<HTMLTextAreaElement | null>(null)
+  // Ref to the shared WYSIWYG editor — exposes insertSlug(slug) so the
+  // variable picker can inject {{slugs}} at the cursor of whichever
+  // section (Header/Body/Footer) was last focused.
+  const editorRef = useRef<RichEditorHandle | null>(null)
+  // Ref to the subject <Input> — variables can also be inserted there.
   const subjectRef = useRef<HTMLInputElement | null>(null)
+  // Saved selection in the subject input (so chip clicks preserve cursor)
+  const subjectSel = useRef<{ start: number; end: number } | null>(null)
 
   const field = useCallback(<K extends keyof EmailFormState>(key: K, value: EmailFormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
   }, [setForm])
 
-  // Track which textarea was most recently focused
-  const trackFocus = useCallback((which: "header" | "body" | "footer") => {
-    setFocusedField(which)
+  // Track subject focus so variable clicks know to insert into the subject
+  const onSubjectFocus = useCallback(() => {
+    setSubjectFocused(true)
+  }, [])
+  const onSubjectBlur = useCallback(() => {
+    const el = subjectRef.current
+    if (el) subjectSel.current = { start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 }
+    // Delay to allow chip click to read subjectFocused=true
+    setTimeout(() => setSubjectFocused(false), 150)
   }, [])
 
-  // Insert a {{Variable}} token at the cursor of the focused textarea
+  // Insert a {{Variable}} token — at subject cursor if subject is focused,
+  // otherwise at the cursor of the focused WYSIWYG section.
   const insertVariable = useCallback((slug: string) => {
     const token = `{{${slug}}}`
 
-    // If subject input is focused, insert there
-    if (document.activeElement === subjectRef.current && subjectRef.current) {
+    // If subject was most recently focused, insert into the subject line
+    if (subjectFocused && subjectRef.current) {
       const el = subjectRef.current
-      const start = el.selectionStart ?? el.value.length
-      const end = el.selectionEnd ?? el.value.length
-      const next = el.value.slice(0, start) + token + el.value.slice(end)
+      const sel = subjectSel.current ?? { start: el.selectionStart ?? el.value.length, end: el.selectionEnd ?? el.value.length }
+      const next = el.value.slice(0, sel.start) + token + el.value.slice(sel.end)
       field("subject", next)
+      const pos = sel.start + token.length
+      subjectSel.current = { start: pos, end: pos }
       requestAnimationFrame(() => {
         el.focus()
-        const pos = start + token.length
         el.setSelectionRange(pos, pos)
       })
       return
     }
 
-    // Otherwise insert into whichever textarea was last focused (default: body)
-    const which = focusedField || activeTab
-    const ref = which === "header" ? headerRef : which === "footer" ? footerRef : bodyRef
-    const el = ref.current
-    if (!el) {
-      field(which === "header" ? "headerHtml" : which === "footer" ? "footerHtml" : "bodyHtml",
-        (form[which === "header" ? "headerHtml" : which === "footer" ? "footerHtml" : "bodyHtml"] as string) + token)
-      return
-    }
-    const start = el.selectionStart ?? el.value.length
-    const end = el.selectionEnd ?? el.value.length
-    const key = which === "header" ? "headerHtml" : which === "footer" ? "footerHtml" : "bodyHtml"
-    const current = form[key] as string
-    const next = current.slice(0, start) + token + current.slice(end)
-    field(key, next)
-    requestAnimationFrame(() => {
-      el.focus()
-      const pos = start + token.length
-      el.setSelectionRange(pos, pos)
-    })
-  }, [focusedField, activeTab, form, field])
+    // Otherwise route into the WYSIWYG editor (header/body/footer)
+    editorRef.current?.insertSlug(slug)
+  }, [subjectFocused, field])
+
+  // ---- Section change handler for the WYSIWYG editor ----
+  const handleSectionChange = useCallback((section: EditorSection, html: string) => {
+    if (section === "header") field("headerHtml", html)
+    else if (section === "body") field("bodyHtml", html)
+    else field("footerHtml", html)
+  }, [field])
 
   // ----- Recipients manipulation -----
   const addRecipient = useCallback((bucket: "to" | "cc" | "bcc", type: string) => {
@@ -1136,7 +1135,7 @@ function EditorDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-6xl w-[calc(100%-2rem)] max-h-[90vh] p-0 gap-0 overflow-hidden"
+        className="sm:max-w-6xl max-w-[calc(100%-2rem)] w-[calc(100%-2rem)] max-h-[90vh] p-0 gap-0 overflow-hidden"
         showCloseButton
       >
         {/* Animated header */}
@@ -1289,6 +1288,8 @@ function EditorDialog({
                   ref={subjectRef}
                   value={form.subject}
                   onChange={(e) => field("subject", e.target.value)}
+                  onFocus={onSubjectFocus}
+                  onBlur={onSubjectBlur}
                   placeholder="Welcome to {{CompanyName}} — complete your onboarding"
                   className="h-9"
                 />
@@ -1335,63 +1336,36 @@ function EditorDialog({
 
               <Separator />
 
-              {/* HTML editor (tabbed) */}
+              {/* WYSIWYG editor — Header / Body / Footer tabs */}
               <section className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Code2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     <h3 className="text-sm font-semibold">Email Content</h3>
+                    <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-0 text-[10px]">
+                      WYSIWYG
+                    </Badge>
                   </div>
                   <span className="text-xs text-muted-foreground">
                     Tip: click variables on the right to insert into the focused field
                   </span>
                 </div>
 
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-                  <TabsList className="bg-muted/60">
-                    <TabsTrigger value="header" className="gap-1.5 text-xs">
-                      <PanelTop className="h-3.5 w-3.5" /> Header
-                    </TabsTrigger>
-                    <TabsTrigger value="body" className="gap-1.5 text-xs">
-                      <AlignLeft className="h-3.5 w-3.5" /> Body
-                      <span className="text-rose-500">*</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="footer" className="gap-1.5 text-xs">
-                      <PanelBottom className="h-3.5 w-3.5" /> Footer
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="header" className="mt-2">
-                    <Textarea
-                      ref={headerRef}
-                      value={form.headerHtml}
-                      onChange={(e) => field("headerHtml", e.target.value)}
-                      onFocus={() => trackFocus("header")}
-                      placeholder="<div style='text-align:center; padding:16px;'><img src='{{CompanyLogo}}' alt='logo' height='40' /></div>"
-                      className="min-h-[120px] font-mono text-xs"
-                    />
-                  </TabsContent>
-                  <TabsContent value="body" className="mt-2">
-                    <Textarea
-                      ref={bodyRef}
-                      value={form.bodyHtml}
-                      onChange={(e) => field("bodyHtml", e.target.value)}
-                      onFocus={() => trackFocus("body")}
-                      placeholder="<p>Hi {{CandidateName}},</p><p>Welcome to {{CompanyName}}! …</p>"
-                      className="min-h-[260px] font-mono text-xs"
-                    />
-                  </TabsContent>
-                  <TabsContent value="footer" className="mt-2">
-                    <Textarea
-                      ref={footerRef}
-                      value={form.footerHtml}
-                      onChange={(e) => field("footerHtml", e.target.value)}
-                      onFocus={() => trackFocus("footer")}
-                      placeholder="<p style='color:#888; font-size:12px;'>© {{CompanyName}}. This is an automated email.</p>"
-                      className="min-h-[120px] font-mono text-xs"
-                    />
-                  </TabsContent>
-                </Tabs>
+                <SectionedRichEditor
+                  ref={editorRef}
+                  header={form.headerHtml}
+                  body={form.bodyHtml}
+                  footer={form.footerHtml}
+                  onChange={handleSectionChange}
+                  initialSection="body"
+                  minHeight={300}
+                  compact
+                  placeholders={{
+                    header: "<div style='text-align:center; padding:16px;'><img src='{{CompanyLogo}}' alt='logo' height='40' /></div>",
+                    body: "<p>Hi {{CandidateName}},</p><p>Welcome to {{CompanyName}}! …</p>",
+                    footer: "<p style='color:#888; font-size:12px;'>© {{CompanyName}}. This is an automated email.</p>",
+                  }}
+                />
               </section>
             </div>
 

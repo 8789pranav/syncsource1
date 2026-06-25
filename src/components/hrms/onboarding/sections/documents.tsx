@@ -16,8 +16,7 @@ import {
   FilePlus2, Mail, ClipboardCheck, SearchCheck, HeartPulse, Laptop, Landmark,
   Users, FileBox, Layers2,
   Search, Plus, Pencil, Copy, Trash2, Star, Power, History, Eye, MoreHorizontal,
-  Save, X, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
-  List, ListOrdered, Link2, Code2, Type, Heading, Braces, ChevronDown,
+  Save, X, Braces, ChevronDown,
   Inbox, Loader2, Variable, PenLine, FileCode2, Tag, Sparkles, RotateCcw,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
@@ -25,7 +24,6 @@ import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
@@ -58,6 +56,11 @@ import {
   useFetch, apiPost, apiPatch, apiDelete, safeToast,
   timeAgo, formatDate,
 } from "@/components/hrms/onboarding/shared"
+import {
+  SectionedRichEditor,
+  type RichEditorHandle,
+  type EditorSection,
+} from "@/components/hrms/onboarding/rich-editor"
 
 // =============================================================
 // Types
@@ -495,117 +498,13 @@ function VariablePicker({ onInsert, usedVariables }: VariablePickerProps) {
 }
 
 // =============================================================
-// HTML Editor panel (Header / Body / Footer)
+// HTML Editor panel — provided by the shared <SectionedRichEditor> in
+// ./rich-editor (real WYSIWYG contentEditable editor with formatting
+// toolbar + Header/Body/Footer tabs). The local EditorSection type is
+// re-exported from that module.
 // =============================================================
 
-type EditorSection = "header" | "body" | "footer"
-
-interface HtmlEditorPanelProps {
-  header: string
-  body: string
-  footer: string
-  onChange: (section: EditorSection, value: string) => void
-  /** Register a textarea so the parent can track which is focused. */
-  registerTextarea: (el: HTMLTextAreaElement | null, section: EditorSection) => void
-}
-
-const FORMAT_BUTTONS: { icon: React.ComponentType<{ className?: string }>; label: string }[] = [
-  { icon: Bold, label: "Bold" },
-  { icon: Italic, label: "Italic" },
-  { icon: Underline, label: "Underline" },
-  { icon: Heading, label: "Heading" },
-  { icon: Type, label: "Paragraph" },
-  { icon: AlignLeft, label: "Align left" },
-  { icon: AlignCenter, label: "Align center" },
-  { icon: AlignRight, label: "Align right" },
-  { icon: List, label: "Bullet list" },
-  { icon: ListOrdered, label: "Numbered list" },
-  { icon: Link2, label: "Insert link" },
-  { icon: Code2, label: "Insert code" },
-]
-
-function HtmlEditorPanel({ header, body, footer, onChange, registerTextarea }: HtmlEditorPanelProps) {
-  const [active, setActive] = useState<EditorSection>("body")
-
-  const tabs: { id: EditorSection; label: string; required?: boolean }[] = [
-    { id: "header", label: "Header" },
-    { id: "body", label: "Body", required: true },
-    { id: "footer", label: "Footer" },
-  ]
-
-  const current = active === "header" ? header : active === "body" ? body : footer
-
-  return (
-    <div className="flex flex-col h-full min-h-0 gap-2">
-      {/* Section tabs */}
-      <div className="flex items-center gap-1">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setActive(t.id)}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors",
-              active === t.id
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
-                : "bg-background text-muted-foreground hover:bg-muted/60 border-border/60",
-            )}
-          >
-            {t.label}
-            {t.required && <span className="text-rose-500">*</span>}
-          </button>
-        ))}
-        <span className="ml-auto text-[10px] text-muted-foreground/70 uppercase tracking-wide">
-          HTML source editor
-        </span>
-      </div>
-
-      {/* Visual formatting toolbar (display-only) */}
-      <div className="flex items-center gap-0.5 p-1 rounded-lg border border-border/60 bg-muted/30">
-        {FORMAT_BUTTONS.map((b, i) => {
-          const I = b.icon
-          return (
-            <Tooltip key={i}>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground/60 cursor-not-allowed"
-                  aria-label={`${b.label} (visual only)`}
-                >
-                  <I className="h-3.5 w-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                {b.label} · visual only
-              </TooltipContent>
-            </Tooltip>
-          )
-        })}
-        <Separator orientation="vertical" className="h-5 mx-1 bg-border/60" />
-        <span className="px-2 text-[10px] text-muted-foreground/70">
-          Insert slugs from the right panel →
-        </span>
-      </div>
-
-      {/* Textarea */}
-      <Textarea
-        ref={(el) => registerTextarea(el, active)}
-        value={current}
-        onChange={(e) => onChange(active, e.target.value)}
-        onFocus={() => setActive(active)}
-        placeholder={`Enter ${active} HTML here…  Use {{Variable}} slugs from the right panel.`}
-        spellCheck={false}
-        className="flex-1 min-h-[280px] font-mono text-xs bg-background resize-none leading-relaxed"
-      />
-      <p className="text-[10px] text-muted-foreground/70 px-1">
-        {active === "body" && "The body is the main content of the document. Required."}
-        {active === "header" && "Header appears at the top of every page (e.g., logo, letterhead)."}
-        {active === "footer" && "Footer appears at the bottom of every page (e.g., page numbers, signatures)."}
-      </p>
-    </div>
-  )
-}
+// (no local declarations — kept for reference)
 
 // =============================================================
 // Preview Dialog (renders HTML with sample substitution)
@@ -804,11 +703,10 @@ function TemplateEditorDialog({
   const [previewOpen, setPreviewOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  // Track textareas + last-focused section
-  const textareasRef = useRef<Record<EditorSection, HTMLTextAreaElement | null>>({
-    header: null, body: null, footer: null,
-  })
-  const [activeSection, setActiveSection] = useState<EditorSection>("body")
+  // Ref to the shared WYSIWYG editor — exposes insertSlug(slug) so the
+  // variable picker can inject {{slugs}} at the cursor of whichever
+  // section (Header/Body/Footer) was last focused.
+  const editorRef = useRef<RichEditorHandle | null>(null)
 
   // Sync state when template changes / dialog opens
   useEffect(() => {
@@ -842,7 +740,6 @@ function TemplateEditorDialog({
       setBody(defaultTemplateBody(defaultCategory))
       setFooter("")
     }
-    setActiveSection("body")
   }, [open, template, defaultCategory])
 
   // Auto-generate code from name (only on create, when user hasn't manually edited code)
@@ -863,52 +760,11 @@ function TemplateEditorDialog({
     [header, body, footer],
   )
 
-  const registerTextarea = useCallback((el: HTMLTextAreaElement | null, section: EditorSection) => {
-    textareasRef.current[section] = el
-  }, [])
-
-  const handleSectionFocus = useCallback((section: EditorSection) => {
-    setActiveSection(section)
-  }, [])
-
-  // Focus listeners — bind via DOM events on each textarea when registered
-  useEffect(() => {
-    const refs = textareasRef.current
-    const handlers: Array<() => void> = []
-    ;(Object.keys(refs) as EditorSection[]).forEach((section) => {
-      const el = refs[section]
-      if (!el) return
-      const h = () => handleSectionFocus(section)
-      el.addEventListener("focus", h)
-      handlers.push(() => el.removeEventListener("focus", h))
-    })
-    return () => handlers.forEach((fn) => fn())
-  }, [handleSectionFocus, open, header, body, footer])
-
+  // Insert a {{slug}} token at the cursor of the focused editor section
   const insertVariable = useCallback((slug: string) => {
-    const section = activeSection
-    const el = textareasRef.current[section]
-    const snippet = `{{${slug}}}`
-    if (el) {
-      const start = el.selectionStart
-      const end = el.selectionEnd
-      const current = section === "header" ? header : section === "body" ? body : footer
-      const updated = current.slice(0, start) + snippet + current.slice(end)
-      if (section === "header") setHeader(updated)
-      else if (section === "body") setBody(updated)
-      else setFooter(updated)
-      // Restore cursor just after inserted snippet on next tick
-      requestAnimationFrame(() => {
-        el.focus()
-        const pos = start + snippet.length
-        el.setSelectionRange(pos, pos)
-      })
-    } else {
-      // Fallback — append to body
-      setBody((b) => b + snippet)
-      toast.info(`Inserted {{${slug}}} into body`)
-    }
-  }, [activeSection, header, body, footer])
+    editorRef.current?.insertSlug(slug)
+    toast.info(`Inserted {{${slug}}}`)
+  }, [])
 
   const handleSectionChange = useCallback((section: EditorSection, value: string) => {
     if (section === "header") setHeader(value)
@@ -972,7 +828,7 @@ function TemplateEditorDialog({
       <Dialog open={open} onOpenChange={(v) => { if (!saving) onOpenChange(v) }}>
         <DialogContent
           showCloseButton
-          className="max-w-6xl w-full max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col"
+          className="sm:max-w-6xl max-w-[calc(100%-2rem)] w-full max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col"
         >
           {/* Header */}
           <DialogHeader className="px-6 py-4 border-b border-border/60 space-y-1">
@@ -1141,21 +997,23 @@ function TemplateEditorDialog({
                 </div>
               </div>
 
-              {/* CENTER: HTML editor (col-span-3) */}
-              <div className="lg:col-span-3 border-r border-border/60 p-4 flex flex-col min-h-0 max-h-[68vh]">
+              {/* CENTER: WYSIWYG editor (col-span-3) */}
+              <div className="lg:col-span-3 min-w-0 border-r border-border/60 p-4 flex flex-col min-h-0 max-h-[68vh]">
                 <div className="flex items-center gap-1.5 mb-2">
                   <FileCode2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Template Content (HTML)
+                    Template Content (WYSIWYG)
                   </span>
                 </div>
                 <div className="flex-1 min-h-0">
-                  <HtmlEditorPanel
+                  <SectionedRichEditor
+                    ref={editorRef}
                     header={header}
                     body={body}
                     footer={footer}
                     onChange={handleSectionChange}
-                    registerTextarea={registerTextarea}
+                    initialSection="body"
+                    minHeight={320}
                   />
                 </div>
               </div>
