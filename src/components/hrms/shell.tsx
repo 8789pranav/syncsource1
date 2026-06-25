@@ -19,6 +19,7 @@ import {
   Package, FileEdit, Workflow, Megaphone, Settings, ScrollText, Sun, Moon,
   Bell, Search, Menu, ChevronLeft, Sparkles, ShieldCheck, HelpCircle, LogOut,
   Wallet, Banknote, UserPlus, UserMinus, ArrowLeftRight, Receipt,
+  FileStack,
 } from "lucide-react"
 import { useHrmsStore } from "@/store/hrms-store"
 import { ModuleId, ModuleDef } from "@/lib/types"
@@ -43,6 +44,7 @@ const MODULES: ShellModule[] = [
   { id: "payroll", label: "Compliance", icon: ShieldCheck, group: "Payroll", description: "PF, ESI, PT, LWF, TDS, Form 16 & challans", payrollMenu: "compliance", isChild: true },
   { id: "payroll", label: "Arrear", icon: ArrowLeftRight, group: "Payroll", description: "Salary arrears from revisions, LOP reversal & manual entries", payrollMenu: "arrear", isChild: true },
   { id: "payroll", label: "Full & Final", icon: Receipt, group: "Payroll", description: "Exit settlement, leave encashment, notice & asset recovery", payrollMenu: "fnf", isChild: true },
+  { id: "documents", label: "Documents", icon: FileStack, group: "Documents", description: "Universal document library, employee/HR docs, requests, generated letters & entity-wise config" },
   { id: "forms", label: "Form Builder", icon: FileEdit, group: "System", description: "Dynamic form schemas" },
   { id: "workflows", label: "Workflows", icon: Workflow, group: "System", description: "Approval workflows" },
   { id: "announcements", label: "Announcements", icon: Megaphone, group: "People", description: "Company announcements" },
@@ -55,6 +57,7 @@ const GROUPS: { id: string; label: string }[] = [
   { id: "People", label: "People" },
   { id: "Time", label: "Time & Attendance" },
   { id: "Payroll", label: "Payroll & Finance" },
+  { id: "Documents", label: "Documents" },
   { id: "Config", label: "Configuration" },
   { id: "System", label: "System" },
 ]

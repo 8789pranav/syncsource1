@@ -1,0 +1,649 @@
+     1→     1→"use client"
+     2→     2→
+     3→     3→// ============================================================================
+     4→     4→//  Documents — shared types, constants & helpers
+     5→     5→// ----------------------------------------------------------------------------
+     6→     6→//  Single source of truth for all 8 documents section components
+     7→     7→//  (Dashboard, Employee Documents, HR Documents, Document Library,
+     8→     8→//   Document Requests, Generated Documents, Settings, Logs).
+     9→     9→//
+    10→    10→//  Color system: violet/purple primary on slate base (matches module shell).
+    11→    11→//  Status palettes: emerald=success/verified, amber=pending/warning,
+    12→    12→//  rose=rejected/expired, sky=sent/info, violet=generated, slate=draft.
+    13→    13→// ============================================================================
+    14→    14→
+    15→    15→// ---------- Entities ----------
+    16→    16→export interface Entity {
+    17→    17→  id: string
+    18→    18→  name: string
+    19→    19→  code: string
+    20→    20→  country: string
+    21→    21→  state: string
+    22→    22→  currency: string
+    23→    23→}
+    24→    24→
+    25→    25→export const ENTITIES: Entity[] = [
+    26→    26→  { id: "ent-1", name: "ACME India Pvt Ltd", code: "IND", country: "India", state: "Maharashtra", currency: "INR" },
+    27→    27→  { id: "ent-2", name: "ACME UAE FZE", code: "UAE", country: "UAE", state: "Dubai", currency: "AED" },
+    28→    28→  { id: "ent-3", name: "ACME US Inc", code: "US", country: "USA", state: "California", currency: "USD" },
+    29→    29→  { id: "ent-4", name: "ACME Singapore Pte Ltd", code: "SGP", country: "Singapore", state: "Singapore", currency: "SGD" },
+    30→    30→]
+    31→    31→
+    32→    32→// ---------- Currency symbol map (no ui.tsx import to avoid circular deps) ----------
+    33→    33→export const CURRENCY_SYMBOLS: Record<string, string> = {
+    34→    34→  INR: "₹",
+    35→    35→  USD: "$",
+    36→    36→  AED: "AED ",
+    37→    37→  SGD: "S$",
+    38→    38→  EUR: "€",
+    39→    39→  GBP: "£",
+    40→    40→}
+    41→    41→
+    42→    42→// ============================================================================
+    43→    43→//  Type System
+    44→    44→// ============================================================================
+    45→    45→
+    46→    46→export type DocumentStatus =
+    47→    47→  | "Pending Upload" | "Uploaded" | "Pending Verification" | "Verified"
+    48→    48→  | "Rejected" | "Correction Required" | "Expired" | "Expiring Soon"
+    49→    49→  | "Archived" | "Published" | "Unpublished" | "Draft"
+    50→    50→  | "Submitted" | "Pending HR Approval" | "Approved"
+    51→    51→  | "Generated" | "Sent to Employee" | "Closed" | "Active" | "Inactive"
+    52→    52→
+    53→    53→export type EmployeeDocumentCategory =
+    54→    54→  | "Identity" | "Address" | "Education" | "Experience" | "Bank"
+    55→    55→  | "Statutory" | "Employment Letters" | "Payroll" | "Exit"
+    56→    56→  | "Compliance" | "Custom"
+    57→    57→
+    58→    58→export type HRDocumentCategory =
+    59→    59→  | "HR Policy" | "Leave Policy" | "Attendance Policy" | "Payroll Policy"
+    60→    60→  | "Travel Policy" | "Expense Policy" | "IT Policy" | "Asset Policy"
+    61→    61→  | "POSH Policy" | "Code of Conduct" | "Employee Handbook"
+    62→    62→  | "Training Material" | "Compliance Document" | "Company Circular" | "Custom Policy"
+    63→    63→
+    64→    64→export type TemplateCategory =
+    65→    65→  | "Offer Letter" | "Appointment Letter" | "Confirmation Letter"
+    66→    66→  | "Increment Letter" | "Promotion Letter" | "Transfer Letter"
+    67→    67→  | "Internship Letter" | "Contract Letter" | "Warning Letter"
+    68→    68→  | "Resignation Acceptance Letter" | "Relieving Letter"
+    69→    69→  | "Experience Letter" | "Termination Letter" | "FnF Settlement Letter"
+    70→    70→  | "No Dues Certificate" | "Salary Certificate" | "Employment Certificate"
+    71→    71→  | "Address Proof Letter" | "Visa / Embassy Letter" | "Custom Document"
+    72→    72→
+    73→    73→export type DocumentCategory = EmployeeDocumentCategory | HRDocumentCategory | TemplateCategory
+    74→    74→
+    75→    75→export type SourceModule =
+    76→    76→  | "Manual" | "Employee Request" | "Onboarding" | "Offboarding"
+    77→    77→  | "Payroll" | "Core HR" | "Bulk Generation"
+    78→    78→
+    79→    79→export type VisibilityRule =
+    80→    80→  | "All Employees" | "Selected Entity" | "Selected Branch" | "Selected Location"
+    81→    81→  | "Selected Department" | "Selected Grade" | "Selected Employee Type"
+    82→    82→  | "Specific Employees" | "Specific Roles"
+    83→    83→
+    84→    84→export type ApproverType =
+    85→    85→  | "HR Owner" | "Reporting Manager" | "Department Head" | "Entity Admin"
+    86→    86→  | "Document Admin" | "Specific Employee" | "Role-Based Approver"
+    87→    87→
+    88→    88→// ---------- Employee Documents ----------
+    89→    89→export interface EmployeeDoc {
+    90→    90→  id: string
+    91→    91→  employeeCode: string
+    92→    92→  employeeName: string
+    93→    93→  entityId: string
+    94→    94→  entityName: string
+    95→    95→  department: string
+    96→    96→  designation: string
+    97→    97→  documentName: string
+    98→    98→  category: EmployeeDocumentCategory
+    99→    99→  documentType: string
+   100→   100→  uploadedDate: string | null
+   101→   101→  uploadedBy: string | null
+   102→   102→  verifiedBy: string | null
+   103→   103→  verifiedDate: string | null
+   104→   104→  expiryDate: string | null
+   105→   105→  status: DocumentStatus
+   106→   106→  fileSize: string
+   107→   107→  version: number
+   108→   108→  remarks?: string
+   109→   109→}
+   110→   110→
+   111→   111→// ---------- HR Documents ----------
+   112→   112→export interface HRDoc {
+   113→   113→  id: string
+   114→   114→  documentName: string
+   115→   115→  category: HRDocumentCategory
+   116→   116→  entityId: string
+   117→   117→  entityName: string
+   118→   118→  department: string | null
+   119→   119→  visibleTo: VisibilityRule
+   120→   120→  uploadedDate: string
+   121→   121→  uploadedBy: string
+   122→   122→  version: string
+   123→   123→  acknowledgmentRequired: boolean
+   124→   124→  acknowledgmentDueDate?: string
+   125→   125→  acknowledgmentRate: number
+   126→   126→  status: "Published" | "Unpublished" | "Draft"
+   127→   127→  fileSize: string
+   128→   128→  description?: string
+   129→   129→}
+   130→   130→
+   131→   131→// ---------- Document Templates ----------
+   132→   132→export interface DocumentTemplate {
+   133→   133→  id: string
+   134→   134→  name: string
+   135→   135→  code: string
+   136→   136→  category: TemplateCategory
+   137→   137→  entityId: string
+   138→   138→  entityName: string
+   139→   139→  createdDate: string
+   140→   140→  createdBy: string
+   141→   141→  updatedBy: string
+   142→   142→  version: string
+   143→   143→  isFavourite: boolean
+   144→   144→  status: "Active" | "Inactive" | "Draft"
+   145→   145→  availableForRequest: boolean
+   146→   146→  availableForHR: boolean
+   147→   147→  availableForOnboarding: boolean
+   148→   148→  availableForOffboarding: boolean
+   149→   149→  availableForPayroll: boolean
+   150→   150→  approvalRequired: boolean
+   151→   151→  eSignRequired: boolean
+   152→   152→  acknowledgmentRequired: boolean
+   153→   153→  allowDownload: boolean
+   154→   154→  allowEmail: boolean
+   155→   155→  allowPrint: boolean
+   156→   156→  description?: string
+   157→   157→  headerTemplate?: string
+   158→   158→  footerTemplate?: string
+   159→   159→  bodyTemplate?: string
+   160→   160→  pageSize: "A4" | "Letter" | "Legal" | "Custom"
+   161→   161→  orientation: "Portrait" | "Landscape"
+   162→   162→}
+   163→   163→
+   164→   164→// ---------- Document Requests ----------
+   165→   165→export interface DocumentRequest {
+   166→   166→  id: string
+   167→   167→  requestId: string
+   168→   168→  employeeCode: string
+   169→   169→  employeeName: string
+   170→   170→  documentType: string
+   171→   171→  entityId: string
+   172→   172→  entityName: string
+   173→   173→  reason: string
+   174→   174→  addressedTo?: string
+   175→   175→  purpose?: string
+   176→   176→  requestedDate: string
+   177→   177→  pendingWith: string
+   178→   178→  status: DocumentStatus
+   179→   179→  attachment?: boolean
+   180→   180→  slaDays: number
+   181→   181→  slaRemaining: number
+   182→   182→}
+   183→   183→
+   184→   184→// ---------- Generated Documents ----------
+   185→   185→export interface GeneratedDoc {
+   186→   186→  id: string
+   187→   187→  generatedId: string
+   188→   188→  documentName: string
+   189→   189→  templateName: string
+   190→   190→  employeeCode: string
+   191→   191→  employeeName: string
+   192→   192→  entityId: string
+   193→   193→  entityName: string
+   194→   194→  generatedDate: string
+   195→   195→  generatedBy: string
+   196→   196→  sourceModule: SourceModule
+   197→   197→  status: "Generated" | "Sent" | "Downloaded" | "Archived" | "Cancelled"
+   198→   198→  fileSize: string
+   199→   199→  eSigned: boolean
+   200→   200→}
+   201→   201→
+   202→   202→// ---------- Document Logs ----------
+   203→   203→export interface DocumentLog {
+   204→   204→  id: string
+   205→   205→  timestamp: string
+   206→   206→  action: "Create" | "Upload" | "Download" | "Preview" | "Send" | "Delete"
+   207→   207→    | "Verify" | "Reject" | "Approve" | "Generate" | "Publish" | "Archive"
+   208→   208→    | "E-Sign" | "Version Change" | "Clone" | "Email"
+   209→   209→  module: "Employee Documents" | "HR Documents" | "Document Library"
+   210→   210→    | "Document Requests" | "Generated Documents" | "Settings"
+   211→   211→  documentName: string
+   212→   212→  documentId: string
+   213→   213→  performedBy: string
+   214→   214→  performedByRole: string
+   215→   215→  entityId: string
+   216→   216→  entityName: string
+   217→   217→  details: string
+   218→   218→  ipAddress: string
+   219→   219→}
+   220→   220→
+   221→   221→// ---------- Entity Document Config (9-step Settings wizard) ----------
+   222→   222→export interface EntityDocumentConfig {
+   223→   223→  id: string
+   224→   224→  entityId: string
+   225→   225→  entityName: string
+   226→   226→  country: string
+   227→   227→  state: string
+   228→   228→  defaultHeader: string
+   229→   229→  defaultFooter: string
+   230→   230→  defaultTemplateGroup: string
+   231→   231→  defaultApprovalWorkflow: string
+   232→   232→  defaultEmailTemplateGroup: string
+   233→   233→  documentRequestEnabled: boolean
+   234→   234→  eSignEnabled: boolean
+   235→   235→  useTenantDefault: boolean
+   236→   236→  status: "Active" | "Inactive"
+   237→   237→  effectiveFrom: string
+   238→   238→  effectiveTo: string | null
+   239→   239→  version: number
+   240→   240→  // Step 2 template defaults
+   241→   241→  defaultOfferLetter?: string
+   242→   242→  defaultAppointmentLetter?: string
+   243→   243→  defaultIncrementLetter?: string
+   244→   244→  defaultPromotionLetter?: string
+   245→   245→  defaultTransferLetter?: string
+   246→   246→  defaultRelievingLetter?: string
+   247→   247→  defaultExperienceLetter?: string
+   248→   248→  defaultFnFLetter?: string
+   249→   249→  defaultSalaryCertificate?: string
+   250→   250→  defaultWatermark?: string
+   251→   251→  defaultSignature?: string
+   252→   252→  // Step 3 employee doc rules
+   253→   253→  enableEmployeeDocs: boolean
+   254→   254→  mandatoryDocs: {
+   255→   255→    docType: string
+   256→   256→    mandatory: boolean
+   257→   257→    appliesTo: string
+   258→   258→    verificationRequired: boolean
+   259→   259→    expiryRequired: boolean
+   260→   260→  }[]
+   261→   261→  allowedFileTypes: string
+   262→   262→  maxFileSize: string
+   263→   263→  // Step 4 HR doc rules
+   264→   264→  enableHRDocs: boolean
+   265→   265→  publishApprovalRequired: boolean
+   266→   266→  defaultAcknowledgment: boolean
+   267→   267→  // Step 5 request rules
+   268→   268→  enableDocumentRequest: boolean
+   269→   269→  requestApprovalRequired: boolean
+   270→   270→  defaultApprover: string
+   271→   271→  slaDays: number
+   272→   272→  autoGenerateAfterApproval: boolean
+   273→   273→  // Step 6 approval & e-sign
+   274→   274→  approvalRequiredForPublish: boolean
+   275→   275→  approvalRequiredForGeneration: boolean
+   276→   276→  approvalRequiredForRequest: boolean
+   277→   277→  eSignProvider: string
+   278→   278→  signatory: string
+   279→   279→  // Step 7 email
+   280→   280→  emailTemplateGroup: string
+   281→   281→  // Step 8 storage & security
+   282→   282→  storageLocation: string
+   283→   283→  folderStructure: string
+   284→   284→  fileNamingRule: string
+   285→   285→  encryptionRequired: boolean
+   286→   286→  retentionPeriod: string
+   287→   287→}
+   288→   288→
+   289→   289→// ============================================================================
+   290→   290→//  Category Constants
+   291→   291→// ============================================================================
+   292→   292→
+   293→   293→export const EMPLOYEE_DOC_CATEGORIES: { value: EmployeeDocumentCategory; label: string; color: string }[] = [
+   294→   294→  { value: "Identity", label: "Identity", color: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400" },
+   295→   295→  { value: "Address", label: "Address", color: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-400" },
+   296→   296→  { value: "Education", label: "Education", color: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400" },
+   297→   297→  { value: "Experience", label: "Experience", color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400" },
+   298→   298→  { value: "Bank", label: "Bank", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400" },
+   299→   299→  { value: "Statutory", label: "Statutory", color: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400" },
+   300→   300→  { value: "Employment Letters", label: "Employment Letters", color: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400" },
+   301→   301→  { value: "Payroll", label: "Payroll", color: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400" },
+   302→   302→  { value: "Exit", label: "Exit", color: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400" },
+   303→   303→  { value: "Compliance", label: "Compliance", color: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400" },
+   304→   304→  { value: "Custom", label: "Custom", color: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400" },
+   305→   305→]
+   306→   306→
+   307→   307→export const HR_DOC_CATEGORIES: { value: HRDocumentCategory; label: string; color: string }[] = [
+   308→   308→  { value: "HR Policy", label: "HR Policy", color: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400" },
+   309→   309→  { value: "Leave Policy", label: "Leave Policy", color: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-400" },
+   310→   310→  { value: "Attendance Policy", label: "Attendance Policy", color: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400" },
+   311→   311→  { value: "Payroll Policy", label: "Payroll Policy", color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400" },
+   312→   312→  { value: "Travel Policy", label: "Travel Policy", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400" },
+   313→   313→  { value: "Expense Policy", label: "Expense Policy", color: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400" },
+   314→   314→  { value: "IT Policy", label: "IT Policy", color: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400" },
+   315→   315→  { value: "Asset Policy", label: "Asset Policy", color: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400" },
+   316→   316→  { value: "POSH Policy", label: "POSH Policy", color: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400" },
+   317→   317→  { value: "Code of Conduct", label: "Code of Conduct", color: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400" },
+   318→   318→  { value: "Employee Handbook", label: "Employee Handbook", color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400" },
+   319→   319→  { value: "Training Material", label: "Training Material", color: "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400" },
+   320→   320→  { value: "Compliance Document", label: "Compliance Document", color: "bg-lime-100 text-lime-700 dark:bg-lime-500/15 dark:text-lime-400" },
+   321→   321→  { value: "Company Circular", label: "Company Circular", color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400" },
+   322→   322→  { value: "Custom Policy", label: "Custom Policy", color: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400" },
+   323→   323→]
+   324→   324→
+   325→   325→export const TEMPLATE_CATEGORIES: { value: TemplateCategory; label: string; icon: string; modules: string[] }[] = [
+   326→   326→  { value: "Offer Letter", label: "Offer Letter", icon: "FileSignature", modules: ["Onboarding", "HR"] },
+   327→   327→  { value: "Appointment Letter", label: "Appointment Letter", icon: "FileText", modules: ["Onboarding", "HR"] },
+   328→   328→  { value: "Confirmation Letter", label: "Confirmation Letter", icon: "FileCheck2", modules: ["Core HR"] },
+   329→   329→  { value: "Increment Letter", label: "Increment Letter", icon: "TrendingUp", modules: ["Payroll", "Core HR"] },
+   330→   330→  { value: "Promotion Letter", label: "Promotion Letter", icon: "Award", modules: ["Core HR"] },
+   331→   331→  { value: "Transfer Letter", label: "Transfer Letter", icon: "ArrowLeftRight", modules: ["Core HR"] },
+   332→   332→  { value: "Internship Letter", label: "Internship Letter", icon: "GraduationCap", modules: ["Onboarding"] },
+   333→   333→  { value: "Contract Letter", label: "Contract Letter", icon: "ScrollText", modules: ["Onboarding", "HR"] },
+   334→   334→  { value: "Warning Letter", label: "Warning Letter", icon: "AlertTriangle", modules: ["Core HR"] },
+   335→   335→  { value: "Resignation Acceptance Letter", label: "Resignation Acceptance", icon: "FileX2", modules: ["Offboarding"] },
+   336→   336→  { value: "Relieving Letter", label: "Relieving Letter", icon: "FileCheck", modules: ["Offboarding"] },
+   337→   337→  { value: "Experience Letter", label: "Experience Letter", icon: "BadgeCheck", modules: ["Offboarding", "Employee Request"] },
+   338→   338→  { value: "Termination Letter", label: "Termination Letter", icon: "UserX", modules: ["Offboarding", "Core HR"] },
+   339→   339→  { value: "FnF Settlement Letter", label: "FnF Settlement Letter", icon: "ReceiptText", modules: ["Offboarding", "Payroll"] },
+   340→   340→  { value: "No Dues Certificate", label: "No Dues Certificate", icon: "ShieldCheck", modules: ["Offboarding", "Employee Request"] },
+   341→   341→  { value: "Salary Certificate", label: "Salary Certificate", icon: "Banknote", modules: ["Employee Request", "Payroll"] },
+   342→   342→  { value: "Employment Certificate", label: "Employment Certificate", icon: "BadgeCheck", modules: ["Employee Request"] },
+   343→   343→  { value: "Address Proof Letter", label: "Address Proof Letter", icon: "MapPin", modules: ["Employee Request"] },
+   344→   344→  { value: "Visa / Embassy Letter", label: "Visa / Embassy Letter", icon: "Plane", modules: ["Employee Request", "HR"] },
+   345→   345→  { value: "Custom Document", label: "Custom Document", icon: "FilePlus2", modules: ["HR", "Employee Request"] },
+   346→   346→]
+   347→   347→
+   348→   348→export const COMMON_EMPLOYEE_DOCS: string[] = [
+   349→   349→  "Profile Photo", "Resume", "Aadhaar Card", "PAN Card", "Passport",
+   350→   350→  "Driving License", "Voter ID", "Bank Proof", "Cancelled Cheque",
+   351→   351→  "Education Certificate", "Experience Letter", "Relieving Letter",
+   352→   352→  "Previous Salary Slip", "Offer Letter", "Appointment Letter",
+   353→   353→  "Confirmation Letter", "Increment Letter", "Promotion Letter",
+   354→   354→  "Transfer Letter", "Payslip", "Form 16", "FnF Settlement Letter",
+   355→   355→  "No Dues Certificate",
+   356→   356→]
+   357→   357→
+   358→   358→// ============================================================================
+   359→   359→//  Status Color Palette
+   360→   360→// ============================================================================
+   361→   361→
+   362→   362→export const STATUS_COLORS: Record<string, string> = {
+   363→   363→  // Upload lifecycle
+   364→   364→  "Pending Upload": "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+   365→   365→  "Uploaded": "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400",
+   366→   366→  "Pending Verification": "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+   367→   367→  "Verified": "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+   368→   368→  "Rejected": "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
+   369→   369→  "Correction Required": "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400",
+   370→   370→  "Expired": "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
+   371→   371→  "Expiring Soon": "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+   372→   372→  "Archived": "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400",
+   373→   373→  // HR docs
+   374→   374→  "Published": "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+   375→   375→  "Unpublished": "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400",
+   376→   376→  "Draft": "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400",
+   377→   377→  // Requests
+   378→   378→  "Submitted": "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400",
+   379→   379→  "Pending HR Approval": "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+   380→   380→  "Approved": "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+   381→   381→  // Generated docs
+   382→   382→  "Generated": "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
+   383→   383→  "Sent to Employee": "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400",
+   384→   384→  "Closed": "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400",
+   385→   385→  // Common
+   386→   386→  "Active": "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+   387→   387→  "Inactive": "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400",
+   388→   388→  // Generated doc statuses (shorthand forms used in GeneratedDoc.status union)
+   389→   389→  "Sent": "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400",
+   390→   390→  "Downloaded": "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400",
+   391→   391→  "Cancelled": "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
+   392→   392→}
+   393→   393→
+   394→   394→// ============================================================================
+   395→   395→//  Smart Value / Slug Categories
+   396→   396→// ============================================================================
+   397→   397→
+   398→   398→export interface SlugToken {
+   399→   399→  token: string
+   400→   400→  description: string
+   401→   401→}
+   402→   402→export interface SlugCategory {
+   403→   403→  name: string
+   404→   404→  icon: string
+   405→   405→  slugs: SlugToken[]
+   406→   406→}
+   407→   407→
+   408→   408→export const SLUG_CATEGORIES: SlugCategory[] = [
+   409→   409→  {
+   410→   410→    name: "Employee Details",
+   411→   411→    icon: "User",
+   412→   412→    slugs: [
+   413→   413→      { token: "{{EmployeeCode}}", description: "Unique employee code (e.g. EMP-001)" },
+   414→   414→      { token: "{{EmployeeName}}", description: "Full legal name of the employee" },
+   415→   415→      { token: "{{FirstName}}", description: "First name" },
+   416→   416→      { token: "{{MiddleName}}", description: "Middle name" },
+   417→   417→      { token: "{{LastName}}", description: "Last name" },
+   418→   418→      { token: "{{PersonalEmail}}", description: "Personal email address" },
+   419→   419→      { token: "{{OfficialEmail}}", description: "Official/company email address" },
+   420→   420→      { token: "{{MobileNumber}}", description: "Mobile / contact number" },
+   421→   421→      { token: "{{DateOfBirth}}", description: "Date of birth (formatted)" },
+   422→   422→      { token: "{{Gender}}", description: "Gender" },
+   423→   423→      { token: "{{MaritalStatus}}", description: "Marital status" },
+   424→   424→      { token: "{{Nationality}}", description: "Nationality" },
+   425→   425→      { token: "{{BloodGroup}}", description: "Blood group" },
+   426→   426→      { token: "{{AadhaarNumber}}", description: "Aadhaar number (masked)" },
+   427→   427→      { token: "{{PanNumber}}", description: "PAN number" },
+   428→   428→      { token: "{{PassportNumber}}", description: "Passport number" },
+   429→   429→      { token: "{{ProfilePic}}", description: "Profile picture URL (for header)" },
+   430→   430→    ],
+   431→   431→  },
+   432→   432→  {
+   433→   433→    name: "Job Details",
+   434→   434→    icon: "Briefcase",
+   435→   435→    slugs: [
+   436→   436→      { token: "{{JoiningDate}}", description: "Date of joining" },
+   437→   437→      { token: "{{ConfirmationDate}}", description: "Confirmation / probation end date" },
+   438→   438→      { token: "{{ProbationPeriod}}", description: "Probation period (months)" },
+   439→   439→      { token: "{{NoticeDays}}", description: "Notice period in days" },
+   440→   440→      { token: "{{Department}}", description: "Department name" },
+   441→   441→      { token: "{{Designation}}", description: "Designation / job title" },
+   442→   442→      { token: "{{Grade}}", description: "Employee grade" },
+   443→   443→      { token: "{{Band}}", description: "Salary band" },
+   444→   444→      { token: "{{BusinessUnit}}", description: "Business unit" },
+   445→   445→      { token: "{{CostCenter}}", description: "Cost center code" },
+   446→   446→      { token: "{{Location}}", description: "Work location" },
+   447→   447→      { token: "{{Branch}}", description: "Branch" },
+   448→   448→      { token: "{{EntityName}}", description: "Legal entity name" },
+   449→   449→      { token: "{{EmploymentType}}", description: "Full-Time / Part-Time / Contract" },
+   450→   450→      { token: "{{EmployeeType}}", description: "Employee sub-type" },
+   451→   451→      { token: "{{WorkMode}}", description: "Work mode — Onsite / Hybrid / Remote" },
+   452→   452→    ],
+   453→   453→  },
+   454→   454→  {
+   455→   455→    name: "Manager / HR",
+   456→   456→    icon: "Users",
+   457→   457→    slugs: [
+   458→   458→      { token: "{{ReportingManager}}", description: "Reporting manager name" },
+   459→   459→      { token: "{{ManagerCode}}", description: "Reporting manager employee code" },
+   460→   460→      { token: "{{ManagerDesignation}}", description: "Manager's designation" },
+   461→   461→      { token: "{{HROwner}}", description: "HR owner / SPOC name" },
+   462→   462→      { token: "{{HREmail}}", description: "HR owner email" },
+   463→   463→      { token: "{{DepartmentHead}}", description: "Department head name" },
+   464→   464→      { token: "{{EntityAdmin}}", description: "Entity admin name" },
+   465→   465→      { token: "{{HRHead}}", description: "HR head / CHRO name" },
+   466→   466→    ],
+   467→   467→  },
+   468→   468→  {
+   469→   469→    name: "Salary Details",
+   470→   470→    icon: "Banknote",
+   471→   471→    slugs: [
+   472→   472→      { token: "{{CTCAnnual}}", description: "Annual CTC (formatted with currency)" },
+   473→   473→      { token: "{{CTCMonthly}}", description: "Monthly CTC" },
+   474→   474→      { token: "{{BasicMonthly}}", description: "Monthly basic salary" },
+   475→   475→      { token: "{{HRAMonthly}}", description: "Monthly HRA" },
+   476→   476→      { token: "{{GrossMonthly}}", description: "Monthly gross" },
+   477→   477→      { token: "{{NetPayMonthly}}", description: "Monthly net / in-hand" },
+   478→   478→      { token: "{{PreviousCTC}}", description: "Previous CTC (for increment letters)" },
+   479→   479→      { token: "{{RevisedCTC}}", description: "Revised CTC (for increment letters)" },
+   480→   480→      { token: "{{HikePercent}}", description: "Hike percentage" },
+   481→   481→      { token: "{{IncrementAmount}}", description: "Absolute increment amount" },
+   482→   482→      { token: "{{EffectiveDate}}", description: "Salary revision effective date" },
+   483→   483→      { token: "{{PayrollFrequency}}", description: "Monthly / Bi-Weekly / etc." },
+   484→   484→      { token: "{{Currency}}", description: "Currency code & symbol" },
+   485→   485→    ],
+   486→   486→  },
+   487→   487→  {
+   488→   488→    name: "Company Details",
+   489→   489→    icon: "Building2",
+   490→   490→    slugs: [
+   491→   491→      { token: "{{CompanyName}}", description: "Legal company name" },
+   492→   492→      { token: "{{CompanyCode}}", description: "Company code (IND / UAE / US / SGP)" },
+   493→   493→      { token: "{{CompanyAddress}}", description: "Registered office address" },
+   494→   494→      { token: "{{CompanyLogo}}", description: "Company logo URL (for header)" },
+   495→   495→      { token: "{{CompanyWebsite}}", description: "Company website URL" },
+   496→   496→      { token: "{{CompanyCIN}}", description: "Corporate identification number (India)" },
+   497→   497→      { token: "{{CompanyTRN}}", description: "Tax registration number (UAE)" },
+   498→   498→      { token: "{{CompanyEIN}}", description: "Employer identification number (US)" },
+   499→   499→      { token: "{{CompanyUEN}}", description: "Unique entity number (Singapore)" },
+   500→   500→    ],
+   501→   501→  },
+   502→   502→  {
+   503→   503→    name: "Document Request",
+   504→   504→    icon: "Inbox",
+   505→   505→    slugs: [
+   506→   506→      { token: "{{RequestID}}", description: "Document request ID" },
+   507→   507→      { token: "{{RequestDate}}", description: "Date the request was raised" },
+   508→   508→      { token: "{{DocumentType}}", description: "Requested document type" },
+   509→   509→      { token: "{{Reason}}", description: "Reason for request" },
+   510→   510→      { token: "{{Purpose}}", description: "Purpose — Bank / Visa / Reference etc." },
+   511→   511→      { token: "{{AddressedTo}}", description: "Addressed-to party (Bank / Embassy / Landlord)" },
+   512→   512→      { token: "{{SLADate}}", description: "SLA due date" },
+   513→   513→    ],
+   514→   514→  },
+   515→   515→  {
+   516→   516→    name: "Exit Details",
+   517→   517→    icon: "DoorOpen",
+   518→   518→    slugs: [
+   519→   519→      { token: "{{ResignationDate}}", description: "Date of resignation" },
+   520→   520→      { token: "{{LastWorkingDate}}", description: "Last working day (LWD)" },
+   521→   521→      { token: "{{ExitType}}", description: "Voluntary / Involuntary / Absconding" },
+   522→   522→      { token: "{{ExitReason}}", description: "Reason for exit" },
+   523→   523→      { token: "{{NoticePeriodServed}}", description: "Notice period served (days)" },
+   524→   524→      { token: "{{FnFAmount}}", description: "Full & Final settlement amount" },
+   525→   525→      { token: "{{RelievingDate}}", description: "Relieving date" },
+   526→   526→    ],
+   527→   527→  },
+   528→   528→  {
+   529→   529→    name: "Date Values",
+   530→   530→    icon: "Calendar",
+   531→   531→    slugs: [
+   532→   532→      { token: "{{CurrentDate}}", description: "Today's date (formatted)" },
+   533→   533→      { token: "{{CurrentDateTime}}", description: "Current date & time" },
+   534→   534→      { token: "{{CurrentMonth}}", description: "Current month name" },
+   535→   535→      { token: "{{CurrentYear}}", description: "Current year" },
+   536→   536→      { token: "{{FinancialYear}}", description: "Financial year (e.g. FY 2024-25)" },
+   537→   537→      { token: "{{GeneratedDate}}", description: "Document generated date" },
+   538→   538→    ],
+   539→   539→  },
+   540→   540→  {
+   541→   541→    name: "Custom Fields",
+   542→   542→    icon: "SlidersHorizontal",
+   543→   543→    slugs: [
+   544→   544→      { token: "{{CustomField.Employee.<FieldCode>}}", description: "Employee-level custom field" },
+   545→   545→      { token: "{{CustomField.Candidate.<FieldCode>}}", description: "Candidate-level custom field" },
+   546→   546→      { token: "{{CustomField.Organization.<FieldCode>}}", description: "Organization-level custom field" },
+   547→   547→    ],
+   548→   548→  },
+   549→   549→]
+   550→   550→
+   551→   551→// ============================================================================
+   552→   552→//  Misc Constants
+   553→   553→// ============================================================================
+   554→   554→
+   555→   555→export const APPROVER_TYPES: ApproverType[] = [
+   556→   556→  "HR Owner", "Reporting Manager", "Department Head", "Entity Admin",
+   557→   557→  "Document Admin", "Specific Employee", "Role-Based Approver",
+   558→   558→]
+   559→   559→
+   560→   560→export const VISIBILITY_RULES: VisibilityRule[] = [
+   561→   561→  "All Employees", "Selected Entity", "Selected Branch", "Selected Location",
+   562→   562→  "Selected Department", "Selected Grade", "Selected Employee Type",
+   563→   563→  "Specific Employees", "Specific Roles",
+   564→   564→]
+   565→   565→
+   566→   566→export const SOURCE_MODULES: SourceModule[] = [
+   567→   567→  "Manual", "Employee Request", "Onboarding", "Offboarding",
+   568→   568→  "Payroll", "Core HR", "Bulk Generation",
+   569→   569→]
+   570→   570→
+   571→   571→export const PAGE_SIZES = ["A4", "Letter", "Legal", "Custom"] as const
+   572→   572→export const ORIENTATIONS = ["Portrait", "Landscape"] as const
+   573→   573→
+   574→   574→export const AVATAR_COLORS = [
+   575→   575→  "bg-violet-500", "bg-fuchsia-500", "bg-sky-500", "bg-emerald-500",
+   576→   576→  "bg-amber-500", "bg-rose-500", "bg-cyan-500", "bg-indigo-500",
+   577→   577→]
+   578→   578→
+   579→   579→// ============================================================================
+   580→   580→//  Helpers
+   581→   581→// ============================================================================
+   582→   582→
+   583→   583→export function initials(name: string): string {
+   584→   584→  const parts = name.trim().split(/\s+/)
+   585→   585→  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+   586→   586→  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+   587→   587→}
+   588→   588→
+   589→   589→export function avatarColor(seed: string): string {
+   590→   590→  let h = 0
+   591→   591→  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
+   592→   592→  return AVATAR_COLORS[h % AVATAR_COLORS.length]
+   593→   593→}
+   594→   594→
+   595→   595→export function formatDate(d?: string | Date | null): string {
+   596→   596→  if (!d) return "—"
+   597→   597→  const dt = typeof d === "string" ? new Date(d) : d
+   598→   598→  if (isNaN(dt.getTime())) return "—"
+   599→   599→  return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+   600→   600→}
+   601→   601→
+   602→   602→export function formatDateTime(d?: string | Date | null): string {
+   603→   603→  if (!d) return "—"
+   604→   604→  const dt = typeof d === "string" ? new Date(d) : d
+   605→   605→  if (isNaN(dt.getTime())) return "—"
+   606→   606→  return dt.toLocaleString("en-IN", {
+   607→   607→    day: "2-digit", month: "short", year: "numeric",
+   608→   608→    hour: "2-digit", minute: "2-digit",
+   609→   609→  })
+   610→   610→}
+   611→   611→
+   612→   612→export function formatCurrency(amount: number, currency = "INR"): string {
+   613→   613→  if (amount === undefined || amount === null || isNaN(amount)) return "—"
+   614→   614→  const sym = CURRENCY_SYMBOLS[currency] || "₹"
+   615→   615→  return sym + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(amount)
+   616→   616→}
+   617→   617→
+   618→   618→export function formatCurrencyShort(amount: number, currency = "INR"): string {
+   619→   619→  if (!amount) return "—"
+   620→   620→  const sym = CURRENCY_SYMBOLS[currency] || "₹"
+   621→   621→  if (amount >= 10000000) return `${sym}${(amount / 10000000).toFixed(2)} Cr`
+   622→   622→  if (amount >= 100000) return `${sym}${(amount / 100000).toFixed(2)} L`
+   623→   623→  if (amount >= 1000) return `${sym}${(amount / 1000).toFixed(1)}K`
+   624→   624→  return sym + amount.toString()
+   625→   625→}
+   626→   626→
+   627→   627→export function statusBadge(status: string): { className: string; label: string } {
+   628→   628→  const cls = STATUS_COLORS[status] || "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400"
+   629→   629→  return { className: cls, label: status }
+   630→   630→}
+   631→   631→
+   632→   632→export function daysUntil(dateStr: string): number {
+   633→   633→  const target = new Date(dateStr)
+   634→   634→  if (isNaN(target.getTime())) return NaN
+   635→   635→  const today = new Date()
+   636→   636→  today.setHours(0, 0, 0, 0)
+   637→   637→  target.setHours(0, 0, 0, 0)
+   638→   638→  return Math.round((target.getTime() - today.getTime()) / 86400000)
+   639→   639→}
+   640→   640→
+   641→   641→export function dueStatus(dateStr: string | null): "none" | "soon" | "overdue" {
+   642→   642→  if (!dateStr) return "none"
+   643→   643→  const d = daysUntil(dateStr)
+   644→   644→  if (isNaN(d)) return "none"
+   645→   645→  if (d < 0) return "overdue"
+   646→   646→  if (d <= 7) return "soon"
+   647→   647→  return "none"
+   648→   648→}
+   649→   649→

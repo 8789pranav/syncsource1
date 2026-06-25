@@ -1,0 +1,560 @@
+     1→"use client"
+     2→
+     3→// ============================================================================
+     4→//  Salary — Dashboard (Task ID 3-a)
+     5→// ----------------------------------------------------------------------------
+     6→//  Real-time overview of the Salary / Payroll pipeline.
+     7→//  Theme: teal/cyan accent (Salary menu color).
+     8→// ============================================================================
+     9→
+    10→import * as React from "react"
+    11→import { motion } from "framer-motion"
+    12→import { toast } from "sonner"
+    13→import {
+    14→  ResponsiveContainer, PieChart, Pie, Cell,
+    15→  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+    16→  AreaChart, Area,
+    17→} from "recharts"
+    18→import {
+    19→  Wallet, Users, Play, ListChecks, ArrowLeftRight, Landmark, ShieldCheck,
+    20→  TrendingUp, CalendarDays, FileText, Download, RefreshCw, ChevronRight,
+    21→  Sparkles, Clock,
+    22→} from "lucide-react"
+    23→
+    24→import { cn } from "@/lib/utils"
+    25→import { Button } from "@/components/ui/button"
+    26→import { Badge } from "@/components/ui/badge"
+    27→import { Card, CardContent } from "@/components/ui/card"
+    28→import { ScrollArea } from "@/components/ui/scroll-area"
+    29→import {
+    30→  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+    31→} from "@/components/ui/table"
+    32→import {
+    33→  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+    34→  DropdownMenuItem, DropdownMenuSeparator,
+    35→} from "@/components/ui/dropdown-menu"
+    36→import { MoreHorizontal, Eye, CheckCircle2, Banknote, FileSpreadsheet } from "lucide-react"
+    37→
+    38→import {
+    39→  STATUS_COLORS, formatCurrency, formatCurrencyShort, formatDate,
+    40→} from "../shared"
+    41→import {
+    42→  PAY_GROUPS as PG_DATA, PAYROLL_RUNS as PR_DATA, PAYROLL_INPUTS,
+    43→  BANK_PAYMENTS, ARREAR_CASES, CHALLANS,
+    44→} from "../data"
+    45→
+    46→// ---------- Palette ----------
+    47→const TEAL = "#14b8a6"
+    48→const CYAN = "#06b6d4"
+    49→const EMERALD = "#10b981"
+    50→const AMBER = "#f59e0b"
+    51→const ROSE = "#f43f5e"
+    52→const VIOLET = "#8b5cf6"
+    53→const SLATE = "#64748b"
+    54→
+    55→const DONUT_COLORS: Record<string, string> = {
+    56→  Draft: SLATE, Processing: CYAN, Processed: "#0891b2",
+    57→  Approved: EMERALD, Paid: TEAL, Cancelled: ROSE,
+    58→}
+    59→
+    60→// ---------- motion variants ----------
+    61→const gridContainer = {
+    62→  hidden: { opacity: 0 },
+    63→  show: { opacity: 1, transition: { staggerChildren: 0.04 } },
+    64→}
+    65→const gridItem = {
+    66→  hidden: { opacity: 0, y: 10 },
+    67→  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 220, damping: 22 } },
+    68→}
+    69→
+    70→// ---------- Stat card ----------
+    71→function DashStat({
+    72→  label, value, icon: Icon, accent, sub, trend,
+    73→}: {
+    74→  label: string
+    75→  value: React.ReactNode
+    76→  icon: React.ComponentType<{ className?: string }>
+    77→  accent: "teal" | "cyan" | "emerald" | "amber" | "rose" | "violet"
+    78→  sub?: string
+    79→  trend?: { up: boolean; value: string }
+    80→}) {
+    81→  const map: Record<string, { grad: string; text: string; ring: string }> = {
+    82→    teal:    { grad: "from-teal-500/15 to-teal-500/5",     text: "text-teal-600 dark:text-teal-400",     ring: "ring-teal-500/20" },
+    83→    cyan:    { grad: "from-cyan-500/15 to-cyan-500/5",     text: "text-cyan-600 dark:text-cyan-400",     ring: "ring-cyan-500/20" },
+    84→    emerald: { grad: "from-emerald-500/15 to-emerald-500/5",text: "text-emerald-600 dark:text-emerald-400", ring: "ring-emerald-500/20" },
+    85→    amber:   { grad: "from-amber-500/15 to-amber-500/5",   text: "text-amber-600 dark:text-amber-400",   ring: "ring-amber-500/20" },
+    86→    rose:    { grad: "from-rose-500/15 to-rose-500/5",     text: "text-rose-600 dark:text-rose-400",     ring: "ring-rose-500/20" },
+    87→    violet:  { grad: "from-violet-500/15 to-violet-500/5", text: "text-violet-600 dark:text-violet-400", ring: "ring-violet-500/20" },
+    88→  }
+    89→  const a = map[accent] || map.teal
+    90→  return (
+    91→    <Card className={cn("relative overflow-hidden rounded-xl border border-border/60 shadow-soft bg-gradient-to-br", a.grad)}>
+    92→      <CardContent className="p-4 sm:p-5">
+    93→        <div className="flex items-start justify-between gap-2">
+    94→          <div className="min-w-0">
+    95→            <p className="text-[11px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">{label}</p>
+    96→            <p className="text-xl sm:text-2xl font-semibold mt-1 text-foreground tabular-nums leading-none">{value}</p>
+    97→            {sub && <p className="text-[11px] text-muted-foreground mt-1.5 truncate">{sub}</p>}
+    98→            {trend && (
+    99→              <div className={cn("inline-flex items-center gap-1 mt-1.5 text-[11px] font-medium",
+   100→                trend.up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+   101→                <span>{trend.up ? "▲" : "▼"}</span><span>{trend.value}</span>
+   102→              </div>
+   103→            )}
+   104→          </div>
+   105→          <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-background/70 ring-1 backdrop-blur-sm", a.ring, a.text)}>
+   106→            <Icon className="h-5 w-5" />
+   107→          </div>
+   108→        </div>
+   109→      </CardContent>
+   110→    </Card>
+   111→  )
+   112→}
+   113→
+   114→// ---------- chart tooltip ----------
+   115→function ChartTip({ active, payload, label }: any) {
+   116→  if (!active || !payload?.length) return null
+   117→  return (
+   118→    <div className="rounded-lg border border-border/60 bg-background/95 backdrop-blur px-3 py-2 shadow-soft text-xs">
+   119→      {label && <p className="font-medium text-foreground mb-1">{label}</p>}
+   120→      {payload.map((p: any, i: number) => (
+   121→        <div key={i} className="flex items-center gap-2">
+   122→          <span className="h-2 w-2 rounded-full" style={{ background: p.color || p.fill }} />
+   123→          <span className="text-muted-foreground">{p.name}:</span>
+   124→          <span className="font-semibold text-foreground tabular-nums">
+   125→            {typeof p.value === "number" ? formatCurrencyShort(p.value) : p.value}
+   126→          </span>
+   127→        </div>
+   128→      ))}
+   129→    </div>
+   130→  )
+   131→}
+   132→
+   133→// ============================================================================
+   134→//  Main component
+   135→// ============================================================================
+   136→export function SalaryDashboardSection() {
+   137→  // ---------- Derived stats ----------
+   138→  const totalPayGroups = PG_DATA.length
+   139→  const activeRuns = PR_DATA.filter(r => r.status === "Processing" || r.status === "Draft" || r.status === "Processed").length
+   140→  const totalEmployees = PG_DATA.reduce((s, g) => s + g.employeeCount, 0)
+   141→  const netPayoutThisMonth = PR_DATA
+   142→    .filter(r => r.status === "Paid" || r.status === "Approved" || r.status === "Processed")
+   143→    .reduce((s, r) => s + r.netPayout, 0)
+   144→  const pendingInputs = PAYROLL_INPUTS.filter(i => i.status === "Pending").length
+   145→  const arrearsPending = ARREAR_CASES.filter(a => a.status === "Pending Approval" || a.status === "Approved").length
+   146→  const bankFilesPending = BANK_PAYMENTS.filter(b => b.status === "Pending" || b.status === "File Generated").length
+   147→  const compliancePending = CHALLANS.filter(c => c.status === "Pending" || c.status === "Overdue").length
+   148→
+   149→  // ---------- Run status donut ----------
+   150→  const statusDist = React.useMemo(() => {
+   151→    const map = new Map<string, number>()
+   152→    PR_DATA.forEach(r => map.set(r.status, (map.get(r.status) || 0) + 1))
+   153→    return Array.from(map.entries()).map(([name, value]) => ({ name, value, color: DONUT_COLORS[name] || SLATE }))
+   154→  }, [])
+   155→  const statusTotal = statusDist.reduce((s, d) => s + d.value, 0)
+   156→
+   157→  // ---------- Monthly payout trend (6 months) ----------
+   158→  const monthTrend = React.useMemo(() => {
+   159→    const months: { month: string; net: number; gross: number }[] = []
+   160→    for (let i = 5; i >= 0; i--) {
+   161→      const d = new Date()
+   162→      d.setMonth(d.getMonth() - i)
+   163→      const label = d.toLocaleDateString("en-IN", { month: "short" })
+   164→      const factor = 1 - i * 0.02 + 0.05 * (5 - i) / 5
+   165→      const net = Math.round(38500000 * factor)
+   166→      const gross = Math.round(45000000 * factor)
+   167→      months.push({ month: label, net, gross })
+   168→    }
+   169→    return months
+   170→  }, [])
+   171→
+   172→  // ---------- Entity-wise payout ----------
+   173→  const entityPayout = React.useMemo(() => {
+   174→    const map = new Map<string, number>()
+   175→    PR_DATA.forEach(r => map.set(r.entity, (map.get(r.entity) || 0) + r.netPayout))
+   176→    return Array.from(map.entries())
+   177→      .map(([name, value]) => ({ name: name.replace("ACME ", "").replace(" Pvt Ltd", "").replace(" LLC", "").replace(" Inc", "").replace(" Pte Ltd", ""), value }))
+   178→      .sort((a, b) => b.value - a.value)
+   179→  }, [])
+   180→
+   181→  // ---------- Arrear trend ----------
+   182→  const arrearTrend = React.useMemo(() => {
+   183→    const months: { month: string; arrear: number }[] = []
+   184→    for (let i = 5; i >= 0; i--) {
+   185→      const d = new Date()
+   186→      d.setMonth(d.getMonth() - i)
+   187→      const label = d.toLocaleDateString("en-IN", { month: "short" })
+   188→      const factor = 0.6 + (5 - i) * 0.1
+   189→      months.push({ month: label, arrear: Math.round(280000 * factor) })
+   190→    }
+   191→    return months
+   192→  }, [])
+   193→
+   194→  // ---------- Recent runs ----------
+   195→  const recentRuns = React.useMemo(() =>
+   196→    [...PR_DATA].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
+   197→    []
+   198→  )
+   199→
+   200→  // ---------- Upcoming pay dates ----------
+   201→  const upcomingPayDates = React.useMemo(() => {
+   202→    return PG_DATA
+   203→      .filter(g => g.status === "Active")
+   204→      .map(g => {
+   205→        // Synthesize next pay date as ~10 days from now (demo)
+   206→        const days = 3 + Math.floor(Math.random() * 20)
+   207→        const dt = new Date(Date.now() + days * 86400000)
+   208→        return { ...g, payDateIso: dt.toISOString(), daysUntil: days }
+   209→      })
+   210→      .sort((a, b) => a.daysUntil - b.daysUntil)
+   211→      .slice(0, 6)
+   212→  }, [])
+   213→
+   214→  // ---------- Handlers ----------
+   215→  const onAction = (label: string) => toast.success(label)
+   216→  const onRowAction = (action: string, name: string) => toast.success(`${action}`, { description: name })
+   217→
+   218→  return (
+   219→    <div className="space-y-5">
+   220→      {/* ---------- Header ---------- */}
+   221→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-border/60">
+   222→        <div className="flex items-start gap-3 min-w-0">
+   223→          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 text-white shadow-soft">
+   224→            <Wallet className="h-5 w-5" />
+   225→          </div>
+   226→          <div className="min-w-0">
+   227→            <h1 className="text-xl font-semibold tracking-tight text-foreground truncate">Salary Dashboard</h1>
+   228→            <p className="text-sm text-muted-foreground mt-0.5 max-w-2xl">
+   229→              Real-time payroll overview — runs, payouts, inputs, arrears, bank files & compliance.
+   230→            </p>
+   231→          </div>
+   232→        </div>
+   233→        <div className="flex items-center gap-2 shrink-0">
+   234→          <Button size="sm" variant="outline" onClick={() => onAction("Dashboard refreshed")} className="gap-1.5">
+   235→            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+   236→          </Button>
+   237→          <Button size="sm" onClick={() => onAction("Export started")} className="gap-1.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white">
+   238→            <Download className="h-3.5 w-3.5" /> Export
+   239→          </Button>
+   240→        </div>
+   241→      </div>
+   242→
+   243→      {/* ---------- Quick actions ---------- */}
+   244→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   245→        {[
+   246→          { label: "Start Payroll Run", icon: Play, action: () => onAction("Payroll Run wizard opened") },
+   247→          { label: "Add Pay Group", icon: Users, action: () => onAction("Add Pay Group dialog opened") },
+   248→          { label: "Generate Payslips", icon: FileText, action: () => onAction("Payslip generation started") },
+   249→          { label: "Export Data", icon: Download, action: () => onAction("Export dialog opened") },
+   250→        ].map(qa => (
+   251→          <button
+   252→            key={qa.label}
+   253→            onClick={qa.action}
+   254→            className="group flex items-center gap-2.5 rounded-xl border border-border/60 bg-card p-3 text-left shadow-soft transition-all hover:border-teal-500/40 hover:shadow-card hover:bg-teal-50/40 dark:hover:bg-teal-500/5"
+   255→          >
+   256→            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 text-white shadow-sm">
+   257→              <qa.icon className="h-4 w-4" />
+   258→            </div>
+   259→            <div className="min-w-0 flex-1">
+   260→              <p className="text-sm font-medium text-foreground truncate">{qa.label}</p>
+   261→              <p className="text-[11px] text-muted-foreground truncate">Quick action</p>
+   262→            </div>
+   263→            <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-teal-600 transition-colors" />
+   264→          </button>
+   265→        ))}
+   266→      </div>
+   267→
+   268→      {/* ---------- Stat cards ---------- */}
+   269→      <motion.div
+   270→        className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3"
+   271→        variants={gridContainer} initial="hidden" animate="show"
+   272→      >
+   273→        <motion.div variants={gridItem}>
+   274→          <DashStat label="Pay Groups" value={totalPayGroups} icon={Users} accent="teal" sub="Across 4 entities" />
+   275→        </motion.div>
+   276→        <motion.div variants={gridItem}>
+   277→          <DashStat label="Active Runs" value={activeRuns} icon={Play} accent="cyan" sub="In progress" />
+   278→        </motion.div>
+   279→        <motion.div variants={gridItem}>
+   280→          <DashStat label="Total Employees" value={totalEmployees} icon={Wallet} accent="emerald" sub="On payroll" />
+   281→        </motion.div>
+   282→        <motion.div variants={gridItem}>
+   283→          <DashStat label="Net Payout (Month)" value={formatCurrencyShort(netPayoutThisMonth)} icon={Banknote} accent="teal" sub="This month" trend={{ up: true, value: "4.2%" }} />
+   284→        </motion.div>
+   285→        <motion.div variants={gridItem}>
+   286→          <DashStat label="Pending Inputs" value={pendingInputs} icon={ListChecks} accent="amber" sub="Awaiting approval" />
+   287→        </motion.div>
+   288→        <motion.div variants={gridItem}>
+   289→          <DashStat label="Arrears Pending" value={arrearsPending} icon={ArrowLeftRight} accent="violet" sub="To be paid" />
+   290→        </motion.div>
+   291→        <motion.div variants={gridItem}>
+   292→          <DashStat label="Bank Files Pending" value={bankFilesPending} icon={Landmark} accent="rose" sub="To generate" />
+   293→        </motion.div>
+   294→        <motion.div variants={gridItem}>
+   295→          <DashStat label="Compliance Pending" value={compliancePending} icon={ShieldCheck} accent="amber" sub="Challans due" />
+   296→        </motion.div>
+   297→      </motion.div>
+   298→
+   299→      {/* ---------- Charts row 1 ---------- */}
+   300→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   301→        {/* Run status donut */}
+   302→        <Card className="border border-border/60 rounded-xl shadow-soft">
+   303→          <CardContent className="p-5">
+   304→            <div className="mb-4">
+   305→              <h3 className="text-sm font-semibold text-foreground">Payroll Run Status</h3>
+   306→              <p className="text-xs text-muted-foreground mt-0.5">Distribution of current runs</p>
+   307→            </div>
+   308→            {statusTotal === 0 ? (
+   309→              <div className="flex flex-col items-center justify-center py-10 text-center">
+   310→                <Play className="h-8 w-8 text-muted-foreground/40 mb-2" />
+   311→                <p className="text-sm text-muted-foreground">No runs recorded.</p>
+   312→              </div>
+   313→            ) : (
+   314→              <div className="flex flex-col items-center">
+   315→                <div className="h-48 w-full relative">
+   316→                  <ResponsiveContainer width="100%" height="100%">
+   317→                    <PieChart>
+   318→                      <Pie data={statusDist} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} stroke="none">
+   319→                        {statusDist.map(d => <Cell key={d.name} fill={d.color} />)}
+   320→                      </Pie>
+   321→                    </PieChart>
+   322→                  </ResponsiveContainer>
+   323→                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+   324→                    <span className="text-2xl font-bold tabular-nums text-foreground">{statusTotal}</span>
+   325→                    <span className="text-[11px] text-muted-foreground">Runs</span>
+   326→                  </div>
+   327→                </div>
+   328→                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 w-full mt-3">
+   329→                  {statusDist.map(d => (
+   330→                    <div key={d.name} className="flex items-center gap-2 text-xs">
+   331→                      <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: d.color }} />
+   332→                      <span className="text-muted-foreground truncate flex-1">{d.name}</span>
+   333→                      <span className="font-semibold text-foreground tabular-nums">{d.value}</span>
+   334→                    </div>
+   335→                  ))}
+   336→                </div>
+   337→              </div>
+   338→            )}
+   339→          </CardContent>
+   340→        </Card>
+   341→
+   342→        {/* Monthly net payout trend (bar) */}
+   343→        <Card className="lg:col-span-2 border border-border/60 rounded-xl shadow-soft">
+   344→          <CardContent className="p-5">
+   345→            <div className="flex items-center justify-between mb-4">
+   346→              <div>
+   347→                <h3 className="text-sm font-semibold text-foreground">Monthly Net Payout Trend</h3>
+   348→                <p className="text-xs text-muted-foreground mt-0.5">Last 6 months</p>
+   349→              </div>
+   350→              <Badge variant="outline" className="border-teal-500/30 text-teal-700 dark:text-teal-400 gap-1">
+   351→                <TrendingUp className="h-3 w-3" /> +4.2%
+   352→              </Badge>
+   353→            </div>
+   354→            <div className="h-56">
+   355→              <ResponsiveContainer width="100%" height="100%">
+   356→                <BarChart data={monthTrend} margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
+   357→                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} vertical={false} />
+   358→                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+   359→                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCurrencyShort(v).replace("₹", "")} width={50} />
+   360→                  <Tooltip content={<ChartTip />} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+   361→                  <Bar dataKey="net" name="Net Payout" fill={TEAL} radius={[6, 6, 0, 0]} maxBarSize={48} />
+   362→                </BarChart>
+   363→              </ResponsiveContainer>
+   364→            </div>
+   365→          </CardContent>
+   366→        </Card>
+   367→      </div>
+   368→
+   369→      {/* ---------- Charts row 2 ---------- */}
+   370→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   371→        {/* Entity-wise payout (horizontal bar) */}
+   372→        <Card className="border border-border/60 rounded-xl shadow-soft">
+   373→          <CardContent className="p-5">
+   374→            <div className="mb-4">
+   375→              <h3 className="text-sm font-semibold text-foreground">Entity-wise Payout</h3>
+   376→              <p className="text-xs text-muted-foreground mt-0.5">Net payout by entity (current month)</p>
+   377→            </div>
+   378→            <div className="h-56">
+   379→              <ResponsiveContainer width="100%" height="100%">
+   380→                <BarChart data={entityPayout} layout="vertical" margin={{ top: 4, right: 16, bottom: 0, left: 8 }}>
+   381→                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} horizontal={false} />
+   382→                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCurrencyShort(v).replace("₹", "")} />
+   383→                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={88} />
+   384→                  <Tooltip content={<ChartTip />} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+   385→                  <Bar dataKey="value" name="Net Payout" radius={[0, 6, 6, 0]} maxBarSize={28}>
+   386→                    {entityPayout.map((_, i) => (
+   387→                      <Cell key={i} fill={[TEAL, CYAN, EMERALD, VIOLET][i % 4]} />
+   388→                    ))}
+   389→                  </Bar>
+   390→                </BarChart>
+   391→              </ResponsiveContainer>
+   392→            </div>
+   393→          </CardContent>
+   394→        </Card>
+   395→
+   396→        {/* Arrear trend (area) */}
+   397→        <Card className="border border-border/60 rounded-xl shadow-soft">
+   398→          <CardContent className="p-5">
+   399→            <div className="flex items-center justify-between mb-4">
+   400→              <div>
+   401→                <h3 className="text-sm font-semibold text-foreground">Arrear Trend</h3>
+   402→                <p className="text-xs text-muted-foreground mt-0.5">Last 6 months</p>
+   403→              </div>
+   404→              <Badge variant="outline" className="border-violet-500/30 text-violet-700 dark:text-violet-400 gap-1">
+   405→                <ArrowLeftRight className="h-3 w-3" /> Live
+   406→              </Badge>
+   407→            </div>
+   408→            <div className="h-56">
+   409→              <ResponsiveContainer width="100%" height="100%">
+   410→                <AreaChart data={arrearTrend} margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
+   411→                  <defs>
+   412→                    <linearGradient id="arrearGrad" x1="0" y1="0" x2="0" y2="1">
+   413→                      <stop offset="0%" stopColor={VIOLET} stopOpacity={0.5} />
+   414→                      <stop offset="100%" stopColor={VIOLET} stopOpacity={0.02} />
+   415→                    </linearGradient>
+   416→                  </defs>
+   417→                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} vertical={false} />
+   418→                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+   419→                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCurrencyShort(v).replace("₹", "")} width={50} />
+   420→                  <Tooltip content={<ChartTip />} />
+   421→                  <Area type="monotone" dataKey="arrear" name="Arrears" stroke={VIOLET} strokeWidth={2} fill="url(#arrearGrad)" />
+   422→                </AreaChart>
+   423→              </ResponsiveContainer>
+   424→            </div>
+   425→          </CardContent>
+   426→        </Card>
+   427→      </div>
+   428→
+   429→      {/* ---------- Recent runs + upcoming pay dates ---------- */}
+   430→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   431→        {/* Recent runs table */}
+   432→        <Card className="lg:col-span-2 border border-border/60 rounded-xl shadow-soft overflow-hidden">
+   433→          <div className="flex items-center justify-between p-5 pb-3">
+   434→            <div>
+   435→              <h3 className="text-sm font-semibold text-foreground">Recent Payroll Runs</h3>
+   436→              <p className="text-xs text-muted-foreground mt-0.5">Latest 5 runs across all pay groups</p>
+   437→            </div>
+   438→            <Button size="sm" variant="ghost" onClick={() => onAction("View all payroll runs")} className="text-teal-700 dark:text-teal-400 hover:text-teal-800 hover:bg-teal-50 dark:hover:bg-teal-500/10">
+   439→              View all <ChevronRight className="h-3.5 w-3.5 ml-1" />
+   440→            </Button>
+   441→          </div>
+   442→          <div className="max-h-[440px] overflow-auto">
+   443→            <Table>
+   444→              <TableHeader className="sticky top-0 bg-muted/40 backdrop-blur z-10">
+   445→                <TableRow className="hover:bg-muted/40">
+   446→                  <TableHead className="min-w-[200px]">Run Name</TableHead>
+   447→                  <TableHead className="min-w-[120px]">Entity</TableHead>
+   448→                  <TableHead className="min-w-[110px]">Month</TableHead>
+   449→                  <TableHead className="min-w-[110px]">Status</TableHead>
+   450→                  <TableHead className="min-w-[80px] text-right">Employees</TableHead>
+   451→                  <TableHead className="min-w-[130px] text-right">Net Payout</TableHead>
+   452→                  <TableHead className="w-[60px] text-right pr-4">Actions</TableHead>
+   453→                </TableRow>
+   454→              </TableHeader>
+   455→              <TableBody>
+   456→                {recentRuns.map(r => (
+   457→                  <TableRow key={r.id} className="border-border/40 hover:bg-muted/30">
+   458→                    <TableCell>
+   459→                      <div className="min-w-0">
+   460→                        <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
+   461→                        <p className="text-[11px] text-muted-foreground font-mono">{r.code}</p>
+   462→                      </div>
+   463→                    </TableCell>
+   464→                    <TableCell>
+   465→                      <span className="text-xs text-muted-foreground truncate block max-w-[120px]">{r.entity}</span>
+   466→                    </TableCell>
+   467→                    <TableCell>
+   468→                      <span className="text-xs text-foreground">{r.payrollMonth}</span>
+   469→                    </TableCell>
+   470→                    <TableCell>
+   471→                      <Badge variant="secondary" className={cn("text-[11px] border-0", STATUS_COLORS[r.status] || "bg-muted text-muted-foreground")}>
+   472→                        {r.status}
+   473→                      </Badge>
+   474→                    </TableCell>
+   475→                    <TableCell className="text-right text-sm tabular-nums">{r.totalEmployees}</TableCell>
+   476→                    <TableCell className="text-right text-sm font-semibold tabular-nums text-foreground">{formatCurrencyShort(r.netPayout)}</TableCell>
+   477→                    <TableCell className="text-right pr-4">
+   478→                      <DropdownMenu>
+   479→                        <DropdownMenuTrigger asChild>
+   480→                          <Button size="icon" variant="ghost" className="h-7 w-7">
+   481→                            <MoreHorizontal className="h-4 w-4" />
+   482→                          </Button>
+   483→                        </DropdownMenuTrigger>
+   484→                        <DropdownMenuContent align="end" className="w-40">
+   485→                          <DropdownMenuItem onClick={() => onRowAction("View run", r.name)}><Eye className="h-3.5 w-3.5 mr-2" /> View</DropdownMenuItem>
+   486→                          <DropdownMenuItem onClick={() => onRowAction("Process run", r.name)}><Play className="h-3.5 w-3.5 mr-2" /> Process</DropdownMenuItem>
+   487→                          <DropdownMenuItem onClick={() => onRowAction("Approve run", r.name)}><CheckCircle2 className="h-3.5 w-3.5 mr-2" /> Approve</DropdownMenuItem>
+   488→                          <DropdownMenuSeparator />
+   489→                          <DropdownMenuItem onClick={() => onRowAction("Generate bank file", r.name)}><Landmark className="h-3.5 w-3.5 mr-2" /> Bank File</DropdownMenuItem>
+   490→                        </DropdownMenuContent>
+   491→                      </DropdownMenu>
+   492→                    </TableCell>
+   493→                  </TableRow>
+   494→                ))}
+   495→              </TableBody>
+   496→            </Table>
+   497→          </div>
+   498→        </Card>
+   499→
+   500→        {/* Upcoming pay dates */}
+   501→        <Card className="border border-border/60 rounded-xl shadow-soft">
+   502→          <CardContent className="p-5">
+   503→            <div className="flex items-center justify-between mb-4">
+   504→              <div>
+   505→                <h3 className="text-sm font-semibold text-foreground">Upcoming Pay Dates</h3>
+   506→                <p className="text-xs text-muted-foreground mt-0.5">Next 6 pay groups</p>
+   507→              </div>
+   508→              <CalendarDays className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+   509→            </div>
+   510→            <ScrollArea className="max-h-[440px] pr-2">
+   511→              <div className="space-y-2">
+   512→                {upcomingPayDates.map(pg => (
+   513→                  <div key={pg.id} className="flex items-center gap-3 rounded-lg border border-border/40 bg-background p-3 hover:border-teal-500/40 hover:bg-teal-50/30 dark:hover:bg-teal-500/5 transition-colors">
+   514→                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 text-white text-center">
+   515→                      <div>
+   516→                        <p className="text-[10px] font-medium uppercase leading-none opacity-90">
+   517→                          {new Date(pg.payDateIso).toLocaleDateString("en-IN", { month: "short" })}
+   518→                        </p>
+   519→                        <p className="text-base font-bold leading-tight">{new Date(pg.payDateIso).getDate()}</p>
+   520→                      </div>
+   521→                    </div>
+   522→                    <div className="min-w-0 flex-1">
+   523→                      <p className="text-sm font-medium text-foreground truncate">{pg.name}</p>
+   524→                      <p className="text-[11px] text-muted-foreground truncate">{pg.entity} · {pg.employeeCount} emp</p>
+   525→                    </div>
+   526→                    <div className="text-right shrink-0">
+   527→                      <p className="text-xs font-semibold text-teal-700 dark:text-teal-400 tabular-nums">{pg.daysUntil}d</p>
+   528→                      <p className="text-[10px] text-muted-foreground">{formatDate(pg.payDateIso)}</p>
+   529→                    </div>
+   530→                  </div>
+   531→                ))}
+   532→              </div>
+   533→            </ScrollArea>
+   534→          </CardContent>
+   535→        </Card>
+   536→      </div>
+   537→
+   538→      {/* ---------- Footer banner ---------- */}
+   539→      <Card className="border border-teal-500/20 rounded-xl shadow-soft bg-gradient-to-r from-teal-50/60 to-cyan-50/40 dark:from-teal-500/5 dark:to-cyan-500/5">
+   540→        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   541→          <div className="flex items-center gap-3">
+   542→            <div className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 text-white">
+   543→              <Sparkles className="h-5 w-5" />
+   544→            </div>
+   545→            <div>
+   546→              <p className="text-sm font-semibold text-foreground">Payroll cycle is on track</p>
+   547→              <p className="text-xs text-muted-foreground mt-0.5">All current-month runs are progressing. 2 inputs pending approval, 3 bank files to generate.</p>
+   548→            </div>
+   549→          </div>
+   550→          <Button size="sm" variant="outline" onClick={() => onAction("Opened payroll run section")} className="gap-1.5 border-teal-500/40 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-500/10">
+   551→            Open Payroll Run <ChevronRight className="h-3.5 w-3.5" />
+   552→          </Button>
+   553→        </CardContent>
+   554→      </Card>
+   555→    </div>
+   556→  )
+   557→}
+   558→
+   559→export default SalaryDashboardSection
+   560→
