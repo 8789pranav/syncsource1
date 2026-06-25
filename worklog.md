@@ -2226,3 +2226,40 @@ Stage Summary:
 - ⚠️ Force-push OVERWROTE remote's previous ec477df commit (competing onboarding module). That commit is still recoverable via GitHub reflog / `git reflog` on any clone that had fetched it, but is no longer on the main branch line.
 - 🔒 GitHub PAT was used inline only and is NOT stored in repo config, git config, or any credentials file. Safe.
 - Remote `origin` remains configured as clean URL `https://github.com/8789pranav/syncsource1.git` for future fetches.
+
+---
+Task ID: 4-hr-docs
+Agent: main (orchestrator)
+Task: Build HR Documents section with folder hierarchy — HR can create folders, add documents under folders, click a folder to see all its documents, upload/delete with who-and-when tracking
+
+Work Log:
+- Read user feedback: "hr dorment is not working proper where he can make folder .. and under that folder they can add documents ... and in hr documented .. that documet folder we can click and see all the documents uploaded" → identified HR Documents section (not Employee Documents, which already works) needs the same folder functionality.
+- Inspected current HR Documents: 580-line component using mock data from data.ts, NO HRDocument model in Prisma, NO HR APIs.
+- Prisma schema: added HRDocumentFolder model (id, tenantId, name, description, color, createdBy, createdAt, updatedAt) + HRDocument model (id, tenantId, folderId FK with SetNull onDelete, name, category, entityId, department, visibleTo, status, fileUrl, fileExt, fileSize, version, description, remarks, acknowledgmentRequired, acknowledgmentDueDate, uploadedBy, uploadedAt). Pushed via `bun run db:push` — fixed `Set Null` → `SetNull` syntax.
+- Created src/lib/hr-doc-raw.ts: raw SQL helpers (same pattern as employee-doc-raw.ts) for HRDocument + HRDocumentFolder — rawListHRDocuments, rawListHRDocumentsByFolder, rawGetHRDocument, rawCreateHRDocument, rawUpdateHRDocument, rawDeleteHRDocument, rawListHRFolders, rawGetHRFolder, rawCreateHRFolder, rawUpdateHRFolder, rawDeleteHRFolder, normalizeHRDoc, normalizeHRFolder, attachHRFolderInfo.
+- APIs created:
+  - src/app/api/hr-documents/route.ts (GET list with optional folderId filter; POST create)
+  - src/app/api/hr-documents/[id]/route.ts (GET single; PATCH update; DELETE)
+  - src/app/api/hr-documents/folders/route.ts (GET list with doc counts; POST create)
+  - src/app/api/hr-documents/folders/[folderId]/route.ts (GET folder+docs; PATCH rename; DELETE moves docs to root)
+- Rewrote src/components/hrms/documents/sections/hr-documents.tsx (580→~750 lines): 2-level layout. Level 1 = root view with folders sidebar + documents grid. Level 2 = folder view showing documents in that folder. Features: folder CRUD with 7-color palette (violet/emerald/amber/rose/sky/cyan/slate), document CRUD with category/status/visibility/acknowledgment/file-metadata, every doc card prominently shows "uploaded by [user] · [relative time]" + absolute date, delete-folder moves docs to root with toast "N document(s) moved to root", delete-document with confirm dialog, search + category filter, loading skeletons, empty states, breadcrumb navigation.
+- Fixed 2 runtime bugs found via agent-browser:
+  1. rawListHRDocumentsByFolder not imported in hr-documents/route.ts → added to import.
+  2. BigInt conversion error in folders GET route — lastActivityAt from COALESCE(MAX(...)) returned as non-Date; changed `new Date(x).toISOString()` to match employee pattern (instanceof Date check + String fallback).
+- Lint: 0 errors (1 pre-existing unrelated warning in dynamic-form.tsx).
+- Agent-browser verification (all passed):
+  - HR Documents section loads with empty state + "New Folder" + "Upload Document" buttons.
+  - Created folder "Leave Policies 2024" (emerald) with description → appears in sidebar "Leave Policies 2024 · 0 docs · HR Admin".
+  - Clicked folder → breadcrumb "HR Documents / All Documents / Leave Policies 2024", "Documents in folder (0)", empty state.
+  - Uploaded "Annual Leave Policy FY 2024-25" (Leave Policy category, Published) into folder → doc card shows "H avatar · HR Admin · just now" + "25 Jun 2026" + "v1.0", folder count updates to "1 docs", toast "Document uploaded".
+  - Deleted folder → toast "Folder deleted · Leave Policies 2024 removed · 1 document(s) moved to root", doc moved to root (All Documents count 0→1), folder removed from sidebar.
+  - Deleted document → confirm dialog "Delete document ...?", toast "Document deleted", count back to 0.
+  - No page errors, no console errors, footer sticky.
+
+Stage Summary:
+- ✅ HR Documents now has full folder hierarchy matching the user's requirement.
+- Key files: prisma/schema.prisma (+HRDocument, +HRDocumentFolder), src/lib/hr-doc-raw.ts (new), src/app/api/hr-documents/** (4 new route files), src/components/hrms/documents/sections/hr-documents.tsx (rewritten).
+- Git commit: 6444f8c "feat(documents): HR Documents with folder hierarchy..."
+- Pushed to GitHub: 6be5756..6444f8c main -> main ✅
+- Employee Documents (Task 4-emp-docs, previous) and HR Documents (this task) now both have folder functionality.
+- No unresolved issues.
