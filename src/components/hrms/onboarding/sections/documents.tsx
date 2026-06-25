@@ -638,7 +638,7 @@ function TemplateEditorDialog({
       <Dialog open={open} onOpenChange={(v) => { if (!saving) onOpenChange(v) }}>
         <DialogContent
           showCloseButton
-          className="sm:max-w-6xl max-w-[calc(100%-2rem)] w-full max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col"
+          className="sm:max-w-6xl max-w-[calc(100%-2rem)] w-full h-[92vh] max-h-[92vh] p-0 gap-0 overflow-hidden flex flex-col"
         >
           {/* Header */}
           <DialogHeader className="px-6 py-4 border-b border-border/60 space-y-1">
@@ -661,8 +661,10 @@ function TemplateEditorDialog({
           {/* Body — editor-first layout:
               • compact always-visible metadata bar on top (key fields in a row)
               • collapsible "more details" panel beneath it
-              • main 2-pane area: WYSIWYG editor (hero, flex-1) + Slug palette (fixed, always visible) */}
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              • main 2-pane area: WYSIWYG editor (hero, flex-1) + Slug palette (fixed, always visible)
+              NOTE: each pane gets an explicit min-height so the inner ScrollArea / contentEditable
+              always receive a bounded height and render their content + scrollbar. */}
+          <div className="flex-1 min-h-0 flex flex-col overflow-y-auto">
             {/* ---- Top metadata bar (always visible) ---- */}
             <div className="border-b border-border/60 bg-muted/20 px-4 py-2.5">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
@@ -798,10 +800,12 @@ function TemplateEditorDialog({
             )}
 
             {/* ---- Main 2-pane area: editor (hero) + slug palette (always visible) ---- */}
-            <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
-              {/* LEFT/MAIN: WYSIWYG editor — the hero */}
-              <div className="flex-1 min-w-0 p-3 flex flex-col min-h-0">
-                <div className="flex items-center gap-1.5 mb-1.5 px-0.5">
+            <div className="flex-1 min-h-[520px] flex flex-col lg:flex-row">
+              {/* LEFT/MAIN: WYSIWYG editor — the hero. Explicit min-height guarantees the
+                  contentEditable receives a bounded height and renders its content + scrollbar
+                  even when the viewport is short. */}
+              <div className="flex-1 min-w-0 p-3 flex flex-col min-h-[460px]">
+                <div className="flex items-center gap-1.5 mb-1.5 px-0.5 shrink-0">
                   <FileCode2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Template Content
@@ -810,7 +814,7 @@ function TemplateEditorDialog({
                     Header · Body · Footer
                   </Badge>
                 </div>
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-[400px]">
                   <SectionedRichEditor
                     ref={editorRef}
                     header={header}
@@ -818,13 +822,15 @@ function TemplateEditorDialog({
                     footer={footer}
                     onChange={handleSectionChange}
                     initialSection="body"
-                    minHeight={360}
+                    minHeight={320}
                   />
                 </div>
               </div>
 
-              {/* RIGHT: shared slug library — always visible, fixed width */}
-              <div className="lg:w-[320px] xl:w-[340px] shrink-0 min-w-0 flex flex-col min-h-0 border-t lg:border-t-0 lg:border-l border-border/60 max-h-[44vh] lg:max-h-none">
+              {/* RIGHT: shared slug library — always visible, fixed width. Explicit min-height
+                  guarantees the inner ScrollArea receives a bounded height and renders the slug
+                  list + scrollbar. */}
+              <div className="lg:w-[320px] xl:w-[340px] shrink-0 min-w-0 flex flex-col min-h-[480px] border-t lg:border-t-0 lg:border-l border-border/60">
                 <SlugPalette
                   onInsert={insertVariable}
                   usedVariables={usedVariables}

@@ -1241,3 +1241,46 @@ Stage Summary:
 - Slug catalog expanded ~2.5× to 148 slugs across 23 categories (Bank, Education, Experience, Assets, Training, Benefits, Tax, Documents, Policies, Travel, System, Announcement, Shift, etc.).
 - SlugPalette gains a prominent "Copy all" button + always-visible per-slug copy icons + expand/collapse all — slugs can be copied and pasted anywhere.
 - Layout is editor-first and responsive: at every width the editor + slug library are both visible (stacking vertically on narrow screens instead of hiding).
+
+---
+Task ID: ONBOARDING-EDITOR-SCROLL-FIX
+Agent: main (Z.ai Code)
+Task: User reported "no scrollable why" with a screenshot (1153×827) showing the "New Document Template" modal where the Slug Library list area and the WYSIWYG editor content area were both EMPTY (not rendering) while the header/search/buttons and bottom action buttons were visible — large white gap in the middle. The modal could not be scrolled.
+
+Root cause:
+- The modal body used `overflow-hidden` + a deep flex chain (`flex-1 min-h-0`) relying on `h-full`/`min-h-0` propagating bounded heights down to the contentEditable and the SlugPalette's inner `<ScrollArea>`.
+- On shorter viewports (or when the flex chain broke), the 2-pane area's children collapsed to 0 visible height — the editor's `flex-1 min-h-0` wrapper and the slug palette's `flex-1 min-h-0` ScrollArea both received 0 height, so the slug list and editor content area rendered nothing (white gap).
+- The slug palette container also had `max-h-[44vh] lg:max-h-none` which removed the height cap at lg+ widths, allowing it to grow unbounded and break the flex chain.
+- The email editor had a related issue: the slug palette's grid cell stretched to match the left column's full content height (~4400px) instead of staying viewport-bounded, so its inner ScrollArea never triggered and the user had to scroll the whole body to reach lower slugs.
+
+Work Log:
+- Inspected the user's screenshot with VLM — confirmed: "Slug Library: Empty below the search bar/buttons (no slug list)" and "WYSIWYG Editor: No visible content editing area". This matched a flex-height-chain collapse.
+- Reproduced at viewport 1153×827 via agent-browser and inspected the DOM: ScrollArea viewport was 319×222 (working in my repro), but the user's actual viewport was rendering 0-height panes. The layout was fragile.
+- Fixed `src/components/hrms/onboarding/sections/documents.tsx` (Document editor modal):
+  • DialogContent: `max-h-[90vh]` → `h-[92vh] max-h-[92vh]` (give the modal a definite height so the inner flex chain has a concrete basis to compute against).
+  • Body: `overflow-hidden` → `overflow-y-auto` (whole body scrolls as a fallback when the viewport is too short — no more clipping).
+  • Main 2-pane area: `flex-1 min-h-0` → `flex-1 min-h-[520px]` (explicit minimum so the panes always have enough height to render their content + scrollbars; flex-1 still lets it grow to fill the body on tall viewports).
+  • Editor pane: added `min-h-[460px]` (mobile + desktop floor).
+  • Editor wrapper: added `min-h-[400px]`.
+  • Slug pane: replaced `max-h-[44vh] lg:max-h-none` + `min-h-0` with `min-h-[480px]` (always-render floor; bounded by the 2-pane area on desktop).
+  • Lowered SectionedRichEditor `minHeight` from 360 → 320 so the contentEditable's own min-height doesn't fight the pane's min-height.
+  • Added `shrink-0` to the "Template Content" label row so it never collapses.
+- Fixed `src/components/hrms/onboarding/sections/emails.tsx` (Email editor modal):
+  • Slug palette `<aside>`: added `lg:sticky lg:top-0 lg:h-[calc(90vh-128px)] lg:self-start lg:overflow-hidden flex flex-col` so the slug palette stays viewport-bounded and self-scrolls instead of stretching to the left column's full content height (~4400px). This makes the inner `<ScrollArea>` actually scroll (was canScroll=false before, canScroll=true after).
+- Verified via agent-browser at 1153×827 (user's viewport):
+  • Document editor DOM after fix: MODAL 1152×761; BODY 619px overflow-y=auto (scrollH=718 → body scrolls when needed); EDITABLE 804×320 scrollH=422 (editor content scrolls); SLUG SCROLLAREA 319×338 scrollH=4850 canScroll=true (slug list scrolls through all 148 slugs). VLM confirms: "Slug Library shows actual slug categories (CANDIDATE) with chips", "WYSIWYG editor content area visible with typed text", "bottom buttons visible", "no large empty white space".
+  • Document editor at 1024×600 (very short): VLM confirms everything renders, no white gap, content fits.
+  • Document editor slug palette programmatic scroll: scrollTop 0 → 4512 (max=4512) ✓.
+  • Document editor contentEditable programmatic scroll: scrollTop 0 → 102 (max=102) ✓.
+  • Email editor DOM after fix: BODY SCROLLAREA 1119×616 scrollH=1360 canScroll=true; INNER SLUG SCROLLAREA 299×455 scrollH=4403 canScroll=true (was 4403×4403 canScroll=false before the sticky fix). Slug palette programmatic scroll: 0 → 3948 ✓.
+- `bun run lint` → 0 errors (1 pre-existing unrelated warning in dynamic-form.tsx).
+- dev.log: clean compile, all API routes 200.
+
+Stage Summary:
+- The "no scrollable" bug is fixed. The Document Template editor modal now:
+  1. Has a definite height (92vh) so the flex chain computes correctly.
+  2. Has an `overflow-y-auto` body that scrolls as a fallback when the viewport is short (no more clipped/empty panes).
+  3. Gives the editor pane (`min-h-[460px]`) and slug pane (`min-h-[480px]`) explicit minimum heights so their inner contentEditable/ScrollArea always receive a bounded height and render their content + scrollbars.
+  4. All three scroll regions work: body (overall), editor contentEditable (long content), slug palette ScrollArea (148 slugs across 23 categories).
+- The Email Template editor's slug palette is now `lg:sticky` + viewport-bounded (`h-[calc(90vh-128px)]`) + self-scrolling, so it no longer stretches to ~4400px and force the user to scroll the whole body to reach lower slugs.
+- Layout is robust across viewport sizes from 1024×600 up to 1920×1080+ (verified at 1153×827, 1024×600, and default).

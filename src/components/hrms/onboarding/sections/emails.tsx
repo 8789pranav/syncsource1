@@ -1272,8 +1272,8 @@ function EditorDialog({
               </section>
             </div>
 
-            {/* ----- Right: shared slug library (always visible) ----- */}
-            <aside className="border-l border-border/60 bg-background min-w-0">
+            {/* ----- Right: shared slug library (always visible, sticky + self-scrolling) ----- */}
+            <aside className="border-l border-border/60 bg-background min-w-0 lg:sticky lg:top-0 lg:h-[calc(90vh-128px)] lg:self-start lg:overflow-hidden flex flex-col">
               <SlugPalette
                 onInsert={insertVariable}
                 usedVariables={usedVariables}

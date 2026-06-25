@@ -1,0 +1,878 @@
+     1→"use client"
+     2→
+     3→// ============================================================================
+     4→//  Shared Slug / Variable Catalog  (single source of truth)
+     5→// ----------------------------------------------------------------------------
+     6→//  Used by BOTH the Document Library editor and the Email Templates editor
+     7→//  (and any future template type). Every placeholder that can be inserted
+     8→//  into a template lives here exactly once, tagged with where it applies.
+     9→//
+    10→//  Exports:
+    11→//    • SLUG_CATEGORIES        — full catalog (grouped)
+    12→//    • ALL_SLUGS              — flat list
+    13→//    • getSlugsFor(context)   — filter by "document" | "email"
+    14→//    • SAMPLE_VALUES          — preview substitution map
+    15→//    • extractVariables(html) — pull {{slugs}} out of HTML
+    16→//    • substituteVariables(html, context?)
+    17→//    • <SlugPalette>          — the prominent, searchable, click-to-insert
+    18→//                               panel rendered inside both editors.
+    19→// ============================================================================
+    20→
+    21→import * as React from "react"
+    22→import { useMemo, useState, useCallback } from "react"
+    23→import {
+    24→  Search, Copy, Check, ChevronDown, Variable as VariableIcon,
+    25→  User, Briefcase, Landmark, ClipboardCheck, Building2, Calendar,
+    26→  Workflow, Link2, Mail, Sparkles, Hash,
+    27→  GraduationCap, Phone, Wallet, Laptop, ShieldCheck, BookOpen,
+    28→  HeartPulse, Plane, FileText, Users2, Clock, Settings2,
+    29→  Gift, Receipt, BadgeCheck, IdCard, Globe, Megaphone,
+    30→} from "lucide-react"
+    31→import type { LucideIcon } from "lucide-react"
+    32→
+    33→import { cn } from "@/lib/utils"
+    34→import { Input } from "@/components/ui/input"
+    35→import { Badge } from "@/components/ui/badge"
+    36→import { Button } from "@/components/ui/button"
+    37→import { ScrollArea } from "@/components/ui/scroll-area"
+    38→import { Separator } from "@/components/ui/separator"
+    39→import {
+    40→  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+    41→} from "@/components/ui/tooltip"
+    42→import {
+    43→  Collapsible, CollapsibleContent, CollapsibleTrigger,
+    44→} from "@/components/ui/collapsible"
+    45→
+    46→// ============================================================================
+    47→//  Types
+    48→// ============================================================================
+    49→
+    50→export type TemplateContext = "document" | "email"
+    51→
+    52→export interface SlugEntry {
+    53→  /** The token that gets inserted, e.g. "CandidateName" → {{CandidateName}} */
+    54→  slug: string
+    55→  /** Human label shown in the palette + tooltip */
+    56→  label: string
+    57→  /** Short description of what it resolves to */
+    58→  description: string
+    59→  /** Sample value used by the preview engine */
+    60→  sample: string
+    61→  /** Where this slug is valid */
+    62→  appliesTo: TemplateContext[]
+    63→}
+    64→
+    65→export interface SlugCategory {
+    66→  id: string
+    67→  name: string
+    68→  icon: LucideIcon
+    69→  accent: string // tailwind text color class for the icon
+    70→  description: string
+    71→  slugs: SlugEntry[]
+    72→}
+    73→
+    74→// ============================================================================
+    75→//  Catalog
+    76→// ============================================================================
+    77→
+    78→export const SLUG_CATEGORIES: SlugCategory[] = [
+    79→  {
+    80→    id: "candidate",
+    81→    name: "Candidate",
+    82→    icon: User,
+    83→    accent: "text-emerald-600 dark:text-emerald-400",
+    84→    description: "Personal details of the candidate being onboarded.",
+    85→    slugs: [
+    86→      { slug: "CandidateName", label: "Candidate Full Name", description: "Full name of the candidate", sample: "Priya Sharma", appliesTo: ["document", "email"] },
+    87→      { slug: "CandidateFirstName", label: "First Name", description: "Given name", sample: "Priya", appliesTo: ["document", "email"] },
+    88→      { slug: "CandidateLastName", label: "Last Name", description: "Surname", sample: "Sharma", appliesTo: ["document", "email"] },
+    89→      { slug: "CandidateEmail", label: "Email", description: "Personal email address", sample: "priya.sharma@example.com", appliesTo: ["document", "email"] },
+    90→      { slug: "CandidateMobile", label: "Mobile", description: "Phone number", sample: "+91 98765 43210", appliesTo: ["document", "email"] },
+    91→      { slug: "CandidateAddress", label: "Address", description: "Residential address", sample: "42 MG Road, Bengaluru, KA 560001", appliesTo: ["document"] },
+    92→      { slug: "CandidateDOB", label: "Date of Birth", description: "Date of birth", sample: "12 Jun 1995", appliesTo: ["document"] },
+    93→      { slug: "CandidatePAN", label: "PAN Number", description: "Permanent Account Number", sample: "ABCPS1234K", appliesTo: ["document"] },
+    94→      { slug: "CandidateAadhaar", label: "Aadhaar", description: "Aadhaar number (masked)", sample: "XXXX-XXXX-1234", appliesTo: ["document"] },
+    95→    ],
+    96→  },
+    97→  {
+    98→    id: "job",
+    99→    name: "Job & Offer",
+   100→    icon: Briefcase,
+   101→    accent: "text-teal-600 dark:text-teal-400",
+   102→    description: "Role, grade, location and joining details.",
+   103→    slugs: [
+   104→      { slug: "Designation", label: "Designation", description: "Job title offered", sample: "Senior Software Engineer", appliesTo: ["document", "email"] },
+   105→      { slug: "Department", label: "Department", description: "Department / function", sample: "Engineering", appliesTo: ["document", "email"] },
+   106→      { slug: "Grade", label: "Grade / Level", description: "Career grade or level", sample: "L5", appliesTo: ["document", "email"] },
+   107→      { slug: "Location", label: "Work Location", description: "Primary work location", sample: "Bengaluru", appliesTo: ["document", "email"] },
+   108→      { slug: "Branch", label: "Branch / Office", description: "Branch or office name", sample: "Corporate Office", appliesTo: ["document", "email"] },
+   109→      { slug: "EntityName", label: "Legal Entity", description: "Employing legal entity", sample: "Acme Technologies Pvt Ltd", appliesTo: ["document", "email"] },
+   110→      { slug: "CompanyName", label: "Company Name", description: "Brand / trade name", sample: "Acme Technologies", appliesTo: ["document", "email"] },
+   111→      { slug: "JoiningDate", label: "Joining Date", description: "Date of joining", sample: "15 Aug 2025", appliesTo: ["document", "email"] },
+   112→      { slug: "ReportingManager", label: "Reporting Manager", description: "Manager the candidate reports to", sample: "Anand Verma", appliesTo: ["document", "email"] },
+   113→      { slug: "HRManager", label: "HR Manager", description: "HR owner / buddy", sample: "Riya Kapoor", appliesTo: ["document", "email"] },
+   114→      { slug: "WorkMode", label: "Work Mode", description: "Remote / Hybrid / Onsite", sample: "Hybrid", appliesTo: ["document", "email"] },
+   115→      { slug: "EmploymentType", label: "Employment Type", description: "Full-time / Contract etc.", sample: "Full-time", appliesTo: ["document", "email"] },
+   116→      { slug: "OfferReferenceNo", label: "Offer Reference No.", description: "Unique offer reference", sample: "ACME-OFR-2025-0412", appliesTo: ["document", "email"] },
+   117→    ],
+   118→  },
+   119→  {
+   120→    id: "compensation",
+   121→    name: "Compensation",
+   122→    icon: Landmark,
+   123→    accent: "text-cyan-600 dark:text-cyan-400",
+   124→    description: "Salary breakdown, bonus and currency.",
+   125→    slugs: [
+   126→      { slug: "CTC", label: "CTC (Annual)", description: "Total cost to company", sample: "₹24,00,000", appliesTo: ["document", "email"] },
+   127→      { slug: "BasicSalary", label: "Basic Salary", description: "Basic component (annual)", sample: "₹12,00,000", appliesTo: ["document"] },
+   128→      { slug: "HRA", label: "HRA", description: "House rent allowance", sample: "₹4,80,000", appliesTo: ["document"] },
+   129→      { slug: "SpecialAllowance", label: "Special Allowance", description: "Special allowance", sample: "₹3,20,000", appliesTo: ["document"] },
+   130→      { slug: "Bonus", label: "Bonus", description: "Variable / performance bonus", sample: "₹2,00,000", appliesTo: ["document"] },
+   131→      { slug: "GrossSalary", label: "Gross Salary", description: "Gross annual salary", sample: "₹22,00,000", appliesTo: ["document"] },
+   132→      { slug: "NetSalary", label: "Net Salary", description: "In-hand annual salary", sample: "₹18,50,000", appliesTo: ["document"] },
+   133→      { slug: "SalaryCurrency", label: "Currency", description: "Salary currency code", sample: "INR", appliesTo: ["document", "email"] },
+   134→      { slug: "PayFrequency", label: "Pay Frequency", description: "Monthly / Bi-weekly", sample: "Monthly", appliesTo: ["document"] },
+   135→    ],
+   136→  },
+   137→  {
+   138→    id: "policies",
+   139→    name: "Policies & Terms",
+   140→    icon: ClipboardCheck,
+   141→    accent: "text-amber-600 dark:text-amber-400",
+   142→    description: "Probation, notice and policy references.",
+   143→    slugs: [
+   144→      { slug: "ProbationPeriod", label: "Probation Period", description: "Length of probation", sample: "6 months", appliesTo: ["document", "email"] },
+   145→      { slug: "NoticePeriod", label: "Notice Period", description: "Resignation notice", sample: "60 days", appliesTo: ["document", "email"] },
+   146→      { slug: "WorkingHours", label: "Working Hours", description: "Standard working hours", sample: "9 hours / day", appliesTo: ["document"] },
+   147→      { slug: "LeavePolicy", label: "Leave Policy", description: "Applicable leave policy", sample: "Earned + Sick + Casual Leave", appliesTo: ["document", "email"] },
+   148→      { slug: "AttendancePolicy", label: "Attendance Policy", description: "Attendance mechanism", sample: "Biometric + Flexible Hours", appliesTo: ["document"] },
+   149→      { slug: "ConfidentialityClause", label: "Confidentiality", description: "NDA / confidentiality reference", sample: "As per Employee NDA dated {{JoiningDate}}", appliesTo: ["document"] },
+   150→    ],
+   151→  },
+   152→  {
+   153→    id: "company",
+   154→    name: "Company",
+   155→    icon: Building2,
+   156→    accent: "text-violet-600 dark:text-violet-400",
+   157→    description: "Branding, contact and signatory details.",
+   158→    slugs: [
+   159→      { slug: "CompanyLogo", label: "Company Logo", description: "Inline logo image", sample: "[LOGO]", appliesTo: ["document", "email"] },
+   160→      { slug: "CompanyAddress", label: "Company Address", description: "Registered address", sample: "123 Tech Park, Bengaluru, KA 560001", appliesTo: ["document", "email"] },
+   161→      { slug: "CompanyWebsite", label: "Website", description: "Company website URL", sample: "www.acme-tech.com", appliesTo: ["document", "email"] },
+   162→      { slug: "CompanyEmail", label: "Company Email", description: "HR / contact email", sample: "hr@acme-tech.com", appliesTo: ["document", "email"] },
+   163→      { slug: "CompanyPhone", label: "Company Phone", description: "Contact phone", sample: "+91 80 1234 5678", appliesTo: ["document", "email"] },
+   164→      { slug: "AuthorizedSignatory", label: "Authorized Signatory", description: "Name of signing authority", sample: "Anand Verma", appliesTo: ["document"] },
+   165→      { slug: "SignatoryDesignation", label: "Signatory Designation", description: "Designation of signatory", sample: "VP, Human Resources", appliesTo: ["document"] },
+   166→    ],
+   167→  },
+   168→  {
+   169→    id: "dates",
+   170→    name: "Dates",
+   171→    icon: Calendar,
+   172→    accent: "text-rose-600 dark:text-rose-400",
+   173→    description: "Letter and offer lifecycle dates.",
+   174→    slugs: [
+   175→      { slug: "CurrentDate", label: "Today's Date", description: "Current date", sample: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), appliesTo: ["document", "email"] },
+   176→      { slug: "OfferDate", label: "Offer Date", description: "Date the offer was issued", sample: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), appliesTo: ["document", "email"] },
+   177→      { slug: "OfferExpiryDate", label: "Offer Expiry", description: "Last date to accept", sample: new Date(Date.now() + 7 * 86400000).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), appliesTo: ["document", "email"] },
+   178→      { slug: "LetterDate", label: "Letter Date", description: "Date printed on the letter", sample: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), appliesTo: ["document"] },
+   179→    ],
+   180→  },
+   181→  {
+   182→    id: "workflow",
+   183→    name: "Workflow & Task",
+   184→    icon: Workflow,
+   185→    accent: "text-lime-600 dark:text-lime-400",
+   186→    description: "Onboarding workflow, stage and task context.",
+   187→    slugs: [
+   188→      { slug: "WorkflowName", label: "Workflow Name", description: "Onboarding workflow", sample: "Standard Engineering Onboarding", appliesTo: ["email"] },
+   189→      { slug: "CurrentStage", label: "Current Stage", description: "Stage the candidate is in", sample: "Document Collection", appliesTo: ["email"] },
+   190→      { slug: "FormName", label: "Form Name", description: "Form to be filled", sample: "Personal Information Form", appliesTo: ["email"] },
+   191→      { slug: "DocumentName", label: "Document Name", description: "Document requested", sample: "PAN Card", appliesTo: ["email"] },
+   192→      { slug: "TaskName", label: "Task Name", description: "Pending task", sample: "Submit address proof", appliesTo: ["email"] },
+   193→      { slug: "DueDate", label: "Due Date", description: "Task / form due date", sample: "20 Aug 2025", appliesTo: ["email"] },
+   194→      { slug: "Assignee", label: "Assignee", description: "Owner of the task", sample: "Riya Kapoor", appliesTo: ["email"] },
+   195→    ],
+   196→  },
+   197→  {
+   198→    id: "links",
+   199→    name: "Links & Portal",
+   200→    icon: Link2,
+   201→    accent: "text-fuchsia-600 dark:text-fuchsia-400",
+   202→    description: "Actionable links for the candidate.",
+   203→    slugs: [
+   204→      { slug: "PortalLink", label: "Onboarding Portal", description: "Candidate portal URL", sample: "https://onboard.acme-tech.com/p/abc123", appliesTo: ["email"] },
+   205→      { slug: "OfferLetterLink", label: "Offer Letter", description: "Download / accept offer", sample: "https://onboard.acme-tech.com/offer/abc123", appliesTo: ["email"] },
+   206→      { slug: "ApprovalLink", label: "Approval Link", description: "Internal approval link", sample: "https://hr.acme-tech.com/approvals/abc123", appliesTo: ["email"] },
+   207→      { slug: "FormLink", label: "Form Link", description: "Direct form link", sample: "https://onboard.acme-tech.com/forms/abc123", appliesTo: ["email"] },
+   208→      { slug: "DocumentUploadLink", label: "Upload Documents", description: "Document upload URL", sample: "https://onboard.acme-tech.com/upload/abc123", appliesTo: ["email"] },
+   209→      { slug: "SupportEmail", label: "Support Email", description: "HR support email", sample: "support@acme-tech.com", appliesTo: ["email"] },
+   210→    ],
+   211→  },
+   212→  {
+   213→    id: "email",
+   214→    name: "Email Specific",
+   215→    icon: Mail,
+   216→    accent: "text-orange-600 dark:text-orange-400",
+   217→    description: "Greeting, signature and email-only tokens.",
+   218→    slugs: [
+   219→      { slug: "Greeting", label: "Greeting", description: "Time-aware greeting", sample: "Hi Priya,", appliesTo: ["email"] },
+   220→      { slug: "SenderName", label: "Sender Name", description: "Name of the email sender", sample: "Riya Kapoor", appliesTo: ["email"] },
+   221→      { slug: "SenderDesignation", label: "Sender Designation", description: "Sender's role", sample: "HR Business Partner", appliesTo: ["email"] },
+   222→      { slug: "Signature", label: "Email Signature", description: "Full signature block", sample: "Warm regards,\nRiya Kapoor\nHR Business Partner, Acme Technologies", appliesTo: ["email"] },
+   223→      { slug: "RejectReason", label: "Reject Reason", description: "Reason for rejection (rejection emails)", sample: "Position was put on hold", appliesTo: ["email"] },
+   224→      { slug: "EventName", label: "Event Name", description: "Triggering event", sample: "Offer Accepted", appliesTo: ["email"] },
+   225→    ],
+   226→  },
+   227→  {
+   228→    id: "bank",
+   229→    name: "Bank & Payroll",
+   230→    icon: Landmark,
+   231→    accent: "text-emerald-600 dark:text-emerald-400",
+   232→    description: "Bank account and payroll setup details.",
+   233→    slugs: [
+   234→      { slug: "BankName", label: "Bank Name", description: "Employee's bank name", sample: "HDFC Bank", appliesTo: ["document", "email"] },
+   235→      { slug: "BankAccountNumber", label: "Account Number", description: "Bank account number (masked)", sample: "XXXXXX1234", appliesTo: ["document"] },
+   236→      { slug: "BankIFSC", label: "IFSC Code", description: "Bank IFSC code", sample: "HDFC0001234", appliesTo: ["document"] },
+   237→      { slug: "BankBranch", label: "Branch", description: "Bank branch name", sample: "MG Road, Bengaluru", appliesTo: ["document"] },
+   238→      { slug: "PayrollId", label: "Payroll ID", description: "Employee payroll identifier", sample: "PAY-2025-0412", appliesTo: ["document", "email"] },
+   239→      { slug: "UAN", label: "UAN", description: "Universal Account Number (PF)", sample: "101234567890", appliesTo: ["document"] },
+   240→      { slug: "PFNumber", label: "PF Number", description: "Provident Fund number", sample: "KN/BNG/12345/000/0001234", appliesTo: ["document"] },
+   241→      { slug: "ESINumber", label: "ESI Number", description: "Employee State Insurance number", sample: "5100123456", appliesTo: ["document"] },
+   242→    ],
+   243→  },
+   244→  {
+   245→    id: "emergency",
+   246→    name: "Emergency Contact",
+   247→    icon: Phone,
+   248→    accent: "text-rose-600 dark:text-rose-400",
+   249→    description: "Emergency contact person details.",
+   250→    slugs: [
+   251→      { slug: "EmergencyContactName", label: "Contact Name", description: "Emergency contact person", sample: "Suresh Sharma", appliesTo: ["document"] },
+   252→      { slug: "EmergencyContactRelation", label: "Relationship", description: "Relation to candidate", sample: "Father", appliesTo: ["document"] },
+   253→      { slug: "EmergencyContactPhone", label: "Contact Phone", description: "Emergency phone number", sample: "+91 99876 54321", appliesTo: ["document"] },
+   254→      { slug: "EmergencyContactAddress", label: "Contact Address", description: "Emergency contact address", sample: "42 MG Road, Bengaluru", appliesTo: ["document"] },
+   255→    ],
+   256→  },
+   257→  {
+   258→    id: "education",
+   259→    name: "Education",
+   260→    icon: GraduationCap,
+   261→    accent: "text-violet-600 dark:text-violet-400",
+   262→    description: "Highest qualification and academic details.",
+   263→    slugs: [
+   264→      { slug: "HighestQualification", label: "Highest Qualification", description: "Degree obtained", sample: "B.Tech, Computer Science", appliesTo: ["document"] },
+   265→      { slug: "University", label: "University", description: "University / institute", sample: "IIT Madras", appliesTo: ["document"] },
+   266→      { slug: "GraduationYear", label: "Graduation Year", description: "Year of graduation", sample: "2018", appliesTo: ["document"] },
+   267→      { slug: "CourseDuration", label: "Course Duration", description: "Duration of the course", sample: "4 years", appliesTo: ["document"] },
+   268→      { slug: "Percentage", label: "Percentage / CGPA", description: "Academic score", sample: "8.7 CGPA", appliesTo: ["document"] },
+   269→    ],
+   270→  },
+   271→  {
+   272→    id: "experience",
+   273→    name: "Experience",
+   274→    icon: Briefcase,
+   275→    accent: "text-teal-600 dark:text-teal-400",
+   276→    description: "Prior work experience summary.",
+   277→    slugs: [
+   278→      { slug: "PreviousCompany", label: "Previous Company", description: "Last employer", sample: "Tech Solutions Inc.", appliesTo: ["document"] },
+   279→      { slug: "PreviousDesignation", label: "Previous Designation", description: "Last held title", sample: "Software Engineer II", appliesTo: ["document"] },
+   280→      { slug: "TotalExperience", label: "Total Experience", description: "Total years of experience", sample: "6 years", appliesTo: ["document", "email"] },
+   281→      { slug: "PreviousEmploymentDuration", label: "Last Job Duration", description: "Duration at last job", sample: "3 years 2 months", appliesTo: ["document"] },
+   282→      { slug: "LastWorkingDay", label: "Last Working Day", description: "Last day at previous employer", sample: "30 Jul 2025", appliesTo: ["document"] },
+   283→      { slug: "RelievingDate", label: "Relieving Date", description: "Official relieving date", sample: "30 Jul 2025", appliesTo: ["document"] },
+   284→    ],
+   285→  },
+   286→  {
+   287→    id: "assets",
+   288→    name: "Assets & IT",
+   289→    icon: Laptop,
+   290→    accent: "text-cyan-600 dark:text-cyan-400",
+   291→    description: "Asset allocation and IT provisioning.",
+   292→    slugs: [
+   293→      { slug: "LaptopModel", label: "Laptop Model", description: "Allocated laptop model", sample: "MacBook Pro 14\" M3", appliesTo: ["document", "email"] },
+   294→      { slug: "LaptopSerial", label: "Laptop Serial", description: "Laptop serial number", sample: "C02XK1234ABC", appliesTo: ["document"] },
+   295→      { slug: "AssetId", label: "Asset ID", description: "Unique asset identifier", sample: "AST-2025-0412", appliesTo: ["document"] },
+   296→      { slug: "EmailAddress", label: "Work Email", description: "Allocated work email", sample: "priya.sharma@acme-tech.com", appliesTo: ["document", "email"] },
+   297→      { slug: "EmployeeId", label: "Employee ID", description: "Allocated employee ID", sample: "ACME-0412", appliesTo: ["document", "email"] },
+   298→      { slug: "ExtensionNumber", label: "Extension", description: "Desk phone extension", sample: "4521", appliesTo: ["document"] },
+   299→      { slug: "VPNCredentials", label: "VPN Access", description: "VPN setup status", sample: "Provisioned", appliesTo: ["email"] },
+   300→      { slug: "SystemAccessList", label: "System Access", description: "Systems granted access", sample: "Jira, GitHub, Slack, BambooHR", appliesTo: ["email"] },
+   301→    ],
+   302→  },
+   303→  {
+   304→    id: "training",
+   305→    name: "Training & Induction",
+   306→    icon: BookOpen,
+   307→    accent: "text-amber-600 dark:text-amber-400",
+   308→    description: "Induction and training schedule.",
+   309→    slugs: [
+   310→      { slug: "InductionDate", label: "Induction Date", description: "First day induction", sample: "15 Aug 2025", appliesTo: ["document", "email"] },
+   311→      { slug: "InductionVenue", label: "Induction Venue", description: "Where induction happens", sample: "Training Hall 2, 4th Floor", appliesTo: ["email"] },
+   312→      { slug: "InductionTime", label: "Induction Time", description: "Reporting time", sample: "9:30 AM IST", appliesTo: ["email"] },
+   313→      { slug: "TrainingProgram", label: "Training Program", description: "Assigned training", sample: "Engineering Bootcamp", appliesTo: ["email"] },
+   314→      { slug: "TrainingDuration", label: "Training Duration", description: "Length of training", sample: "2 weeks", appliesTo: ["email"] },
+   315→      { slug: "Mentor", label: "Mentor / Buddy", description: "Assigned buddy", sample: "Karthik Rao", appliesTo: ["email"] },
+   316→      { slug: "BuddyName", label: "Buddy Name", description: "Onboarding buddy", sample: "Karthik Rao", appliesTo: ["email"] },
+   317→    ],
+   318→  },
+   319→  {
+   320→    id: "benefits",
+   321→    name: "Benefits & Perks",
+   322→    icon: Gift,
+   323→    accent: "text-fuchsia-600 dark:text-fuchsia-400",
+   324→    description: "Benefits enrollment and perks.",
+   325→    slugs: [
+   326→      { slug: "HealthInsurance", label: "Health Insurance", description: "Medical insurance plan", sample: "Family Floater ₹5L", appliesTo: ["document", "email"] },
+   327→      { slug: "InsuranceNumber", label: "Insurance ID", description: "Policy member ID", sample: "HI-2025-998877", appliesTo: ["document"] },
+   328→      { slug: "LeaveBalance", label: "Leave Balance", description: "Opening leave balance", sample: "12 Earned + 7 Sick", appliesTo: ["email"] },
+   329→      { slug: "LeavePolicyLink", label: "Leave Policy Link", description: "Link to leave policy", sample: "https://hr.acme-tech.com/policies/leave", appliesTo: ["email"] },
+   330→      { slug: "ProvidentFund", label: "Provident Fund", description: "PF contribution rate", sample: "12% employer + 12% employee", appliesTo: ["document"] },
+   331→      { slug: "Gratuity", label: "Gratuity", description: "Gratuity eligibility", sample: "Eligible after 5 years", appliesTo: ["document"] },
+   332→      { slug: "PerksList", label: "Perks", description: "List of perks", sample: "Gym, Cafeteria, Cab, Internet reimbursement", appliesTo: ["email"] },
+   333→    ],
+   334→  },
+   335→  {
+   336→    id: "tax",
+   337→    name: "Tax & Statutory",
+   338→    icon: Receipt,
+   339→    accent: "text-orange-600 dark:text-orange-400",
+   340→    description: "Tax declarations and statutory info.",
+   341→    slugs: [
+   342→      { slug: "TaxRegime", label: "Tax Regime", description: "Old / New regime", sample: "New Regime", appliesTo: ["document", "email"] },
+   343→      { slug: "TaxDeduction", label: "Tax Deduction", description: "Monthly TDS estimate", sample: "₹28,000", appliesTo: ["document"] },
+   344→      { slug: "Form12BB", label: "Form 12BB", description: "Investment declaration form", sample: "Submitted", appliesTo: ["email"] },
+   345→      { slug: "Form16Link", label: "Form 16", description: "Link to Form 16", sample: "https://hr.acme-tech.com/form16", appliesTo: ["email"] },
+   346→      { slug: "InvestmentDeclaration", label: "Investment Declaration", description: "Declared investments", sample: "₹1,50,000 under 80C", appliesTo: ["document"] },
+   347→    ],
+   348→  },
+   349→  {
+   350→    id: "documents",
+   351→    name: "Documents Checklist",
+   352→    icon: FileText,
+   353→    accent: "text-lime-600 dark:text-lime-400",
+   354→    description: "Onboarding documents to collect.",
+   355→    slugs: [
+   356→      { slug: "PendingDocuments", label: "Pending Documents", description: "List of documents still needed", sample: "PAN Card, Address Proof, Photo", appliesTo: ["email"] },
+   357→      { slug: "SubmittedDocuments", label: "Submitted Documents", description: "Documents already received", sample: "Aadhaar, Passport", appliesTo: ["email"] },
+   358→      { slug: "DocumentDeadline", label: "Document Deadline", description: "Last date to submit docs", sample: "12 Aug 2025", appliesTo: ["email"] },
+   359→      { slug: "DocumentList", label: "Full Document List", description: "All required documents", sample: "PAN, Aadhaar, 2 photos, previous reliving letter, salary slips", appliesTo: ["document", "email"] },
+   360→      { slug: "PhotoCount", label: "Photo Count", description: "Number of photos required", sample: "4 passport-size photos", appliesTo: ["document"] },
+   361→    ],
+   362→  },
+   363→  {
+   364→    id: "policy",
+   365→    name: "Policies & Handbook",
+   366→    icon: ShieldCheck,
+   367→    accent: "text-emerald-600 dark:text-emerald-400",
+   368→    description: "Policy acknowledgements and handbook.",
+   369→    slugs: [
+   370→      { slug: "PolicyName", label: "Policy Name", description: "Specific policy referenced", sample: "Code of Conduct", appliesTo: ["document", "email"] },
+   371→      { slug: "PolicyVersion", label: "Policy Version", description: "Version of the policy", sample: "v3.2", appliesTo: ["document"] },
+   372→      { slug: "HandbookLink", label: "Employee Handbook", description: "Link to handbook", sample: "https://hr.acme-tech.com/handbook", appliesTo: ["email"] },
+   373→      { slug: "PolicyAcknowledgementDate", label: "Acknowledgement Date", description: "Date policy was acknowledged", sample: "15 Aug 2025", appliesTo: ["document"] },
+   374→      { slug: "DressCode", label: "Dress Code", description: "Office dress code", sample: "Business casual", appliesTo: ["document", "email"] },
+   375→      { slug: "InternetPolicy", label: "Internet Policy", description: "Internet usage policy", sample: "As per IT Acceptable Use Policy", appliesTo: ["document"] },
+   376→    ],
+   377→  },
+   378→  {
+   379→    id: "travel",
+   380→    name: "Travel & Relocation",
+   381→    icon: Plane,
+   382→    accent: "text-teal-600 dark:text-teal-400",
+   383→    description: "Relocation and travel reimbursement.",
+   384→    slugs: [
+   385→      { slug: "RelocationAmount", label: "Relocation Amount", description: "One-time relocation benefit", sample: "₹50,000", appliesTo: ["document"] },
+   386→      { slug: "TravelAllowance", label: "Travel Allowance", description: "Monthly travel allowance", sample: "₹3,000", appliesTo: ["document"] },
+   387→      { slug: "RelocationPolicy", label: "Relocation Policy", description: "Relocation terms", sample: "Reimbursable on submission of bills", appliesTo: ["document"] },
+   388→      { slug: "PickupLocation", label: "Pickup Location", description: "Day-1 pickup point", sample: "MG Road Metro Station", appliesTo: ["email"] },
+   389→    ],
+   390→  },
+   391→  {
+   392→    id: "system",
+   393→    name: "System & Meta",
+   394→    icon: Settings2,
+   395→    accent: "text-slate-500 dark:text-slate-400",
+   396→    description: "System-generated and template meta tokens.",
+   397→    slugs: [
+   398→      { slug: "TemplateName", label: "Template Name", description: "Name of this template", sample: "Standard Offer Letter", appliesTo: ["document", "email"] },
+   399→      { slug: "TemplateCode", label: "Template Code", description: "Code of this template", sample: "OFFER_ENG_2025", appliesTo: ["document", "email"] },
+   400→      { slug: "GeneratedDateTime", label: "Generated At", description: "Date + time of generation", sample: "15 Aug 2025, 10:30 AM", appliesTo: ["document", "email"] },
+   401→      { slug: "PageNumber", label: "Page Number", description: "Current page number (PDF)", sample: "1", appliesTo: ["document"] },
+   402→      { slug: "TotalPages", label: "Total Pages", description: "Total page count (PDF)", sample: "3", appliesTo: ["document"] },
+   403→      { slug: "TenantName", label: "Tenant Name", description: "Organisation tenant name", sample: "Acme Technologies", appliesTo: ["document", "email"] },
+   404→      { slug: "Environment", label: "Environment", description: "Production / Sandbox", sample: "Production", appliesTo: ["email"] },
+   405→    ],
+   406→  },
+   407→  {
+   408→    id: "announcement",
+   409→    name: "Announcement",
+   410→    icon: Megaphone,
+   411→    accent: "text-pink-600 dark:text-pink-400",
+   412→    description: "New-joiner announcements.",
+   413→    slugs: [
+   414→      { slug: "AnnouncementText", label: "Announcement", description: "Pre-written welcome announcement", sample: "Please welcome Priya to the Engineering team!", appliesTo: ["email"] },
+   415→      { slug: "TeamChannel", label: "Team Channel", description: "Slack/Teams channel", sample: "#engineering", appliesTo: ["email"] },
+   416→      { slug: "IntroSnippet", label: "Intro Snippet", description: "Short bio for introduction", sample: "Priya joins us from Tech Solutions Inc. with 6 years of experience in backend systems.", appliesTo: ["email"] },
+   417→      { slug: "PhotoUrl", label: "Photo URL", description: "Candidate photo for announcement", sample: "https://hr.acme-tech.com/photos/priya.jpg", appliesTo: ["email"] },
+   418→    ],
+   419→  },
+   420→  {
+   421→    id: "shift",
+   422→    name: "Shift & Schedule",
+   423→    icon: Clock,
+   424→    accent: "text-amber-600 dark:text-amber-400",
+   425→    description: "Work shift and timing details.",
+   426→    slugs: [
+   427→      { slug: "ShiftTiming", label: "Shift Timing", description: "Work shift hours", sample: "9:00 AM – 6:00 PM", appliesTo: ["document", "email"] },
+   428→      { slug: "ShiftName", label: "Shift Name", description: "Assigned shift", sample: "General Shift", appliesTo: ["document", "email"] },
+   429→      { slug: "WeeklyOff", label: "Weekly Off", description: "Weekly holiday(s)", sample: "Saturday & Sunday", appliesTo: ["document", "email"] },
+   430→      { slug: "FlexibilityWindow", label: "Flexibility Window", description: "Flexible hours range", sample: "8:00 AM – 11:00 AM (core hours 11–3)", appliesTo: ["document"] },
+   431→      { slug: "BreakDuration", label: "Break Duration", description: "Daily break time", sample: "1 hour lunch + 2 × 15 min breaks", appliesTo: ["document"] },
+   432→    ],
+   433→  },
+   434→]
+   435→
+   436→/** Flat list of every slug in the catalog. */
+   437→export const ALL_SLUGS: SlugEntry[] = SLUG_CATEGORIES.flatMap((c) => c.slugs)
+   438→
+   439→/** Filter the catalog to only slugs valid for a given template context. */
+   440→export function getSlugsFor(context: TemplateContext): SlugEntry[] {
+   441→  return ALL_SLUGS.filter((s) => s.appliesTo.includes(context))
+   442→}
+   443→
+   444→/** Quick lookup: slug → entry. */
+   445→const SLUG_MAP: Record<string, SlugEntry> = Object.fromEntries(
+   446→  ALL_SLUGS.map((s) => [s.slug, s]),
+   447→)
+   448→
+   449→// ============================================================================
+   450→//  Sample values + substitution helpers
+   451→// ============================================================================
+   452→
+   453→export const SAMPLE_VALUES: Record<string, string> = Object.fromEntries(
+   454→  ALL_SLUGS.map((s) => [s.slug, s.sample]),
+   455→)
+   456→
+   457→/** Extract all unique {{slug}} tokens from an HTML/text string. */
+   458→export function extractVariables(html: string): string[] {
+   459→  if (!html) return []
+   460→  const set = new Set<string>()
+   461→  const re = /\{\{(\w+)\}\}/g
+   462→  let m: RegExpExecArray | null
+   463→  while ((m = re.exec(html)) !== null) set.add(m[1])
+   464→  return Array.from(set)
+   465→}
+   466→
+   467→/** Replace {{slugs}} with sample values; unknown tokens are left intact. */
+   468→export function substituteVariables(html: string, _context?: TemplateContext): string {
+   469→  if (!html) return ""
+   470→  return html.replace(/\{\{(\w+)\}\}/g, (_m, key: string) =>
+   471→    SAMPLE_VALUES[key] ?? `{{${key}}}`,
+   472→  )
+   473→}
+   474→
+   475→/** Human label for a slug (falls back to the raw slug). */
+   476→export function slugLabel(slug: string): string {
+   477→  return SLUG_MAP[slug]?.label ?? slug
+   478→}
+   479→
+   480→// ============================================================================
+   481→//  <SlugPalette> — the prominent click-to-insert panel
+   482→// ============================================================================
+   483→
+   484→interface SlugPaletteProps {
+   485→  /** Called with the slug name (without braces) when a chip is clicked. */
+   486→  onInsert: (slug: string) => void
+   487→  /** Slugs already used in the current template (for "used" indicators). */
+   488→  usedVariables?: string[]
+   489→  /** Filters the catalog to only slugs valid for this context. */
+   490→  context?: TemplateContext
+   491→  /** Compact height variant (for tight dialogs). */
+   492→  compact?: boolean
+   493→  /** Extra class on the outer wrapper. */
+   494→  className?: string
+   495→  /** Optional title override. */
+   496→  title?: string
+   497→}
+   498→
+   499→export function SlugPalette({
+   500→  onInsert,
+   501→  usedVariables = [],
+   502→  context,
+   503→  compact,
+   504→  className,
+   505→  title = "Slug Library",
+   506→}: SlugPaletteProps) {
+   507→  const [search, setSearch] = useState("")
+   508→  const [showSamples, setShowSamples] = useState(false)
+   509→  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+   510→  const [copied, setCopied] = useState<string | null>(null)
+   511→  const [copiedAll, setCopiedAll] = useState(false)
+   512→
+   513→  // Filter categories by context + search term.
+   514→  const filteredCategories = useMemo(() => {
+   515→    const q = search.trim().toLowerCase()
+   516→    return SLUG_CATEGORIES
+   517→      .map((cat) => ({
+   518→        ...cat,
+   519→        slugs: cat.slugs.filter((s) => {
+   520→          if (context && !s.appliesTo.includes(context)) return false
+   521→          if (!q) return true
+   522→          return (
+   523→            s.slug.toLowerCase().includes(q) ||
+   524→            s.label.toLowerCase().includes(q) ||
+   525→            s.description.toLowerCase().includes(q)
+   526→          )
+   527→        }),
+   528→      }))
+   529→      .filter((cat) => cat.slugs.length > 0)
+   530→  }, [context, search])
+   531→
+   532→  const totalAvailable = useMemo(
+   533→    () => filteredCategories.reduce((n, c) => n + c.slugs.length, 0),
+   534→    [filteredCategories],
+   535→  )
+   536→
+   537→  const toggleCategory = useCallback((id: string) => {
+   538→    setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }))
+   539→  }, [])
+   540→
+   541→  const allCollapsed = filteredCategories.length > 0 && filteredCategories.every((c) => collapsed[c.id])
+   542→
+   543→  const toggleAll = useCallback(() => {
+   544→    setCollapsed(() => {
+   545→      const next: Record<string, boolean> = {}
+   546→      // If any are open → collapse all; otherwise expand all.
+   547→      const shouldCollapse = !allCollapsed
+   548→      filteredCategories.forEach((c) => { next[c.id] = shouldCollapse })
+   549→      return next
+   550→    })
+   551→  }, [allCollapsed, filteredCategories])
+   552→
+   553→  const handleCopy = useCallback(async (slug: string) => {
+   554→    const token = `{{${slug}}}`
+   555→    try {
+   556→      await navigator.clipboard.writeText(token)
+   557→      setCopied(slug)
+   558→      setTimeout(() => setCopied((c) => (c === slug ? null : c)), 1200)
+   559→    } catch {
+   560→      /* clipboard not available — ignore */
+   561→    }
+   562→  }, [])
+   563→
+   564→  // Copy every currently-visible slug token (one per line) to the clipboard.
+   565→  const handleCopyAll = useCallback(async () => {
+   566→    const tokens = filteredCategories.flatMap((c) => c.slugs.map((s) => `{{${s.slug}}}`))
+   567→    if (tokens.length === 0) return
+   568→    try {
+   569→      await navigator.clipboard.writeText(tokens.join("\n"))
+   570→      setCopiedAll(true)
+   571→      setTimeout(() => setCopiedAll(false), 1500)
+   572→    } catch {
+   573→      /* ignore */
+   574→    }
+   575→  }, [filteredCategories])
+   576→
+   577→  return (
+   578→    <div className={cn("flex flex-col h-full min-h-0 bg-background", className)}>
+   579→      {/* ---------------- Header ---------------- */}
+   580→      <div className="px-3 pt-3 pb-2 border-b border-border/60 bg-gradient-to-br from-cyan-500/5 to-emerald-500/5">
+   581→        <div className="flex items-center gap-2 mb-2">
+   582→          <div className="grid place-items-center h-7 w-7 rounded-md bg-cyan-500/15 text-cyan-700 dark:text-cyan-300">
+   583→            <VariableIcon className="h-4 w-4" />
+   584→          </div>
+   585→          <div className="min-w-0 flex-1">
+   586→            <h3 className="text-sm font-semibold text-foreground leading-tight">{title}</h3>
+   587→            <p className="text-[10px] text-muted-foreground leading-tight">
+   588→              {context === "email" ? "Email" : context === "document" ? "Document" : "All"} slugs · click to insert at cursor
+   589→            </p>
+   590→          </div>
+   591→          <Badge variant="secondary" className="h-5 text-[10px] font-mono bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20">
+   592→            {totalAvailable}
+   593→          </Badge>
+   594→        </div>
+   595→
+   596→        <div className="relative">
+   597→          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+   598→          <Input
+   599→            value={search}
+   600→            onChange={(e) => setSearch(e.target.value)}
+   601→            placeholder="Search slugs by name, label or meaning…"
+   602→            className="pl-8 pr-7 h-8 text-xs bg-background"
+   603→          />
+   604→          {search && (
+   605→            <button
+   606→              type="button"
+   607→              onClick={() => setSearch("")}
+   608→              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+   609→              aria-label="Clear search"
+   610→            >
+   611→              ×
+   612→            </button>
+   613→          )}
+   614→        </div>
+   615→
+   616→        <div className="flex items-center justify-between gap-1 mt-2">
+   617→          <button
+   618→            type="button"
+   619→            onClick={() => setShowSamples((v) => !v)}
+   620→            className={cn(
+   621→              "inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded transition-colors",
+   622→              showSamples
+   623→                ? "text-emerald-700 dark:text-emerald-300 bg-emerald-500/10"
+   624→                : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+   625→            )}
+   626→          >
+   627→            <Sparkles className="h-3 w-3" />
+   628→            {showSamples ? "Hide" : "Show"} samples
+   629→          </button>
+   630→          <button
+   631→            type="button"
+   632→            onClick={toggleAll}
+   633→            className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+   634→          >
+   635→            <ChevronDown className={cn("h-3 w-3 transition-transform", allCollapsed && "rotate-180")} />
+   636→            {allCollapsed ? "Expand all" : "Collapse all"}
+   637→          </button>
+   638→          <button
+   639→            type="button"
+   640→            onClick={handleCopyAll}
+   641→            disabled={totalAvailable === 0}
+   642→            className={cn(
+   643→              "inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded transition-colors ml-auto",
+   644→              copiedAll
+   645→                ? "text-emerald-700 dark:text-emerald-300 bg-emerald-500/15"
+   646→                : "text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-40",
+   647→            )}
+   648→            title="Copy every visible slug token to the clipboard"
+   649→          >
+   650→            {copiedAll ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+   651→            {copiedAll ? "Copied!" : "Copy all"}
+   652→          </button>
+   653→        </div>
+   654→        {usedVariables.length > 0 && (
+   655→          <div className="mt-1.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+   656→            <span className="h-1.5 w-1.5 rounded-full bg-cyan-500" />
+   657→            {usedVariables.length} slug{usedVariables.length !== 1 ? "s" : ""} used in this template
+   658→          </div>
+   659→        )}
+   660→      </div>
+   661→
+   662→      {/* ---------------- Body ---------------- */}
+   663→      <ScrollArea className={cn("flex-1 min-h-0", compact ? "" : "")}>
+   664→        <TooltipProvider delayDuration={250}>
+   665→          <div className="p-2.5 space-y-1.5">
+   666→            {filteredCategories.length === 0 && (
+   667→              <div className="text-center py-10 px-4">
+   668→                <Hash className="h-7 w-7 mx-auto text-muted-foreground/40 mb-2" />
+   669→                <p className="text-xs text-muted-foreground">
+   670→                  No slugs match <span className="font-mono">“{search}”</span>.
+   671→                </p>
+   672→              </div>
+   673→            )}
+   674→
+   675→            {filteredCategories.map((cat) => {
+   676→              const CIcon = cat.icon
+   677→              const isCollapsed = collapsed[cat.id]
+   678→              const usedCount = cat.slugs.filter((s) => usedVariables.includes(s.slug)).length
+   679→              return (
+   680→                <Collapsible
+   681→                  key={cat.id}
+   682→                  open={!isCollapsed}
+   683→                  onOpenChange={() => toggleCategory(cat.id)}
+   684→                  className="rounded-lg border border-border/50 bg-muted/20 overflow-hidden"
+   685→                >
+   686→                  <CollapsibleTrigger asChild>
+   687→                    <button
+   688→                      type="button"
+   689→                      className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-muted/40 transition-colors text-left"
+   690→                    >
+   691→                      <CIcon className={cn("h-3.5 w-3.5 shrink-0", cat.accent)} />
+   692→                      <span className="text-[11px] font-semibold uppercase tracking-wide text-foreground/90">
+   693→                        {cat.name}
+   694→                      </span>
+   695→                      <Badge variant="outline" className="h-4 px-1 text-[9px] font-mono bg-background border-border/60 text-muted-foreground">
+   696→                        {cat.slugs.length}
+   697→                      </Badge>
+   698→                      {usedCount > 0 && (
+   699→                        <Badge variant="secondary" className="h-4 px-1 text-[9px] bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20">
+   700→                          {usedCount} used
+   701→                        </Badge>
+   702→                      )}
+   703→                      <ChevronDown
+   704→                        className={cn(
+   705→                          "h-3.5 w-3.5 ml-auto text-muted-foreground transition-transform",
+   706→                          isCollapsed && "-rotate-90",
+   707→                        )}
+   708→                      />
+   709→                    </button>
+   710→                  </CollapsibleTrigger>
+   711→                  <CollapsibleContent>
+   712→                    <div className="px-2 pb-2 pt-0.5 space-y-1">
+   713→                      {cat.slugs.map((s) => {
+   714→                        const used = usedVariables.includes(s.slug)
+   715→                        return (
+   716→                          <div
+   717→                            key={s.slug}
+   718→                            className={cn(
+   719→                              "group flex items-center gap-1.5 rounded-md px-1.5 py-1 border transition-colors",
+   720→                              used
+   721→                                ? "border-cyan-500/30 bg-cyan-500/5"
+   722→                                : "border-transparent hover:border-emerald-500/30 hover:bg-emerald-500/5",
+   723→                            )}
+   724→                          >
+   725→                            <Tooltip>
+   726→                              <TooltipTrigger asChild>
+   727→                                <button
+   728→                                  type="button"
+   729→                                  onClick={() => onInsert(s.slug)}
+   730→                                  className="flex-1 min-w-0 flex items-center gap-1.5 text-left"
+   731→                                  title={`Insert {{${s.slug}}}`}
+   732→                                >
+   733→                                  {used && <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 shrink-0" />}
+   734→                                  <span className="shrink-0">
+   735→                                    <span className="text-muted-foreground/60 font-mono text-[11px]">{"{{"}</span>
+   736→                                    <span className={cn(
+   737→                                      "font-mono text-[11px] font-medium",
+   738→                                      used ? "text-cyan-700 dark:text-cyan-300" : "text-foreground/90",
+   739→                                    )}>{s.slug}</span>
+   740→                                    <span className="text-muted-foreground/60 font-mono text-[11px]">{"}}"}</span>
+   741→                                  </span>
+   742→                                  <span className="text-[10px] text-muted-foreground truncate hidden sm:block">
+   743→                                    {s.label}
+   744→                                  </span>
+   745→                                </button>
+   746→                              </TooltipTrigger>
+   747→                              <TooltipContent side="left" className="max-w-[240px] text-xs">
+   748→                                <div className="space-y-0.5">
+   749→                                  <p className="font-mono font-semibold text-cyan-300">{`{{${s.slug}}}`}</p>
+   750→                                  <p className="text-foreground">{s.label}</p>
+   751→                                  <p className="text-muted-foreground">{s.description}</p>
+   752→                                  <p className="text-emerald-300 italic">Sample: {s.sample}</p>
+   753→                                </div>
+   754→                              </TooltipContent>
+   755→                            </Tooltip>
+   756→
+   757→                            <Tooltip>
+   758→                              <TooltipTrigger asChild>
+   759→                                <button
+   760→                                  type="button"
+   761→                                  onClick={() => handleCopy(s.slug)}
+   762→                                  className="shrink-0 grid place-items-center h-5 w-5 rounded text-muted-foreground/60 hover:text-emerald-600 hover:bg-emerald-500/10 transition-colors"
+   763→                                  aria-label={`Copy {{${s.slug}}}`}
+   764→                                >
+   765→                                  {copied === s.slug
+   766→                                    ? <Check className="h-3 w-3 text-emerald-500" />
+   767→                                    : <Copy className="h-3 w-3" />}
+   768→                                </button>
+   769→                              </TooltipTrigger>
+   770→                              <TooltipContent side="top" className="text-xs">
+   771→                                {copied === s.slug ? "Copied!" : "Copy token"}
+   772→                              </TooltipContent>
+   773→                            </Tooltip>
+   774→                          </div>
+   775→                        )
+   776→                      })}
+   777→
+   778→                      {showSamples && (
+   779→                        <div className="mt-1 rounded-md bg-background/60 border border-border/40 p-2">
+   780→                          <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+   781→                            Sample preview
+   782→                          </p>
+   783→                          <dl className="space-y-0.5">
+   784→                            {cat.slugs.map((s) => (
+   785→                              <div key={s.slug} className="flex items-baseline gap-2 text-[10px]">
+   786→                                <dt className="font-mono text-cyan-700 dark:text-cyan-300 shrink-0">{`{{${s.slug}}}`}</dt>
+   787→                                <dd className="text-muted-foreground truncate">→ {s.sample}</dd>
+   788→                              </div>
+   789→                            ))}
+   790→                          </dl>
+   791→                        </div>
+   792→                      )}
+   793→                    </div>
+   794→                  </CollapsibleContent>
+   795→                </Collapsible>
+   796→              )
+   797→            })}
+   798→          </div>
+   799→        </TooltipProvider>
+   800→      </ScrollArea>
+   801→
+   802→      {/* ---------------- Footer ---------------- */}
+   803→      <div className="px-3 py-1.5 border-t border-border/60 bg-muted/20 text-[10px] text-muted-foreground flex items-center justify-between">
+   804→        <span className="inline-flex items-center gap-1">
+   805→          <VariableIcon className="h-3 w-3" />
+   806→          {ALL_SLUGS.length} slugs · {SLUG_CATEGORIES.length} categories
+   807→        </span>
+   808→        <Separator orientation="vertical" className="h-3 bg-border/40" />
+   809→        <span>Tip: hover a slug to preview its value</span>
+   810→      </div>
+   811→    </div>
+   812→  )
+   813→}
+   814→
+   815→// ============================================================================
+   816→//  SlugUsageSummary — compact "used slugs" chip list for the left metadata
+   817→//  column of an editor, so authors always see what they've inserted.
+   818→// ============================================================================
+   819→
+   820→interface SlugUsageSummaryProps {
+   821→  used: string[]
+   822→  onRemove?: (slug: string) => void
+   823→  className?: string
+   824→}
+   825→
+   826→export function SlugUsageSummary({ used, onRemove, className }: SlugUsageSummaryProps) {
+   827→  if (used.length === 0) {
+   828→    return (
+   829→      <div className={cn("rounded-md border border-dashed border-border/60 px-3 py-2 text-center", className)}>
+   830→        <VariableIcon className="h-4 w-4 mx-auto text-muted-foreground/40 mb-1" />
+   831→        <p className="text-[11px] text-muted-foreground">
+   832→          No slugs inserted yet. Click a slug in the library to add it at your cursor.
+   833→        </p>
+   834→      </div>
+   835→    )
+   836→  }
+   837→  return (
+   838→    <div className={cn("rounded-md border border-cyan-500/30 bg-cyan-500/5 px-3 py-2", className)}>
+   839→      <div className="flex items-center gap-1.5 mb-1.5">
+   840→        <VariableIcon className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
+   841→        <span className="text-[11px] font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">
+   842→          Slugs in use ({used.length})
+   843→        </span>
+   844→      </div>
+   845→      <div className="flex flex-wrap gap-1">
+   846→        {used.map((slug) => {
+   847→          const entry = SLUG_MAP[slug]
+   848→          return (
+   849→            <Tooltip key={slug}>
+   850→              <TooltipTrigger asChild>
+   851→                <Badge
+   852→                  variant="secondary"
+   853→                  className="font-mono text-[10px] gap-1 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20 pr-1"
+   854→                >
+   855→                  {`{{${slug}}}`}
+   856→                  {onRemove && (
+   857→                    <button
+   858→                      type="button"
+   859→                      onClick={() => onRemove(slug)}
+   860→                      className="ml-0.5 hover:text-rose-500"
+   861→                      aria-label={`Remove ${slug}`}
+   862→                    >
+   863→                      ×
+   864→                    </button>
+   865→                  )}
+   866→                </Badge>
+   867→              </TooltipTrigger>
+   868→              <TooltipContent side="top" className="text-xs">
+   869→                {entry ? `${entry.label} — ${entry.description}` : slug}
+   870→              </TooltipContent>
+   871→            </Tooltip>
+   872→          )
+   873→        })}
+   874→      </div>
+   875→    </div>
+   876→  )
+   877→}
+   878→
