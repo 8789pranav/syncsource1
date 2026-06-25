@@ -29,8 +29,12 @@ export async function GET(req: NextRequest) {
           lastName: true,
           displayName: true,
           department: { select: { id: true, name: true } },
+          designation: { select: { id: true, name: true } },
+          location: { select: { id: true, name: true } },
+          entity: { select: { id: true, legalName: true, tradeName: true } },
         },
       },
+      shift: true,
     },
     orderBy: { date: "desc" },
   });

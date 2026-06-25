@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -155,13 +156,42 @@ export interface Column<T> {
 
 export function DataTable<T extends { id: string }>({
   columns, rows, loading, onRowClick, emptyState,
+  selectable, selectedIds, onSelectionChange, getRowId,
 }: {
   columns: Column<T>[]
   rows: T[]
   loading?: boolean
   onRowClick?: (row: T) => void
   emptyState?: React.ReactNode
+  selectable?: boolean
+  selectedIds?: Set<string>
+  onSelectionChange?: (ids: Set<string>) => void
+  getRowId?: (row: T) => string
 }) {
+  const rowId = (r: T) => (getRowId ? getRowId(r) : (r as any).id)
+  const allSelected = selectable && rows.length > 0 && selectedIds !== undefined && rows.every((r) => selectedIds.has(rowId(r)))
+  const someSelected = selectable && selectedIds !== undefined && !allSelected && selectedIds.size > 0
+
+  const toggleAll = () => {
+    if (!onSelectionChange || selectedIds === undefined) return
+    const next = new Set(selectedIds)
+    if (allSelected) {
+      rows.forEach((r) => next.delete(rowId(r)))
+    } else {
+      rows.forEach((r) => next.add(rowId(r)))
+    }
+    onSelectionChange(next)
+  }
+
+  const toggleRow = (r: T) => {
+    if (!onSelectionChange || selectedIds === undefined) return
+    const next = new Set(selectedIds)
+    const id = rowId(r)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    onSelectionChange(next)
+  }
+
   if (loading) {
     return (
       <div className="rounded-xl border border-border/60 overflow-hidden">
@@ -182,6 +212,15 @@ export function DataTable<T extends { id: string }>({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
+              {selectable && (
+                <TableHead className="w-[44px] pl-3">
+                  <Checkbox
+                    checked={allSelected ? true : (someSelected ? "indeterminate" : false)}
+                    onCheckedChange={toggleAll}
+                    aria-label="Select all rows"
+                  />
+                </TableHead>
+              )}
               {columns.map((c) => (
                 <TableHead key={c.key} className={cn("text-xs font-semibold uppercase tracking-wide text-muted-foreground", c.className)} style={{ width: c.width }}>
                   {c.header}
@@ -190,19 +229,35 @@ export function DataTable<T extends { id: string }>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row) => (
-              <TableRow
-                key={row.id}
-                onClick={() => onRowClick?.(row)}
-                className={cn("cursor-default", onRowClick && "cursor-pointer hover:bg-muted/30")}
-              >
-                {columns.map((c) => (
-                  <TableCell key={c.key} className={cn("text-sm", c.className)}>
-                    {c.render ? c.render(row) : (row as any)[c.key]}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
+            {rows.map((row) => {
+              const id = rowId(row)
+              const isSelected = selectable && selectedIds?.has(id)
+              return (
+                <TableRow
+                  key={id}
+                  onClick={() => onRowClick?.(row)}
+                  className={cn(
+                    onRowClick && "cursor-pointer hover:bg-muted/30",
+                    isSelected && "bg-emerald-50/60 dark:bg-emerald-500/5",
+                  )}
+                >
+                  {selectable && (
+                    <TableCell className="w-[44px] pl-3" onClick={(ev) => ev.stopPropagation()}>
+                      <Checkbox
+                        checked={isSelected || false}
+                        onCheckedChange={() => toggleRow(row)}
+                        aria-label={`Select row ${id}`}
+                      />
+                    </TableCell>
+                  )}
+                  {columns.map((c) => (
+                    <TableCell key={c.key} className={cn("text-sm", c.className)}>
+                      {c.render ? c.render(row) : (row as any)[c.key]}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
       </div>

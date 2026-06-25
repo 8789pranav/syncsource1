@@ -2092,3 +2092,110 @@ Stage Summary:
   • Documents appears as new top-level menu in main HRMS sidebar.
   • Lint clean, TypeScript clean (in documents files), no runtime errors.
 - Color theme: violet/purple gradient family (from-violet-500 to-purple-600) as Documents module accent.
+
+---
+Task ID: 6-b
+Agent: general-purpose
+Task: Fix ALL TypeScript errors in 3 leave-section files (calendar.tsx, rules.tsx, types.tsx) introduced after the leave module merge. Do NOT touch any other files.
+
+Work Log:
+- Read /home/z/my-project/worklog.md tail to absorb project conventions (HRMS Next.js 16 + TS + Prisma, leave module built earlier).
+- Ran `bunx tsc --noEmit --skipLibCheck 2>&1 | grep -E "leave/sections/(calendar|rules|types)" | grep "error TS"` to enumerate the 9 errors: 3 in calendar.tsx (lines 201/239/242), 1 in rules.tsx (line 361), 5 in types.tsx (lines 94/104/104/273/276).
+- Inspected each file plus /home/z/my-project/src/components/hrms/leave/shared.tsx (defines EmployeeLite, empName, empInitials, LeavePolicyItem, LeaveTypeLite with `[key:string]: unknown` index signature) and /home/z/my-project/src/app/api/leave-calendar/route.ts (confirms the Prisma select already includes `id: true`).
+
+File 1 — calendar.tsx (3 errors):
+- Root cause: local `DayEntry.employee?: { firstName?, lastName?, displayName?, employeeCode? }` partial shape did not include `id`, so it was not assignable to `EmployeeLite | null | undefined` (which requires `id`) when passed to `empName()` / `empInitials()`. The underlying API already selects `id: true`, so the runtime shape is fine; only the local type was wrong.
+- Fix: replaced the partial shape with `EmployeeLite | null` (imported `EmployeeLite` from "../shared"). Single targeted edit to the import statement + `DayEntry` interface. No runtime change.
+
+File 2 — rules.tsx (1 error):
+- Root cause: `addLeaveType()` built an object literal and cast it `as ItemDraft`. `ItemDraft extends LeavePolicyItem` which requires `id: string`; the object omitted `id`, so TS rejected the cast as insufficient overlap.
+- Fix: added `id: \`draft-${lt.id}\`` as the first field of the new draft item (used as a React key in the items list at line 812) and removed the `as ItemDraft` cast (no longer needed — object now structurally matches `ItemDraft`; extra `creditTiming` prop is allowed via the `[key: string]: unknown` index signature). The `draft-` prefix makes it clear this is a client-only key (real id is assigned by backend on save).
+
+File 3 — types.tsx (5 errors):
+- Root cause: `LeaveTypeLite` has `[key: string]: unknown`, so `t.icon` and `t.description` are typed `unknown`. Rendering them directly in JSX (or as the left operand of `&&`) produced `unknown` / `{}` values not assignable to `ReactNode`.
+- Fixes (minimal, type-narrowing only — no data model change):
+  • Line 94: `{t.icon || "CalendarDays"}` → `{typeof t.icon === "string" && t.icon ? t.icon : "CalendarDays"}`.
+  • Line 104: `{t.description && <p>{t.description}</p>}` → `{typeof t.description === "string" && t.description ? <p>{t.description}</p> : null}`.
+  • Lines 273-278 (detail dialog): same `typeof t.description === "string" && t.description ? (...) : null` pattern.
+
+Verification:
+- Re-ran `bunx tsc --noEmit --skipLibCheck 2>&1 | grep -E "leave/sections/(calendar|rules|types)" | grep "error TS"` → empty output (0 errors in the 3 target files). Total project tsc errors went from 74 → 65 (all remaining are in OTHER files: shell.tsx, dashboard.tsx, dynamic-form.tsx, etc., which are explicitly out of scope).
+- Ran `bun run lint` → 0 errors, 1 pre-existing warning in dynamic-form.tsx (React Hook Form watch() memoization — unrelated to my changes, was present before).
+
+Stage Summary:
+- 3 files edited: src/components/hrms/leave/sections/calendar.tsx, rules.tsx, types.tsx. NO other files touched.
+- Final tsc error count for these 3 files: 0 (was 9).
+- Lint: clean (0 errors, 0 warnings in my 3 files).
+- All fixes are minimal, type-only / data-shape-correct changes preserving existing UI and runtime behavior:
+  • calendar.tsx: widened local DayEntry.employee type to EmployeeLite (matches the actual API Prisma select).
+  • rules.tsx: added a client-only `id` to the draft ItemDraft object so it satisfies the LeavePolicyItem `id: string` requirement; removed the unnecessary cast.
+  • types.tsx: narrowed `unknown`-typed `t.icon` / `t.description` lookups with `typeof ... === "string"` checks before rendering in JSX.
+
+---
+Task ID: 6-a
+Agent: general-purpose
+Task: Fix all TypeScript errors in 3 leave/attendance API route files after the leave/attendance module merge: `src/app/api/attendance-settings/route.ts`, `src/app/api/leave-applications/[id]/route.ts`, `src/app/api/leave-bulk/route.ts`.
+
+Work Log:
+- Read /home/z/my-project/worklog.md (last ~150 lines) to confirm project conventions and the post-merge TS-error-fix task scope. Read the prisma schema (LeaveApplication model lines 1221-1271) to verify that `workflowInstanceId` is a plain `String?` field (NO relation named `workflowInstance`) while `approvals LeaveApproval[]` IS a real relation.
+- Ran `bunx tsc --noEmit --skipLibCheck | grep -E "leave-bulk|leave-applications/\[id\]|attendance-settings" | grep "error TS"` → 25 errors across the 3 files (6 in attendance-settings, 4 in leave-applications/[id], 15 in leave-bulk).
+- File 1 — `src/app/api/attendance-settings/route.ts` (6 errors around lines 107-115):
+  • Root cause: `let entity = null; if (...) entity = await db.entity.findFirst(...)` — TS narrowed `entity` to type `null` so the subsequent assignment of `Entity | null` failed (TS2322) and the `entity.id/code/legalName/...` accesses were on `never` (TS2339 ×5).
+  • Fix: replaced the `let entity = null; if (...)` pattern with a single typed ternary expression: `const entity = entityId !== DEFAULT_ENTITY_ID ? await db.entity.findFirst({ where: { id: entityId, tenantId } }) : null;` — TS now infers `Entity | null` and the existing `entity ? { id: entity.id, ... } : null` guard narrows correctly.
+- File 2 — `src/app/api/leave-applications/[id]/route.ts` (4 errors at lines 121/124/127/130):
+  • Errors at 121/124/127: `actorId` (declared as `toStr(body.actorId, "hr-admin")`) was typed `string | null` because `toStr`'s return signature is `string | null`, but the per-action helpers (`approveApplication`, `rejectApplication`, `sendBackApplication`, `withdrawOrCancel`) require `actorId: string`.
+  • Fix: changed the declaration to `const actorId = toStr(body.actorId, "hr-admin") ?? "hr-admin";` — the `?? "hr-admin"` tail coerces the type to `string` (and since the `toStr` default is already `"hr-admin"`, runtime behavior is unchanged).
+  • Error at 130: `withdrawOrCancel` expects `action: "Withdraw" | "Cancel"` but `action` is `string`.
+  • Fix: `action as "Withdraw" | "Cancel"` — safe because `validActions.includes(action)` was already validated above and the three preceding `if` branches handle Approve/Reject/SendBack, so by elimination only Withdraw/Cancel remain.
+- File 3 — `src/app/api/leave-bulk/route.ts` (15 errors):
+  • Root cause: the `tx.leaveApplication.findFirst` call used `include: { approvals: ..., workflowInstance: { include: { workflow: ... } } }`. Since `LeaveApplication` has no Prisma relation named `workflowInstance` (only a plain `workflowInstanceId String?` FK), the entire `include` was rejected by TS (TS2353), which in turn dropped `approvals` from the inferred result type — causing cascading TS2339 ("Property 'approvals' does not exist") at lines 67/130/180 and TS2551 ("Property 'workflowInstance' does not exist, did you mean 'workflowInstanceId'?") at the 11 `existing.workflowInstance` access points.
+  • Fix step 1: removed `workflowInstance` from the `include` so the query type-checks and `approvals` is properly present on the result type.
+  • Fix step 2: added a separate `wfInstance` fetch mirroring the pattern already used in `leave-applications/[id]/route.ts` (lines 105-114 there): `let wfInstance: any = null; if (existing.workflowInstanceId) { wfInstance = await tx.workflowInstance.findFirst({ where: { id: existing.workflowInstanceId }, include: { workflow: { include: { steps: { orderBy: { level: "asc" } } } } } } }); }`.
+  • Fix step 3: replaced all 11 `existing.workflowInstance` accesses with the local `wfInstance` variable (in the Approve, Reject, and Cancel branches). All workflow-advance / workflow-finalize / status-update logic preserved exactly — only the access path changed from a non-existent relation to a separately-fetched local variable.
+- Verification: re-ran `bunx tsc --noEmit --skipLibCheck 2>&1 | grep -E "leave-bulk|leave-applications/\[id\]|attendance-settings" | grep "error TS"` → empty output (exit code 1 from grep = zero matches). All 25 errors in the 3 target files are gone. Total project-wide TS error count is now 65 (down from 90); remaining errors are pre-existing in shell.tsx, dashboard.tsx, dynamic-form.tsx, employees/[id] routes, etc. — all explicitly out of scope.
+- Ran `bun run lint 2>&1 | tail -20` → 0 errors, 1 pre-existing warning in dynamic-form.tsx (React Hook Form `watch()` memoization note). No new lint issues in any of the 3 files I edited.
+
+Stage Summary:
+- 3 files changed, all type errors fixed with minimal, correct, behavior-preserving edits:
+  • `src/app/api/attendance-settings/route.ts`: replaced `let entity = null; if (...) entity = await ...` with a single typed ternary so TS infers `Entity | null` instead of narrowing to `null` (6 errors fixed).
+  • `src/app/api/leave-applications/[id]/route.ts`: coerced `actorId` from `string | null` to `string` via `?? "hr-admin"`; cast `action` to `"Withdraw" | "Cancel"` at the final call site (4 errors fixed).
+  • `src/app/api/leave-bulk/route.ts`: removed non-existent `workflowInstance` from the Prisma `include`; added a separate `wfInstance` fetch via `existing.workflowInstanceId`; replaced all 11 `existing.workflowInstance` accesses with `wfInstance` (15 errors fixed). Bulk approve/reject/cancel/adjustBalance/assignPolicy/carryForward/encash functionality fully preserved.
+- Final TS error count for these 3 files: 0.
+- Final lint status for these 3 files: 0 errors, 0 warnings.
+- Out-of-scope pre-existing TS errors (shell.tsx, dashboard.tsx, dynamic-form.tsx, employees/[id] routes, etc.) were left untouched per task constraints.
+
+---
+Task ID: 5-merge-leave-attendance
+Agent: main
+Task: Merge the updated Leave & Attendance modules from GitHub repo (https://github.com/8789pranav/syncsource1) into the current HRMS project with a proper check.
+
+Work Log:
+- Cloned the source repo to /tmp/syncsource1 and compared it against the current project.
+- Discovered the repo has a far more advanced leave & attendance system than the current project:
+  • Leave: 20 section files + shared.tsx + index.tsx + leave-helpers.ts (586 lines) + 14 API route groups (vs current: 1 single-file module + 3 APIs).
+  • Attendance: 12 section files + shared.tsx + index.tsx + 9 API route groups (vs current: 1 single-file module + 1 API).
+  • Prisma: 30 leave/attendance models in repo (vs 11 in current), including LeaveSetting, LeaveRuleApplicability, LeaveApplicationDay, LeaveApproval, LeaveLedger, LeaveAdjustment, CompOffCredit, LeaveEncashmentRequest, LeaveCarryForwardLog, WeeklyOffCalendar, LeaveAuditLog, AttendanceRule, AttendanceRuleApplicability, AttendanceRequest, AttendanceRequestApproval, AttendanceRawLog, AttendanceOvertime, AttendanceLock, AttendanceBulkUpdate, AttendanceAuditLog, AttendanceSetting.
+- Verified compatibility: dependencies identical, ModuleId type is a superset, ui.tsx exports compatible, lib files match (only leave-helpers.ts missing).
+- Step 1 — Copied component folders: src/lib/leave-helpers.ts, src/components/hrms/leave/ (22 files), src/components/hrms/attendance/ (14 files), and employee-profile/tabs/{leave,attendance}.tsx from repo → current.
+- Step 2 — Copied all 14 leave + 9 attendance API route folders from repo (overwrote existing leave-applications, leave-types, leave-policies, attendance).
+- Step 3 — Wired modules: replaced modules/leave.tsx with re-export of @/components/hrms/leave; replaced modules/attendance.tsx with re-export of @/components/hrms/attendance; updated page.tsx to import AttendanceModule from @/components/hrms/attendance.
+- Step 4 — Merged prisma schema: replaced the entire leave/attendance/shift/roster/holiday model block (current lines 958-1179) with the repo's block (repo lines 1004-1846, 843 lines) via a precise Python splice. Added 10 missing back-relation fields to the Employee model (leaveLedgerEntries, leaveAdjustments, compOffCredits, leaveEncashments, leaveCarryForwardLogs, leaveAuditLogs, attendanceRequests, attendanceRawLogs, attendanceOvertime, attendanceAuditLogs). prisma format succeeded.
+- Step 5 — Ran `prisma db push --force-reset` (existing seed data had conflicting required columns; reset + reseed is the clean path). DB reset + new schema applied + Prisma client regenerated.
+- Step 6 — Fixed TypeScript errors:
+  • Foundational (done by main): ported repo's DataTable with selection support (selectable/selectedIds/onSelectionChange/getRowId props) into src/components/hrms/ui.tsx + added Checkbox import. Ported 5 missing form schemas (leaveRuleBasicSchema, leaveAdjustmentFormSchema, compOffFormSchema, encashmentFormSchema, weeklyOffFormSchema) from repo's form-schemas.ts into current's + registered them in defaultFormSchemas. Fixed seed/route.ts: effectiveDate→effectiveFrom, added LeavePolicy fields (country/leaveYearType/calendarStartMonth/isDefault/priority/version), replaced allocation with totalEntitlement + entitlement fields on LeavePolicyItem.
+  • Subagent 6-a: Fixed src/app/api/attendance-settings/route.ts (entity null type narrowing → typed ternary), src/app/api/leave-applications/[id]/route.ts (nullable actorId → ?? default; action cast to "Withdraw"|"Cancel"), src/app/api/leave-bulk/route.ts (removed non-existent workflowInstance relation from include; replaced 11 .workflowInstance accesses with a fetched wfInstance local; approvals cascade-fixed).
+  • Subagent 6-b: Fixed src/components/hrms/leave/sections/calendar.tsx (DayEntry.employee partial type → EmployeeLite|null), rules.tsx (added id field to draft item, removed unsafe cast), types.tsx (narrowed unknown icon/description before JSX render).
+  • Result: 0 merge-introduced tsc errors. 65 pre-existing errors remain out of scope (shell.tsx group union, dashboard.tsx, dynamic-form.tsx divider, employees/[id] routes). Lint: 0 errors.
+- Step 7 — Restarted dev server (fresh). Reseeded DB via POST /api/seed → ok with 5 leaveTypes, 1 leavePolicy, 3 leaveApplications, 3 shifts, 2 rosters, 8 holidays, 5 attendance, 12 employees.
+- Step 8 — Verified via agent-browser:
+  • Leave module: renders "Leave Management" with all 20 sub-sections (Dashboard, My Leave, Team Leave, Requests, Calendar, Balance, Ledger, Encashment, Carry Forward, Comp-Off, Adjustment, Bulk Actions, Reports, Types, Rules, Clubbing, Sandwich, Holiday Calendar, Weekly Off, Settings). Dashboard shows Apply Leave / Pending Approvals / Balance Alerts / Reports actions. Sub-section navigation works (tested Leave Balance, Leave Dashboard). No page errors.
+  • Attendance module: renders "Attendance Management" with all 12 sub-sections (Dashboard, Register, Calendar, Requests, Regularization, WFH/OD/Permission, Shift & Weekly Off, Bulk Update, Overtime, Device/Biometric Logs, Reports, Settings). Register section renders. No page errors.
+  • dev.log: all new API routes return 200 (leave-dashboard, leave-balance, leave-types, attendance-dashboard, attendance). No runtime errors.
+
+Stage Summary:
+- Successfully merged the industry-grade Leave & Attendance modules from the syncsource1 GitHub repo into the current HRMS project.
+- New code added: ~840 lines of prisma schema (30 models), 22 leave section files, 14 attendance section files, 2 module shells (index.tsx), 2 shared.tsx, leave-helpers.ts (586 lines), 23 API route groups, 5 form schemas, DataTable selection support, seed route updates.
+- The Leave module went from a basic 891-line single file (3 APIs) to a 20-section enterprise module (14 APIs) covering types, rules/policies, applicability, entitlement, accrual, carry-forward, encashment, comp-off, ledger, balance, calendar, sandwich/clubbing rules, weekly-off, adjustments, bulk actions, reports, audit.
+- The Attendance module went from a basic 401-line single file (1 API) to a 12-section enterprise module (9 APIs) covering register, calendar, requests, regularization, WFH/OD/permission, shift & weekly-off assignment, bulk update, overtime, device/biometric logs, locks, settings, audit.
+- Database reset + reseeded cleanly. Prisma client regenerated. Dev server running on port 3000 with no errors. Both modules verified interactive via agent-browser.
+- Pre-existing out-of-scope tsc errors (65) remain in shell.tsx (group union missing "Payroll"/"Documents"), dashboard.tsx, dynamic-form.tsx, employees/[id] routes — these existed before this merge and don't block runtime.

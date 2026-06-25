@@ -528,7 +528,8 @@ async function runSeed() {
       data: {
         tenantId, name: "Standard Policy", code: "STD-POLICY",
         description: "Standard leave policy applicable to all full-time employees.",
-        effectiveDate: yearsAgo(1), status: "Active",
+        country: "India", leaveYearType: "CalendarYear", calendarStartMonth: 1,
+        effectiveFrom: yearsAgo(1), isDefault: true, priority: 0, version: 1, status: "Active",
       },
     })
     for (const t of ltDefs) {
@@ -536,7 +537,13 @@ async function runSeed() {
         data: {
           leavePolicyId: stdPolicy.id,
           leaveTypeId: leaveTypes[t.code],
-          allocation: t.yearlyAccrual || 12,
+          entitlementType: "Fixed",
+          totalEntitlement: t.yearlyAccrual || 12,
+          entitlementUnit: "Days",
+          creditTiming: "YearStart",
+          accrualFrequency: "Yearly",
+          accrualAmount: t.yearlyAccrual || 12,
+          accrualDate: 1,
         },
       })
     }

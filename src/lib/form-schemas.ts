@@ -751,6 +751,147 @@ export const workflowFormSchema: FormSchema = {
 // Registry
 // ============================================================
 
+export const leaveRuleBasicSchema: FormSchema = {
+  code: "leaveRule-basic",
+  name: "Leave Rule — Basic",
+  module: "leaveRule",
+  sections: [{
+    id: "sec-basic",
+    title: "Basic Details",
+    fields: [
+      { id: id("f"), key: "name", label: "Rule Name", type: "text", width: "half", validation: { required: true }, placeholder: "India Standard Leave Policy 2026" },
+      { id: id("f"), key: "code", label: "Rule Code", type: "text", width: "half", validation: { required: true }, placeholder: "IN-STD-2026" },
+      { id: id("f"), key: "description", label: "Description", type: "textarea", width: "full" },
+      { id: id("f"), key: "country", label: "Country", type: "text", width: "half", defaultValue: "India" },
+      { id: id("f"), key: "leaveYearType", label: "Leave Year Type", type: "select", width: "half", defaultValue: "CalendarYear", options: [
+        { label: "Calendar Year", value: "CalendarYear" }, { label: "Financial Year", value: "FinancialYear" },
+        { label: "Custom", value: "Custom" }, { label: "Joining Date", value: "JoiningDate" },
+      ] },
+      { id: id("f"), key: "calendarStartMonth", label: "Calendar Start Month", type: "select", width: "half", defaultValue: "1", options: [
+        { label: "January", value: "1" }, { label: "February", value: "2" }, { label: "March", value: "3" }, { label: "April", value: "4" },
+        { label: "May", value: "5" }, { label: "June", value: "6" }, { label: "July", value: "7" }, { label: "August", value: "8" },
+        { label: "September", value: "9" }, { label: "October", value: "10" }, { label: "November", value: "11" }, { label: "December", value: "12" },
+      ] },
+      { id: id("f"), key: "effectiveFrom", label: "Effective From", type: "date", width: "half" },
+      { id: id("f"), key: "effectiveTo", label: "Effective To", type: "date", width: "half" },
+      { id: id("f"), key: "priority", label: "Priority (higher wins)", type: "number", width: "half", defaultValue: 0 },
+      { id: id("f"), key: "isDefault", label: "Default Rule", type: "switch", width: "half", defaultValue: false },
+      { id: id("f"), key: "status", label: "Status", type: "select", width: "half", defaultValue: "Active", options: [
+        { label: "Active", value: "Active" }, { label: "Draft", value: "Draft" }, { label: "Inactive", value: "Inactive" },
+      ] },
+    ],
+  }],
+}
+
+// ============================================================
+// LEAVE ADJUSTMENT (manual credit/debit)
+// ============================================================
+
+export const leaveAdjustmentFormSchema: FormSchema = {
+  code: "leaveAdjustment-default",
+  name: "Leave Adjustment",
+  module: "leaveAdjustment",
+  sections: [{
+    id: "sec-1",
+    title: "Adjustment Details",
+    fields: [
+      { id: id("f"), key: "employeeId", label: "Employee", type: "employee", width: "full", validation: { required: true }, endpoint: "/api/employees/picker" },
+      { id: id("f"), key: "leaveTypeId", label: "Leave Type", type: "leaveType", width: "half", validation: { required: true }, endpoint: "/api/leave-types" },
+      { id: id("f"), key: "adjustmentType", label: "Adjustment Type", type: "select", width: "half", defaultValue: "Credit", options: [
+        { label: "Credit", value: "Credit" }, { label: "Debit", value: "Debit" },
+      ] },
+      { id: id("f"), key: "amount", label: "Amount (days)", type: "decimal", width: "half", validation: { required: true, min: 0.5 } },
+      { id: id("f"), key: "effectiveDate", label: "Effective Date", type: "date", width: "half", validation: { required: true } },
+      { id: id("f"), key: "reason", label: "Reason", type: "text", width: "full", validation: { required: true } },
+      { id: id("f"), key: "remarks", label: "Remarks", type: "textarea", width: "full" },
+    ],
+  }],
+}
+
+// ============================================================
+// COMP-OFF GRANT
+// ============================================================
+
+export const compOffFormSchema: FormSchema = {
+  code: "compOff-default",
+  name: "Grant Comp-Off",
+  module: "compOff",
+  sections: [{
+    id: "sec-1",
+    title: "Comp-Off Details",
+    fields: [
+      { id: id("f"), key: "employeeId", label: "Employee", type: "employee", width: "full", validation: { required: true }, endpoint: "/api/employees/picker" },
+      { id: id("f"), key: "source", label: "Source", type: "select", width: "half", validation: { required: true }, defaultValue: "Manual", options: [
+        { label: "Weekly Off Work", value: "WeeklyOffWork" }, { label: "Holiday Work", value: "HolidayWork" },
+        { label: "Overtime", value: "Overtime" }, { label: "On Call", value: "OnCall" }, { label: "Manual", value: "Manual" },
+      ] },
+      { id: id("f"), key: "sourceDate", label: "Source Date", type: "date", width: "half", validation: { required: true } },
+      { id: id("f"), key: "hours", label: "Hours Worked", type: "decimal", width: "half", defaultValue: 8 },
+      { id: id("f"), key: "days", label: "Days Earned", type: "decimal", width: "half", defaultValue: 1 },
+      { id: id("f"), key: "expiryDate", label: "Expiry Date", type: "date", width: "half" },
+      { id: id("f"), key: "approvedBy", label: "Approved By", type: "text", width: "half" },
+      { id: id("f"), key: "remarks", label: "Remarks", type: "textarea", width: "full" },
+    ],
+  }],
+}
+
+// ============================================================
+// LEAVE ENCASHMENT REQUEST
+// ============================================================
+
+export const encashmentFormSchema: FormSchema = {
+  code: "encashment-default",
+  name: "Request Encashment",
+  module: "encashment",
+  sections: [{
+    id: "sec-1",
+    title: "Encashment Details",
+    fields: [
+      { id: id("f"), key: "employeeId", label: "Employee", type: "employee", width: "full", validation: { required: true }, endpoint: "/api/employees/picker" },
+      { id: id("f"), key: "leaveTypeId", label: "Leave Type", type: "leaveType", width: "half", validation: { required: true }, endpoint: "/api/leave-types" },
+      { id: id("f"), key: "days", label: "Days to Encash", type: "decimal", width: "half", validation: { required: true, min: 0.5 } },
+      { id: id("f"), key: "formula", label: "Formula", type: "text", width: "half", placeholder: "Basic/30*Days" },
+      { id: id("f"), key: "payrollComponent", label: "Payroll Component", type: "text", width: "half", placeholder: "Leave Encashment" },
+      { id: id("f"), key: "amount", label: "Amount (auto if blank)", type: "currency", unit: "₹", width: "half" },
+    ],
+  }],
+}
+
+// ============================================================
+// WEEKLY OFF CALENDAR
+// ============================================================
+
+export const weeklyOffFormSchema: FormSchema = {
+  code: "weeklyOff-default",
+  name: "Weekly Off Calendar",
+  module: "weeklyOff",
+  sections: [{
+    id: "sec-1",
+    title: "Weekly Off Details",
+    fields: [
+      { id: id("f"), key: "name", label: "Name", type: "text", width: "half", validation: { required: true }, placeholder: "Standard Sunday Off" },
+      { id: id("f"), key: "code", label: "Code", type: "text", width: "half", validation: { required: true }, placeholder: "WO-SUN" },
+      { id: id("f"), key: "weekOffType", label: "Week Off Type", type: "select", width: "half", defaultValue: "Fixed", options: [
+        { label: "Fixed", value: "Fixed" }, { label: "Alternate Saturday", value: "AlternateSaturday" },
+        { label: "Rotational", value: "Rotational" }, { label: "Shift Based", value: "ShiftBased" }, { label: "Custom", value: "Custom" },
+      ] },
+      { id: id("f"), key: "fixedDays", label: "Fixed Days (0=Sun,6=Sat, comma-separated)", type: "text", width: "half", defaultValue: "0", placeholder: "0,6" },
+      { id: id("f"), key: "entityIds", label: "Entity IDs (comma-separated)", type: "text", width: "half", placeholder: "All if blank" },
+      { id: id("f"), key: "locationIds", label: "Location IDs (comma-separated)", type: "text", width: "half", placeholder: "All if blank" },
+      { id: id("f"), key: "effectiveFrom", label: "Effective From", type: "date", width: "half" },
+      { id: id("f"), key: "effectiveTo", label: "Effective To", type: "date", width: "half" },
+      { id: id("f"), key: "status", label: "Status", type: "select", width: "half", defaultValue: "Active", options: [
+        { label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" },
+      ] },
+    ],
+  }],
+}
+
+// ============================================================
+// LEAVE APPLICATION
+// ============================================================
+
+
 export const defaultFormSchemas: Record<string, FormSchema> = {
   employee: employeeFormSchema,
   entity: entityFormSchema,
@@ -759,6 +900,11 @@ export const defaultFormSchemas: Record<string, FormSchema> = {
   grade: gradeFormSchema,
   leaveType: leaveTypeFormSchema,
   leaveApplication: leaveApplicationFormSchema,
+  leaveRule: leaveRuleBasicSchema,
+  leaveAdjustment: leaveAdjustmentFormSchema,
+  compOff: compOffFormSchema,
+  encashment: encashmentFormSchema,
+  weeklyOff: weeklyOffFormSchema,
   shift: shiftFormSchema,
   roster: rosterFormSchema,
   asset: assetFormSchema,

@@ -30,26 +30,30 @@ model Tenant {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  entities      Entity[]
-  branches      Branch[]
-  departments   Department[]
-  designations  Designation[]
-  grades        Grade[]
-  locations     Location[]
-  employees     Employee[]
-  leaveTypes    LeaveType[]
-  leavePolicies LeavePolicy[]
-  shifts        Shift[]
-  rosters       Roster[]
-  holidays      Holiday[]
-  assets        Asset[]
-  assetCategories AssetCategory[]
-  formSchemas   FormSchema[]
-  workflows     Workflow[]
-  announcements Announcement[]
-  auditLogs     AuditLog[]
-  salaryStructures SalaryStructure[]
-  payrollRuns   PayrollRun[]
+  entities           Entity[]
+  branches           Branch[]
+  departments        Department[]
+  designations       Designation[]
+  grades             Grade[]
+  locations          Location[]
+  employees          Employee[]
+  leaveTypes         LeaveType[]
+  leavePolicies      LeavePolicy[]
+  shifts             Shift[]
+  rosters            Roster[]
+  holidays           Holiday[]
+  assets             Asset[]
+  assetCategories    AssetCategory[]
+  formSchemas        FormSchema[]
+  workflows          Workflow[]
+  announcements      Announcement[]
+  auditLogs          AuditLog[]
+  salaryStructures   SalaryStructure[]
+  payrollRuns        PayrollRun[]
+  leaveSettings      LeaveSetting[]
+  weeklyOffCalendars WeeklyOffCalendar[]
+  attendanceRules    AttendanceRule[]
+  attendanceSettings AttendanceSetting[]
 }
 
 // ============================================================
@@ -57,29 +61,29 @@ model Tenant {
 // ============================================================
 
 model Entity {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  code        String
-  legalName   String
-  tradeName   String?
-  pan         String?
-  gstin       String?
-  tan         String?
-  pfNumber    String?
-  esiNumber   String?
-  address     String?
-  city        String?
-  state       String?
-  country     String   @default("India")
-  currency    String   @default("INR")
-  payrollApplicable  Boolean @default(true)
-  attendanceApplicable Boolean @default(true)
-  leaveApplicable    Boolean @default(true)
-  status      String   @default("Active")
-  effectiveDate DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  tenantId             String
+  tenant               Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code                 String
+  legalName            String
+  tradeName            String?
+  pan                  String?
+  gstin                String?
+  tan                  String?
+  pfNumber             String?
+  esiNumber            String?
+  address              String?
+  city                 String?
+  state                String?
+  country              String    @default("India")
+  currency             String    @default("INR")
+  payrollApplicable    Boolean   @default(true)
+  attendanceApplicable Boolean   @default(true)
+  leaveApplicable      Boolean   @default(true)
+  status               String    @default("Active")
+  effectiveDate        DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   employees   Employee[]
   branches    Branch[]
@@ -89,111 +93,111 @@ model Entity {
 }
 
 model Branch {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entityId    String?
-  entity      Entity?  @relation(fields: [entityId], references: [id])
-  code        String
-  name        String
-  address     String?
-  city        String?
-  state       String?
-  country     String?
-  lat         Float?
-  lng         Float?
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityId     String?
+  entity       Entity?  @relation(fields: [entityId], references: [id])
+  code         String
+  name         String
+  address      String?
+  city         String?
+  state        String?
+  country      String?
+  lat          Float?
+  lng          Float?
   branchHeadId String?
-  workingDays String   @default("Mon,Tue,Wed,Thu,Fri")
-  status      String   @default("Active")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  workingDays  String   @default("Mon,Tue,Wed,Thu,Fri")
+  status       String   @default("Active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  employees   Employee[]
+  employees Employee[]
 
   @@unique([tenantId, code])
 }
 
 model Department {
-  id            String   @id @default(cuid())
-  tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entityId      String?
-  entity        Entity?  @relation(fields: [entityId], references: [id])
-  parentId      String?
-  code          String
-  name          String
+  id               String   @id @default(cuid())
+  tenantId         String
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityId         String?
+  entity           Entity?  @relation(fields: [entityId], references: [id])
+  parentId         String?
+  code             String
+  name             String
   departmentHeadId String?
-  costCenterId  String?
-  status        String   @default("Active")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  costCenterId     String?
+  status           String   @default("Active")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  employees     Employee[]
-  children      Department[] @relation("DeptHierarchy")
-  parent        Department?  @relation("DeptHierarchy", fields: [parentId], references: [id])
+  employees Employee[]
+  children  Department[] @relation("DeptHierarchy")
+  parent    Department?  @relation("DeptHierarchy", fields: [parentId], references: [id])
 
   @@unique([tenantId, code])
 }
 
 model Designation {
-  id            String   @id @default(cuid())
-  tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  code          String
-  name          String
-  gradeId       String?
-  grade         Grade?   @relation(fields: [gradeId], references: [id])
-  level         Int?
-  departmentId  String?
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code           String
+  name           String
+  gradeId        String?
+  grade          Grade?   @relation(fields: [gradeId], references: [id])
+  level          Int?
+  departmentId   String?
   jobDescription String?
-  status        String   @default("Active")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  status         String   @default("Active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  employees     Employee[]
+  employees Employee[]
 
   @@unique([tenantId, code])
 }
 
 model Grade {
-  id              String   @id @default(cuid())
-  tenantId        String
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  code            String
-  name            String
-  hierarchyLevel  Int
-  minSalary       Float?
-  maxSalary       Float?
-  leaveEligibility Float?
-  approvalAuthority Boolean @default(false)
-  status          String   @default("Active")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String   @id @default(cuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code              String
+  name              String
+  hierarchyLevel    Int
+  minSalary         Float?
+  maxSalary         Float?
+  leaveEligibility  Float?
+  approvalAuthority Boolean  @default(false)
+  status            String   @default("Active")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  employees       Employee[]
-  designations    Designation[]
+  employees    Employee[]
+  designations Designation[]
 
   @@unique([tenantId, code])
 }
 
 model Location {
-  id            String   @id @default(cuid())
-  tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  code          String
-  name          String
-  address       String?
-  city          String?
-  state         String?
-  country       String?
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code           String
+  name           String
+  address        String?
+  city           String?
+  state          String?
+  country        String?
   geoFenceRadius Float?
-  timezone      String?
-  attendanceMode String  @default("Web")
-  status        String   @default("Active")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  timezone       String?
+  attendanceMode String   @default("Web")
+  status         String   @default("Active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  employees     Employee[]
+  employees Employee[]
 
   @@unique([tenantId, code])
 }
@@ -203,21 +207,21 @@ model Location {
 // ============================================================
 
 model Employee {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   tenantId        String
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeCode    String
   firstName       String
   middleName      String?
   lastName        String?
   displayName     String?
-  gender          String?  // Male | Female | Other
+  gender          String? // Male | Female | Other
   dateOfBirth     DateTime?
   maritalStatus   String?
   bloodGroup      String?
-  nationality     String   @default("Indian")
+  nationality     String    @default("Indian")
   religion        String?
-  category        String?  // General | OBC | SC | ST
+  category        String? // General | OBC | SC | ST
   profilePhotoUrl String?
   personalEmail   String?
   officialEmail   String?
@@ -225,183 +229,193 @@ model Employee {
   alternateNumber String?
 
   // Identity documents
-  passportNumber  String?
-  drivingLicense  String?
-  voterId         String?
+  passportNumber     String?
+  drivingLicense     String?
+  voterId            String?
   physicallyDisabled Boolean @default(false)
-  disabilityDetails String?
+  disabilityDetails  String?
 
   // Employment
-  dateOfJoining   DateTime?
-  employmentType  String   @default("Full-time") // Full-time | Part-time | Contract | Intern | Consultant | Apprentice | Temporary
-  workerType      String   @default("Permanent")
-  jobType         String?  // On-roll | Off-roll
-  probationStatus String?  // On Probation | Confirmed | Extended | Not Confirmed
-  probationStartDate DateTime?
-  probationEndDate DateTime?
-  confirmationDate DateTime?
-  noticePeriod    Int?     // days
+  dateOfJoining         DateTime?
+  employmentType        String    @default("Full-time") // Full-time | Part-time | Contract | Intern | Consultant | Apprentice | Temporary
+  workerType            String    @default("Permanent")
+  jobType               String? // On-roll | Off-roll
+  probationStatus       String? // On Probation | Confirmed | Extended | Not Confirmed
+  probationStartDate    DateTime?
+  probationEndDate      DateTime?
+  confirmationDate      DateTime?
+  noticePeriod          Int? // days
   noticePeriodStartDate DateTime?
-  lastWorkingDate DateTime?
-  employeeStatus   String  @default("Active") // Active | On Notice | Resigned | Terminated | Absconded | Retired | Inactive | Alumni
-  workMode        String   @default("Work from office") // Work from office | Work from home | Hybrid | Field work
-  businessUnit    String?
-  costCenter      String?
+  lastWorkingDate       DateTime?
+  employeeStatus        String    @default("Active") // Active | On Notice | Resigned | Terminated | Absconded | Retired | Inactive | Alumni
+  workMode              String    @default("Work from office") // Work from office | Work from home | Hybrid | Field work
+  businessUnit          String?
+  costCenter            String?
 
-  entityId        String?
-  entity          Entity?  @relation(fields: [entityId], references: [id])
-  branchId        String?
-  branch          Branch?  @relation(fields: [branchId], references: [id])
-  departmentId    String?
-  department      Department? @relation(fields: [departmentId], references: [id])
-  designationId   String?
-  designation     Designation? @relation(fields: [designationId], references: [id])
-  gradeId         String?
-  grade           Grade?   @relation(fields: [gradeId], references: [id])
-  locationId      String?
-  location        Location? @relation(fields: [locationId], references: [id])
-  reportingManagerId String?
+  entityId            String?
+  entity              Entity?      @relation(fields: [entityId], references: [id])
+  branchId            String?
+  branch              Branch?      @relation(fields: [branchId], references: [id])
+  departmentId        String?
+  department          Department?  @relation(fields: [departmentId], references: [id])
+  designationId       String?
+  designation         Designation? @relation(fields: [designationId], references: [id])
+  gradeId             String?
+  grade               Grade?       @relation(fields: [gradeId], references: [id])
+  locationId          String?
+  location            Location?    @relation(fields: [locationId], references: [id])
+  reportingManagerId  String?
   functionalManagerId String?
-  hrManagerId     String?
+  hrManagerId         String?
 
   // Policy assignments
-  leavePolicyId       String?
-  attendancePolicyId  String?
-  payrollPolicyId     String?
-  shiftPolicyId       String?
-  holidayCalendarId   String?
+  leavePolicyId      String?
+  attendancePolicyId String?
+  payrollPolicyId    String?
+  shiftPolicyId      String?
+  holidayCalendarId  String?
 
   // Bank
-  bankName        String?
+  bankName          String?
   accountHolderName String?
-  accountNumber   String?
-  accountType     String?  // Savings | Current | Salary
-  ifscCode        String?
-  branchName      String?
-  upiId           String?
+  accountNumber     String?
+  accountType       String? // Savings | Current | Salary
+  ifscCode          String?
+  branchName        String?
+  upiId             String?
 
   // Statutory
-  panNumber       String?
-  aadhaarNumber   String?
-  uanNumber       String?
-  pfNumber        String?
-  esiNumber       String?
-  ptLocation      String?
-  pfApplicable    Boolean  @default(true)
-  esiApplicable   Boolean  @default(false)
-  ptApplicable    Boolean  @default(true)
-  lwfApplicability String?
+  panNumber             String?
+  aadhaarNumber         String?
+  uanNumber             String?
+  pfNumber              String?
+  esiNumber             String?
+  ptLocation            String?
+  pfApplicable          Boolean @default(true)
+  esiApplicable         Boolean @default(false)
+  ptApplicable          Boolean @default(true)
+  lwfApplicability      String?
   gratuityApplicability String?
-  taxRegime       String?  // Old | New
-  tdsDeclarationStatus String? // Pending | Submitted | Verified
+  taxRegime             String? // Old | New
+  tdsDeclarationStatus  String? // Pending | Submitted | Verified
 
   // Address
-  currentAddress  String?
-  currentAddressLine2 String?
-  currentCity     String?
-  currentState    String?
-  currentCountry  String?
-  currentPincode  String?
-  currentLandmark String?
-  permanentAddress String?
+  currentAddress        String?
+  currentAddressLine2   String?
+  currentCity           String?
+  currentState          String?
+  currentCountry        String?
+  currentPincode        String?
+  currentLandmark       String?
+  permanentAddress      String?
   permanentAddressLine2 String?
-  permanentCity   String?
-  permanentState  String?
-  permanentCountry String?
-  permanentPincode String?
-  sameAsCurrent   Boolean  @default(false)
+  permanentCity         String?
+  permanentState        String?
+  permanentCountry      String?
+  permanentPincode      String?
+  sameAsCurrent         Boolean @default(false)
 
   // Emergency contact
-  emergencyContactName    String?
+  emergencyContactName     String?
   emergencyContactRelation String?
-  emergencyContactPhone   String?
+  emergencyContactPhone    String?
   emergencyContactAltPhone String?
-  emergencyContactEmail   String?
-  emergencyContactAddress String?
-  communicationPreference String? // Email | SMS | WhatsApp
+  emergencyContactEmail    String?
+  emergencyContactAddress  String?
+  communicationPreference  String? // Email | SMS | WhatsApp
 
   // Dynamic / custom data
-  customData      String?  // JSON string of custom fields
+  customData String? // JSON string of custom fields
 
   // Compensation
-  ctc             Float?
-  basicSalary     Float?
-  hra             Float?
-  specialAllowance Float?
+  ctc                 Float?
+  basicSalary         Float?
+  hra                 Float?
+  specialAllowance    Float?
   conveyanceAllowance Float?
-  medicalAllowance Float?
-  bonusAmount     Float?
-  pfEmployee      Float?
-  pfEmployer      Float?
-  esiAmount       Float?
-  professionalTax Float?
-  tdsAmount       Float?
-  grossSalary     Float?
-  netSalary       Float?
+  medicalAllowance    Float?
+  bonusAmount         Float?
+  pfEmployee          Float?
+  pfEmployer          Float?
+  esiAmount           Float?
+  professionalTax     Float?
+  tdsAmount           Float?
+  grossSalary         Float?
+  netSalary           Float?
 
   // Exit
-  resignationDate DateTime?
+  resignationDate   DateTime?
   resignationReason String?
-  exitStatus      String?  // Not initiated | Resignation submitted | Manager approved | HR approved | Clearance pending | FnF pending | Exit completed
+  exitStatus        String? // Not initiated | Resignation submitted | Manager approved | HR approved | Clearance pending | FnF pending | Exit completed
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  leaveApplications  LeaveApplication[]
-  leaveBalances      LeaveBalance[]
-  shiftAssignments   ShiftAssignment[]
-  rosterEntries      RosterEntry[]
-  attendance         Attendance[]
-  assetAssignments   AssetAssignment[]
-  assetRequests      AssetRequest[]
+  leaveApplications     LeaveApplication[]
+  leaveBalances         LeaveBalance[]
+  leaveLedgerEntries    LeaveLedger[]
+  leaveAdjustments      LeaveAdjustment[]
+  compOffCredits        CompOffCredit[]
+  leaveEncashments      LeaveEncashmentRequest[]
+  leaveCarryForwardLogs LeaveCarryForwardLog[]
+  leaveAuditLogs        LeaveAuditLog[]
+  shiftAssignments      ShiftAssignment[]
+  rosterEntries         RosterEntry[]
+  attendance            Attendance[]
+  attendanceRequests    AttendanceRequest[]
+  attendanceRawLogs     AttendanceRawLog[]
+  attendanceOvertime    AttendanceOvertime[]
+  attendanceAuditLogs   AttendanceAuditLog[]
+  assetAssignments      AssetAssignment[]
+  assetRequests         AssetRequest[]
   profileUpdateRequests ProfileUpdateRequest[]
 
   // Employee profile sub-records (Phase 2 — Employee module expansion)
-  familyMembers      EmployeeFamilyMember[]
-  educationRecords   EmployeeEducation[]
-  experienceRecords  EmployeeExperience[]
-  bankHistory        EmployeeBankDetail[]
-  statutoryDetails   EmployeeStatutoryDetail[]
-  documents          EmployeeDocument[]
+  familyMembers       EmployeeFamilyMember[]
+  educationRecords    EmployeeEducation[]
+  experienceRecords   EmployeeExperience[]
+  bankHistory         EmployeeBankDetail[]
+  statutoryDetails    EmployeeStatutoryDetail[]
+  documents           EmployeeDocument[]
   compensationHistory EmployeeCompensationHistory[]
-  notes              EmployeeNote[]
-  timelineEvents     EmployeeTimelineEvent[]
-  auditLogs          EmployeeAuditLog[]
-  statusHistory      EmployeeStatusHistory[]
-  transferHistory    EmployeeTransferHistory[]
-  promotionHistory   EmployeePromotionHistory[]
-  probationReviews   EmployeeProbation[]
-  exitRecords        EmployeeExit[]
-  loginAccess        EmployeeLoginAccess[]
-  roleMappings       EmployeeRoleMapping[]
-  customFieldValues  EmployeeCustomFieldValue[]
-  formSubmissions    EmployeeFormSubmission[]
-  skills             EmployeeSkill[]
-  certifications     EmployeeCertification[]
-  trainings          EmployeeTraining[]
-  performanceGoals   EmployeePerformanceGoal[]
-  performanceReviews EmployeePerformanceReview[]
-  expenses           EmployeeExpense[]
-  helpdeskTickets    EmployeeHelpdeskTicket[]
-  letters            EmployeeLetter[]
-  requests           EmployeeRequest[]
-  salaryAssignments  SalaryAssignment[]
-  payslips           Payslip[]
+  notes               EmployeeNote[]
+  timelineEvents      EmployeeTimelineEvent[]
+  auditLogs           EmployeeAuditLog[]
+  statusHistory       EmployeeStatusHistory[]
+  transferHistory     EmployeeTransferHistory[]
+  promotionHistory    EmployeePromotionHistory[]
+  probationReviews    EmployeeProbation[]
+  exitRecords         EmployeeExit[]
+  loginAccess         EmployeeLoginAccess[]
+  roleMappings        EmployeeRoleMapping[]
+  customFieldValues   EmployeeCustomFieldValue[]
+  formSubmissions     EmployeeFormSubmission[]
+  skills              EmployeeSkill[]
+  certifications      EmployeeCertification[]
+  trainings           EmployeeTraining[]
+  performanceGoals    EmployeePerformanceGoal[]
+  performanceReviews  EmployeePerformanceReview[]
+  expenses            EmployeeExpense[]
+  helpdeskTickets     EmployeeHelpdeskTicket[]
+  letters             EmployeeLetter[]
+  requests            EmployeeRequest[]
+  salaryAssignments   SalaryAssignment[]
+  payslips            Payslip[]
 
   @@unique([tenantId, employeeCode])
 }
 
 model ProfileUpdateRequest {
-  id          String   @id @default(cuid())
-  tenantId    String
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  fieldChanges String  // JSON string
-  status      String   @default("Pending") // Pending | Approved | Rejected
-  reason      String?
-  requestedAt DateTime @default(now())
-  reviewedAt  DateTime?
-  reviewedBy  String?
+  id           String    @id @default(cuid())
+  tenantId     String
+  employeeId   String
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  fieldChanges String // JSON string
+  status       String    @default("Pending") // Pending | Approved | Rejected
+  reason       String?
+  requestedAt  DateTime  @default(now())
+  reviewedAt   DateTime?
+  reviewedBy   String?
 }
 
 // ============================================================
@@ -409,203 +423,203 @@ model ProfileUpdateRequest {
 // ============================================================
 
 model EmployeeFamilyMember {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  name          String
-  relationship  String?  // Spouse | Son | Daughter | Father | Mother | Brother | Sister | Other
-  gender        String?
-  dateOfBirth   DateTime?
-  mobileNumber  String?
-  occupation    String?
-  isDependent   Boolean  @default(false)
-  isNominee     Boolean  @default(false)
-  nomineePercentage Float?
-  insuranceApplicable Boolean @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  tenantId            String
+  employeeId          String
+  employee            Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name                String
+  relationship        String? // Spouse | Son | Daughter | Father | Mother | Brother | Sister | Other
+  gender              String?
+  dateOfBirth         DateTime?
+  mobileNumber        String?
+  occupation          String?
+  isDependent         Boolean   @default(false)
+  isNominee           Boolean   @default(false)
+  nomineePercentage   Float?
+  insuranceApplicable Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 model EmployeeEducation {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  qualification String?  // 10th | 12th | Diploma | UG | PG | PhD | Certification
-  degree        String?
+  id             String   @id @default(cuid())
+  tenantId       String
+  employeeId     String
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  qualification  String? // 10th | 12th | Diploma | UG | PG | PhD | Certification
+  degree         String?
   specialization String?
-  institute     String?
-  university    String?
-  yearOfPassing Int?
-  percentage    Float?
-  cgpa          Float?
-  educationType String?  // Full-time | Part-time | Distance | Online
-  isHighest     Boolean  @default(false)
+  institute      String?
+  university     String?
+  yearOfPassing  Int?
+  percentage     Float?
+  cgpa           Float?
+  educationType  String? // Full-time | Part-time | Distance | Online
+  isHighest      Boolean  @default(false)
   certificateUrl String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model EmployeeExperience {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  companyName   String
-  designation   String?
-  department    String?
-  startDate     DateTime?
-  endDate       DateTime?
-  totalYears    Float?
-  reasonForLeaving String?
-  previousSalary Float?
-  managerName   String?
-  managerContact String?
+  id                  String    @id @default(cuid())
+  tenantId            String
+  employeeId          String
+  employee            Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  companyName         String
+  designation         String?
+  department          String?
+  startDate           DateTime?
+  endDate             DateTime?
+  totalYears          Float?
+  reasonForLeaving    String?
+  previousSalary      Float?
+  managerName         String?
+  managerContact      String?
   experienceLetterUrl String?
-  relievingLetterUrl String?
-  lastPayslipUrl String?
-  verificationStatus String? // Pending | Verified | Not Verified
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  relievingLetterUrl  String?
+  lastPayslipUrl      String?
+  verificationStatus  String? // Pending | Verified | Not Verified
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 model EmployeeBankDetail {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  bankName      String
+  id                String    @id @default(cuid())
+  tenantId          String
+  employeeId        String
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  bankName          String
   accountHolderName String?
-  accountNumber String
-  ifscCode      String?
-  branchName    String?
-  accountType   String?  // Savings | Current | Salary
-  upiId         String?
-  chequeUrl     String?
-  isActive      Boolean  @default(true)
-  verified      Boolean  @default(false)
-  effectiveDate DateTime @default(now())
-  endDate       DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  accountNumber     String
+  ifscCode          String?
+  branchName        String?
+  accountType       String? // Savings | Current | Salary
+  upiId             String?
+  chequeUrl         String?
+  isActive          Boolean   @default(true)
+  verified          Boolean   @default(false)
+  effectiveDate     DateTime  @default(now())
+  endDate           DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 model EmployeeStatutoryDetail {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  panNumber     String?
-  aadhaarNumber String?
-  uanNumber     String?
-  pfNumber      String?
-  esiNumber     String?
-  ptLocation    String?
-  lwfApplicability String?
+  id                    String   @id @default(cuid())
+  tenantId              String
+  employeeId            String
+  employee              Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  panNumber             String?
+  aadhaarNumber         String?
+  uanNumber             String?
+  pfNumber              String?
+  esiNumber             String?
+  ptLocation            String?
+  lwfApplicability      String?
   gratuityApplicability String?
-  pfApplicable  Boolean  @default(true)
-  esiApplicable Boolean  @default(false)
-  ptApplicable  Boolean  @default(true)
-  taxRegime     String?  // Old | New
-  tdsDeclarationStatus String?
-  nomineeDetails String? // JSON
-  documentUrl   String?
-  effectiveDate DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  pfApplicable          Boolean  @default(true)
+  esiApplicable         Boolean  @default(false)
+  ptApplicable          Boolean  @default(true)
+  taxRegime             String? // Old | New
+  tdsDeclarationStatus  String?
+  nomineeDetails        String? // JSON
+  documentUrl           String?
+  effectiveDate         DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
 
 model EmployeeDocument {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  name          String
-  category      String?  // Identity | Address | Education | Experience | Bank | Joining | Payroll | Company Letter | Exit | Other
-  documentType  String?  // Aadhaar | PAN | Passport | Photo | Resume | Offer letter | etc.
-  fileUrl       String?
-  fileExt       String?  // pdf | jpg | png
-  fileSize      Int?
-  status        String   @default("Pending") // Pending | Uploaded | Approved | Rejected | Expired | Expiring soon
-  expiryDate    DateTime?
-  uploadedAt    DateTime @default(now())
-  approvedAt    DateTime?
-  approvedBy    String?
-  remarks       String?
-  visibleToEmployee Boolean @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                String    @id @default(cuid())
+  tenantId          String
+  employeeId        String
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name              String
+  category          String? // Identity | Address | Education | Experience | Bank | Joining | Payroll | Company Letter | Exit | Other
+  documentType      String? // Aadhaar | PAN | Passport | Photo | Resume | Offer letter | etc.
+  fileUrl           String?
+  fileExt           String? // pdf | jpg | png
+  fileSize          Int?
+  status            String    @default("Pending") // Pending | Uploaded | Approved | Rejected | Expired | Expiring soon
+  expiryDate        DateTime?
+  uploadedAt        DateTime  @default(now())
+  approvedAt        DateTime?
+  approvedBy        String?
+  remarks           String?
+  visibleToEmployee Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 model EmployeeCompensationHistory {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  effectiveDate DateTime
-  oldCtc        Float?
-  newCtc        Float?
-  oldBasic      Float?
-  newBasic      Float?
-  oldHra        Float?
-  newHra        Float?
+  id               String   @id @default(cuid())
+  tenantId         String
+  employeeId       String
+  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  effectiveDate    DateTime
+  oldCtc           Float?
+  newCtc           Float?
+  oldBasic         Float?
+  newBasic         Float?
+  oldHra           Float?
+  newHra           Float?
   incrementPercent Float?
-  revisionReason String? // Annual appraisal | Promotion | Off-cycle | Joining
+  revisionReason   String? // Annual appraisal | Promotion | Off-cycle | Joining
   promotionMapping String?
-  approvedBy    String?
-  status        String   @default("Approved") // Draft | Approved | Rejected
-  letterUrl     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  approvedBy       String?
+  status           String   @default("Approved") // Draft | Approved | Rejected
+  letterUrl        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model EmployeeNote {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  category      String   @default("General") // General | Performance | Disciplinary | Medical | HR discussion | Manager feedback | Exit discussion
-  body          String
-  isPrivate     Boolean  @default(false)
-  visibleToManager Boolean @default(false)
-  attachmentUrl String?
-  createdBy     String?  // user name
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id @default(cuid())
+  tenantId         String
+  employeeId       String
+  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  category         String   @default("General") // General | Performance | Disciplinary | Medical | HR discussion | Manager feedback | Exit discussion
+  body             String
+  isPrivate        Boolean  @default(false)
+  visibleToManager Boolean  @default(false)
+  attachmentUrl    String?
+  createdBy        String? // user name
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model EmployeeTimelineEvent {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  eventType     String   // Created | Joined | Profile updated | Document uploaded | Leave approved | Attendance regularized | Salary revised | Promoted | Transferred | Manager changed | Probation confirmed | Asset assigned | Resignation submitted | Exit completed | Status changed
-  title         String
-  description   String?
-  eventDate     DateTime @default(now())
-  actorId       String?
-  actorName     String?
-  metadata      String?  // JSON
-  createdAt     DateTime @default(now())
+  id          String   @id @default(cuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  eventType   String // Created | Joined | Profile updated | Document uploaded | Leave approved | Attendance regularized | Salary revised | Promoted | Transferred | Manager changed | Probation confirmed | Asset assigned | Resignation submitted | Exit completed | Status changed
+  title       String
+  description String?
+  eventDate   DateTime @default(now())
+  actorId     String?
+  actorName   String?
+  metadata    String? // JSON
+  createdAt   DateTime @default(now())
 }
 
 model EmployeeAuditLog {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  module        String?  // Personal | Job | Bank | Statutory | Document | etc.
-  field         String?
-  oldValue      String?
-  newValue      String?
-  action        String?  // Create | Update | Delete
-  changedBy     String?
-  reason        String?
-  ipAddress     String?
-  userAgent     String?
-  approvalRef   String?
-  createdAt     DateTime @default(now())
+  id          String   @id @default(cuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  module      String? // Personal | Job | Bank | Statutory | Document | etc.
+  field       String?
+  oldValue    String?
+  newValue    String?
+  action      String? // Create | Update | Delete
+  changedBy   String?
+  reason      String?
+  ipAddress   String?
+  userAgent   String?
+  approvalRef String?
+  createdAt   DateTime @default(now())
 }
 
 model EmployeeStatusHistory {
@@ -642,422 +656,807 @@ model EmployeeTransferHistory {
 }
 
 model EmployeePromotionHistory {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  tenantId       String
+  employeeId     String
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   oldDesignation String?
   newDesignation String?
-  oldGrade      String?
-  newGrade      String?
-  oldCtc        Float?
-  newCtc        Float?
-  effectiveDate DateTime
-  reason        String?
-  status        String   @default("Approved") // Pending | Approved | Rejected
-  approvedBy    String?
-  letterUrl     String?
-  createdAt     DateTime @default(now())
+  oldGrade       String?
+  newGrade       String?
+  oldCtc         Float?
+  newCtc         Float?
+  effectiveDate  DateTime
+  reason         String?
+  status         String   @default("Approved") // Pending | Approved | Rejected
+  approvedBy     String?
+  letterUrl      String?
+  createdAt      DateTime @default(now())
 }
 
 model EmployeeProbation {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  startDate     DateTime
-  endDate       DateTime
-  reviewDueDate DateTime?
-  status        String   @default("On Probation") // On Probation | Review pending | Extended | Confirmed | Not Confirmed
+  id              String    @id @default(cuid())
+  tenantId        String
+  employeeId      String
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  startDate       DateTime
+  endDate         DateTime
+  reviewDueDate   DateTime?
+  status          String    @default("On Probation") // On Probation | Review pending | Extended | Confirmed | Not Confirmed
   managerFeedback String?
-  hrFeedback    String?
+  hrFeedback      String?
   extendedEndDate DateTime?
-  confirmedDate DateTime?
-  confirmedBy   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  confirmedDate   DateTime?
+  confirmedBy     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model EmployeeExit {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  resignationDate DateTime
-  lastWorkingDate DateTime?
-  reason        String?
-  status        String   @default("Resignation submitted") // Resignation submitted | Manager approved | HR approved | Clearance pending | FnF pending | Exit completed | Rejected
-  noticePeriodDays Int?
-  noticeRecoveryDays Int?
+  id                   String    @id @default(cuid())
+  tenantId             String
+  employeeId           String
+  employee             Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  resignationDate      DateTime
+  lastWorkingDate      DateTime?
+  reason               String?
+  status               String    @default("Resignation submitted") // Resignation submitted | Manager approved | HR approved | Clearance pending | FnF pending | Exit completed | Rejected
+  noticePeriodDays     Int?
+  noticeRecoveryDays   Int?
   noticeRecoveryAmount Float?
-  exitInterviewNotes String?
-  clearanceHR   Boolean  @default(false)
-  clearanceIT   Boolean  @default(false)
-  clearanceAdmin Boolean @default(false)
-  clearanceFinance Boolean @default(false)
-  clearanceManager Boolean @default(false)
-  clearancePayroll Boolean @default(false)
-  finalSettlement Float?
-  relievingLetterUrl String?
-  experienceLetterUrl String?
-  approvedBy    String?
-  approvedAt    DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  exitInterviewNotes   String?
+  clearanceHR          Boolean   @default(false)
+  clearanceIT          Boolean   @default(false)
+  clearanceAdmin       Boolean   @default(false)
+  clearanceFinance     Boolean   @default(false)
+  clearanceManager     Boolean   @default(false)
+  clearancePayroll     Boolean   @default(false)
+  finalSettlement      Float?
+  relievingLetterUrl   String?
+  experienceLetterUrl  String?
+  approvedBy           String?
+  approvedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
 
 model EmployeeLoginAccess {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  username      String?
-  email         String?
-  status        String   @default("Active") // Active | Inactive | Blocked | Locked
-  role          String?  // Employee | Manager | HR admin | Payroll admin | Finance admin | IT admin | Auditor | Sub-admin
-  twoFactorEnabled Boolean @default(false)
-  forcePasswordChange Boolean @default(true)
-  passwordResetAt DateTime?
-  lastLoginAt   DateTime?
-  lastLoginIp   String?
-  activeSessions Int     @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  tenantId            String
+  employeeId          String
+  employee            Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  username            String?
+  email               String?
+  status              String    @default("Active") // Active | Inactive | Blocked | Locked
+  role                String? // Employee | Manager | HR admin | Payroll admin | Finance admin | IT admin | Auditor | Sub-admin
+  twoFactorEnabled    Boolean   @default(false)
+  forcePasswordChange Boolean   @default(true)
+  passwordResetAt     DateTime?
+  lastLoginAt         DateTime?
+  lastLoginIp         String?
+  activeSessions      Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 model EmployeeRoleMapping {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  role          String   // Employee | Manager | HR admin | Payroll admin | Finance admin | IT admin | Auditor | Sub-admin
-  scopeType     String?  // Global | Entity | Department | Location
-  scopeRef      String?
+  id                String   @id @default(cuid())
+  tenantId          String
+  employeeId        String
+  employee          Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  role              String // Employee | Manager | HR admin | Payroll admin | Finance admin | IT admin | Auditor | Sub-admin
+  scopeType         String? // Global | Entity | Department | Location
+  scopeRef          String?
   modulePermissions String? // JSON
   fieldPermissions  String? // JSON
   reportPermissions String? // JSON
-  assignedAt    DateTime @default(now())
-  assignedBy    String?
-  isActive      Boolean  @default(true)
+  assignedAt        DateTime @default(now())
+  assignedBy        String?
+  isActive          Boolean  @default(true)
 }
 
 model EmployeeCustomFieldValue {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  fieldKey      String
-  fieldLabel    String?
-  fieldType     String?  // text | number | date | select | multiselect | checkbox
-  value         String?
-  category      String?  // General | Project | Accommodation | Uniform | Other
-  isMandatory   Boolean  @default(false)
-  approvalRequired Boolean @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id @default(cuid())
+  tenantId         String
+  employeeId       String
+  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  fieldKey         String
+  fieldLabel       String?
+  fieldType        String? // text | number | date | select | multiselect | checkbox
+  value            String?
+  category         String? // General | Project | Accommodation | Uniform | Other
+  isMandatory      Boolean  @default(false)
+  approvalRequired Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@unique([employeeId, fieldKey])
 }
 
 model EmployeeFormSubmission {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  formCode      String   // joining | policy_declaration | asset_declaration | medical | nominee | travel | wfh | custom
-  formName      String?
-  version       Int      @default(1)
-  data          String?  // JSON of submitted values
-  status        String   @default("Draft") // Draft | Submitted | Approved | Rejected
-  submittedAt   DateTime?
-  approvedAt    DateTime?
-  approvedBy    String?
-  remarks       String?
-  pdfUrl        String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String    @id @default(cuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  formCode    String // joining | policy_declaration | asset_declaration | medical | nominee | travel | wfh | custom
+  formName    String?
+  version     Int       @default(1)
+  data        String? // JSON of submitted values
+  status      String    @default("Draft") // Draft | Submitted | Approved | Rejected
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  approvedBy  String?
+  remarks     String?
+  pdfUrl      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model EmployeeSkill {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  name          String
-  category      String?  // Technical | Soft | Domain | Tool | Language
-  proficiency   String?  // Beginner | Intermediate | Advanced | Expert
+  id                String    @id @default(cuid())
+  tenantId          String
+  employeeId        String
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name              String
+  category          String? // Technical | Soft | Domain | Tool | Language
+  proficiency       String? // Beginner | Intermediate | Advanced | Expert
   yearsOfExperience Float?
-  verifiedByManager Boolean @default(false)
-  lastUsedDate  DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  verifiedByManager Boolean   @default(false)
+  lastUsedDate      DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 model EmployeeCertification {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  name          String
+  id               String    @id @default(cuid())
+  tenantId         String
+  employeeId       String
+  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name             String
   issuingAuthority String?
-  issueDate     DateTime?
-  expiryDate    DateTime?
-  certificateId String?
-  certificateUrl String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  issueDate        DateTime?
+  expiryDate       DateTime?
+  certificateId    String?
+  certificateUrl   String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model EmployeeTraining {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  courseName    String
-  trainingType  String?  // Online | Classroom | On-the-job | External
-  startDate     DateTime?
-  endDate       DateTime?
-  status        String   @default("Assigned") // Assigned | In Progress | Completed | Pending | Cancelled
-  score         Float?
-  certificateUrl String?
-  trainerFeedback String?
+  id               String    @id @default(cuid())
+  tenantId         String
+  employeeId       String
+  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  courseName       String
+  trainingType     String? // Online | Classroom | On-the-job | External
+  startDate        DateTime?
+  endDate          DateTime?
+  status           String    @default("Assigned") // Assigned | In Progress | Completed | Pending | Cancelled
+  score            Float?
+  certificateUrl   String?
+  trainerFeedback  String?
   employeeFeedback String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model EmployeePerformanceGoal {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   tenantId      String
   employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   title         String
   description   String?
-  kra           String?  // Key Result Area
-  kpi           String?  // Key Performance Indicator
+  kra           String? // Key Result Area
+  kpi           String? // Key Performance Indicator
   targetValue   String?
   achievedValue String?
-  progress      Float?   // 0-100
+  progress      Float? // 0-100
   weightage     Float?
-  cycle         String?  // FY2026-Q1 | FY2026-H1 | FY2026
-  status        String   @default("Draft") // Draft | Submitted | Manager reviewed | HR reviewed | Finalized
+  cycle         String? // FY2026-Q1 | FY2026-H1 | FY2026
+  status        String    @default("Draft") // Draft | Submitted | Manager reviewed | HR reviewed | Finalized
   startDate     DateTime?
   endDate       DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model EmployeePerformanceReview {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  cycle         String   // FY2026 | FY2026-H1
-  type          String?  // Self | Manager | HR | Final | 360
-  reviewerName  String?
-  rating        Float?   // 1-5
-  comments      String?
-  promotionRecommended Boolean @default(false)
+  id                   String    @id @default(cuid())
+  tenantId             String
+  employeeId           String
+  employee             Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  cycle                String // FY2026 | FY2026-H1
+  type                 String? // Self | Manager | HR | Final | 360
+  reviewerName         String?
+  rating               Float? // 1-5
+  comments             String?
+  promotionRecommended Boolean   @default(false)
   incrementRecommended Float?
-  status        String   @default("Draft") // Draft | Submitted | Manager reviewed | HR reviewed | Finalized
-  pipStatus     String?  // None | Active | Completed | Cancelled
-  pipNotes      String?
-  reviewDate    DateTime?
-  finalizedAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  status               String    @default("Draft") // Draft | Submitted | Manager reviewed | HR reviewed | Finalized
+  pipStatus            String? // None | Active | Completed | Cancelled
+  pipNotes             String?
+  reviewDate           DateTime?
+  finalizedAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
 
 model EmployeeExpense {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   tenantId      String
   employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  category      String?  // Travel | Food | Stay | Conveyance | Mobile | Internet | Other
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  category      String? // Travel | Food | Stay | Conveyance | Mobile | Internet | Other
   amount        Float
-  currency      String   @default("INR")
-  expenseDate   DateTime @default(now())
+  currency      String    @default("INR")
+  expenseDate   DateTime  @default(now())
   description   String?
   billUrl       String?
   project       String?
   client        String?
-  status        String   @default("Draft") // Draft | Submitted | Approved | Rejected | Paid | Cancelled
-  paymentStatus String?  // Pending | Paid | Reimbursed
+  status        String    @default("Draft") // Draft | Submitted | Approved | Rejected | Paid | Cancelled
+  paymentStatus String? // Pending | Paid | Reimbursed
   approvedBy    String?
   approvedAt    DateTime?
   paidAt        DateTime?
   remarks       String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model EmployeeHelpdeskTicket {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   tenantId      String
   employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   ticketCode    String
   subject       String
-  category      String?  // HR | IT | Payroll | Finance | Admin | Facilities | POSH | Whistleblower
-  priority      String   @default("Medium") // Low | Medium | High | Urgent
-  status        String   @default("Open") // Open | In Progress | Resolved | Closed | Reopened
+  category      String? // HR | IT | Payroll | Finance | Admin | Facilities | POSH | Whistleblower
+  priority      String    @default("Medium") // Low | Medium | High | Urgent
+  status        String    @default("Open") // Open | In Progress | Resolved | Closed | Reopened
   description   String?
   assignedTo    String?
   slaHours      Int?
-  slaStatus     String?  // Within SLA | Breaching | Breached
+  slaStatus     String? // Within SLA | Breaching | Breached
   resolution    String?
   resolvedAt    DateTime?
   feedback      String?
   rating        Int?
   attachmentUrl String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([tenantId, ticketCode])
 }
 
 model EmployeeLetter {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  letterType    String   // Offer | Appointment | Confirmation | Increment | Promotion | Transfer | Warning | Experience | Relieving | Termination | Internship | NDA
-  letterCode    String?
-  issuedDate    DateTime @default(now())
-  subject       String?
-  body          String?
-  pdfUrl        String?
-  status        String   @default("Generated") // Draft | Generated | Issued | E-signed | Cancelled
-  issuedBy      String?
-  approvedBy    String?
-  version       Int      @default(1)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id         String   @id @default(cuid())
+  tenantId   String
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  letterType String // Offer | Appointment | Confirmation | Increment | Promotion | Transfer | Warning | Experience | Relieving | Termination | Internship | NDA
+  letterCode String?
+  issuedDate DateTime @default(now())
+  subject    String?
+  body       String?
+  pdfUrl     String?
+  status     String   @default("Generated") // Draft | Generated | Issued | E-signed | Cancelled
+  issuedBy   String?
+  approvedBy String?
+  version    Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model EmployeeRequest {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  requestType   String   // Leave | Attendance regularization | Profile update | Document update | Bank update | Expense claim | Asset request | Travel | WFH | Shift change | Resignation
-  referenceId   String?  // id of related record (leave application id, etc.)
-  title         String
-  description   String?
-  payload       String?  // JSON of request-specific fields
-  status        String   @default("Pending") // Draft | Pending | Approved | Rejected | Cancelled | Withdrawn
-  pendingWith   String?
-  submittedAt   DateTime @default(now())
-  decidedAt     DateTime?
-  decidedBy     String?
-  remarks       String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String    @id @default(cuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  requestType String // Leave | Attendance regularization | Profile update | Document update | Bank update | Expense claim | Asset request | Travel | WFH | Shift change | Resignation
+  referenceId String? // id of related record (leave application id, etc.)
+  title       String
+  description String?
+  payload     String? // JSON of request-specific fields
+  status      String    @default("Pending") // Draft | Pending | Approved | Rejected | Cancelled | Withdrawn
+  pendingWith String?
+  submittedAt DateTime  @default(now())
+  decidedAt   DateTime?
+  decidedBy   String?
+  remarks     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 // ============================================================
-// LEAVE MANAGEMENT
+// LEAVE MANAGEMENT (industry-grade: Types, Rules/Policies,
+// Applicability, Entitlement, Accrual, Restrictions, Carry Forward,
+// Encashment, LOP, Comp-Off, Workflow, Ledger, Balance, Calendar,
+// Holiday, Weekly Off, Adjustments, Bulk, Audit)
 // ============================================================
 
+// --- LEAVE TYPE (master) --------------------------------------
 model LeaveType {
-  id              String   @id @default(cuid())
-  tenantId        String
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  code            String
-  name            String
-  color           String   @default("#10b981")
-  isPaid          Boolean  @default(true)
-  fullDayAllowed  Boolean  @default(true)
-  halfDayAllowed  Boolean  @default(false)
-  hourlyAllowed   Boolean  @default(false)
-  monthlyAccrual  Float    @default(0)
-  yearlyAccrual   Float    @default(0)
-  openingBalance  Float    @default(0)
-  carryForward    Boolean  @default(false)
-  carryForwardLimit Float?
-  encashment      Boolean  @default(false)
-  negativeAllowed Boolean  @default(false)
-  attachmentRequired Boolean @default(false)
-  reasonRequired  Boolean  @default(true)
-  genderApplicability String? // All | Male | Female
-  minDays         Int      @default(1)
-  maxDays         Int?
-  backdatedAllowed Boolean @default(true)
-  futureAllowed   Boolean  @default(true)
-  status          String   @default("Active")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id           String  @id @default(cuid())
+  tenantId     String
+  tenant       Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code         String
+  name         String
+  description  String?
+  color        String  @default("#10b981")
+  icon         String? // lucide icon name
+  displayOrder Int     @default(0)
 
-  policies        LeavePolicyItem[]
-  applications    LeaveApplication[]
-  balances        LeaveBalance[]
+  // Classification
+  category         String  @default("Annual") // Annual | Sick | Casual | Statutory | Unpaid | CompOff | Special
+  isPaid           Boolean @default(true)
+  paidType         String  @default("Paid") // Paid | Unpaid | PartiallyPaid
+  leaveUnit        String  @default("FullDay") // FullDay | HalfDay | Hourly | Mixed
+  balanceRequired  Boolean @default(true)
+  negativeAllowed  Boolean @default(false)
+  payrollImpact    String  @default("Paid") // Paid | LOP | PartialDeduction | NoEffect
+  attendanceImpact String  @default("Leave") // Leave | Absent | WeeklyOff | HolidayOverride
+
+  // Eligibility
+  genderApplicability     String  @default("All") // All | Male | Female | Other
+  maritalApplicability    String  @default("All") // All | Married | Unmarried
+  employmentApplicability String  @default("All") // All | Permanent | Contract | Intern | Probation | Consultant
+  countryApplicability    String? // comma-separated country codes; null = all
+
+  // Allowed modes
+  fullDayAllowed    Boolean @default(true)
+  halfDayAllowed    Boolean @default(false)
+  hourlyAllowed     Boolean @default(false)
+  quarterDayAllowed Boolean @default(false)
+
+  // Accrual defaults (can be overridden per-rule)
+  monthlyAccrual Float @default(0)
+  yearlyAccrual  Float @default(0)
+  openingBalance Float @default(0)
+
+  // Carry forward / encashment defaults
+  carryForward      Boolean @default(false)
+  carryForwardLimit Float?
+  encashment        Boolean @default(false)
+  encashmentLimit   Float?
+
+  // Document rules
+  attachmentRequired      Boolean @default(false)
+  attachmentThresholdDays Int     @default(0) // require attachment if leave > N days
+  reasonRequired          Boolean @default(true)
+
+  // Application window
+  minDays          Int     @default(1)
+  maxDays          Int?
+  maxContinuous    Int?
+  backdatedAllowed Boolean @default(true)
+  backdatedLimit   Int     @default(0) // days
+  futureAllowed    Boolean @default(true)
+  futureLimit      Int     @default(0) // days
+  advanceNotice    Int     @default(0) // days
+
+  // Advanced toggles
+  allowCancellation        Boolean @default(true)
+  allowWithdrawal          Boolean @default(true)
+  allowClubbing            Boolean @default(true)
+  // Clubbing config: comma-separated leave type codes that THIS type can be clubbed with.
+  // null/empty = can be clubbed with all allowed types.
+  clubbingWith             String?
+  // Sandwich rule config
+  sandwichRule             Boolean @default(false)
+  sandwichIncludeWeeklyOff Boolean @default(false) // count weekly offs between leave days
+  sandwichIncludeHolidays  Boolean @default(false) // count holidays between leave days
+  showInCalendar           Boolean @default(true)
+  showInPayslip            Boolean @default(true)
+  showBalanceToEmployee    Boolean @default(true)
+  showPolicyToEmployee     Boolean @default(true)
+  allowManagerApply        Boolean @default(false)
+  allowHrApply             Boolean @default(true)
+
+  status    String   @default("Active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  policies         LeavePolicyItem[]
+  applications     LeaveApplication[]
+  balances         LeaveBalance[]
+  ledgerEntries    LeaveLedger[]
+  adjustments      LeaveAdjustment[]
+  encashments      LeaveEncashmentRequest[]
+  carryForwardLogs LeaveCarryForwardLog[]
 
   @@unique([tenantId, code])
 }
 
+// --- LEAVE SETTINGS (per-tenant default OR per-entity override) -------------
+// entityId = "__default__" for tenant-wide defaults, or a real Entity.id for
+// entity-specific overrides. Settings are stored as a JSON blob.
+model LeaveSetting {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityId     String   @default("__default__") // "__default__" or real entity id
+  settingsJson String   @default("{}") // JSON blob of all leave settings
+  updatedAt    DateTime @updatedAt
+  updatedBy    String?
+
+  @@unique([tenantId, entityId])
+}
+
+// --- LEAVE RULE / POLICY (container of leave types + applicability) ---
 model LeavePolicy {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String
   code        String
   description String?
-  effectiveDate DateTime?
-  status      String   @default("Active")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  items       LeavePolicyItem[]
+  // Calendar / year
+  country            String    @default("India")
+  leaveYearType      String    @default("CalendarYear") // CalendarYear | FinancialYear | Custom | JoiningDate
+  calendarStartMonth Int       @default(1) // 1=Jan
+  effectiveFrom      DateTime?
+  effectiveTo        DateTime?
+  version            Int       @default(1)
+  isDefault          Boolean   @default(false)
+  priority           Int       @default(0) // higher wins when multiple rules match
+  status             String    @default("Active") // Active | Draft | Inactive
+
+  // Settings snapshot (JSON): general toggles for this rule
+  settingsJson String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  items           LeavePolicyItem[]
+  applicabilities LeaveRuleApplicability[]
+
+  @@unique([tenantId, code])
 }
 
+// --- LEAVE RULE ↔ LEAVE TYPE mapping (per-rule config) ---------
 model LeavePolicyItem {
-  id          String   @id @default(cuid())
+  id            String      @id @default(cuid())
   leavePolicyId String
-  leavePolicy LeavePolicy @relation(fields: [leavePolicyId], references: [id], onDelete: Cascade)
-  leaveTypeId String
-  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
-  allocation  Float    @default(0)
+  leavePolicy   LeavePolicy @relation(fields: [leavePolicyId], references: [id], onDelete: Cascade)
+  leaveTypeId   String
+  leaveType     LeaveType   @relation(fields: [leaveTypeId], references: [id])
+
+  displayName String? // override name in this rule
+  isActive    Boolean @default(true)
+
+  // Entitlement
+  entitlementType  String  @default("Fixed") // Fixed | Accrual | Experience | Attendance | Grant | Manual | Unlimited | None
+  totalEntitlement Float   @default(0)
+  entitlementUnit  String  @default("Days") // Days | Hours
+  creditTiming     String  @default("YearStart") // YearStart | Monthly | Joining | Custom
+  prorateNewJoiner Boolean @default(true)
+  roundingRule     String  @default("NoRounding") // NoRounding | Up | Down | NearestHalf
+
+  // Accrual
+  accrualFrequency    String  @default("Yearly") // Daily | Weekly | Monthly | Quarterly | HalfYearly | Yearly | PayrollCycle | Attendance
+  accrualAmount       Float   @default(0)
+  accrualDate         Int     @default(1) // day of month/period
+  accrualStartFrom    String  @default("PolicyStart") // PolicyStart | JoiningDate
+  maxAccrualLimit     Float?
+  stopAccrualOnLop    Boolean @default(false)
+  stopAccrualOnNotice Boolean @default(false)
+
+  // Restrictions
+  minLeavePerRequest  Float  @default(1)
+  maxLeavePerRequest  Float?
+  maxContinuous       Float?
+  maxPerMonth         Float?
+  maxPerYear          Float?
+  minGapBetweenLeaves Int    @default(0)
+
+  // Document
+  attachmentRequired      Boolean @default(false)
+  attachmentThresholdDays Int     @default(0)
+
+  // Carry forward
+  carryForward                 Boolean @default(false)
+  maxCarryForward              Float?
+  carryForwardExpiryMonths     Int     @default(0) // 0 = no expiry
+  carryForwardApprovalRequired Boolean @default(false)
+
+  // Encashment
+  encashment                 Boolean @default(false)
+  encashmentMinBalance       Float?
+  encashmentMaxDays          Float?
+  encashmentFormula          String? // e.g. "Basic/30*Days"
+  encashmentPayrollComponent String?
+
+  // Negative balance
+  allowNegativeBalance Boolean @default(false)
+  maxNegativeBalance   Float?
+
+  // LOP
+  isLop                  Boolean @default(false)
+  autoConvertAbsentToLop Boolean @default(false)
+
+  // Workflow override (JSON step config; null = use default leave workflow)
+  workflowOverrideJson String?
+
+  // Clubbing (JSON list of allowed/restricted leave type ids + rules)
+  clubbingAllowed    Boolean @default(true)
+  clubbingConfigJson String?
+
+  // Sandwich
+  sandwichRule       Boolean @default(false)
+  includeHolidays    Boolean @default(false)
+  includeWeeklyOffs  Boolean @default(false)
+  sandwichConfigJson String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([leavePolicyId, leaveTypeId])
 }
 
+// --- LEAVE RULE APPLICABILITY (who the rule applies to) --------
+model LeaveRuleApplicability {
+  id                 String      @id @default(cuid())
+  tenantId           String
+  leavePolicyId      String
+  leavePolicy        LeavePolicy @relation(fields: [leavePolicyId], references: [id], onDelete: Cascade)
+  applyTo            String      @default("AllEmployees") // AllEmployees | SelectedEntities | SelectedLocations | SelectedDepartments | SelectedGrades | SelectedEmployeeTypes | CustomGroup | SpecificEmployees
+  entityIds          String? // comma-separated
+  branchIds          String?
+  locationIds        String?
+  departmentIds      String?
+  designationIds     String?
+  gradeIds           String?
+  employeeTypeIds    String? // comma-separated employment types
+  employeeIds        String? // comma-separated specific employees
+  excludeEmployeeIds String?
+  gender             String      @default("All")
+  createdAt          DateTime    @default(now())
+}
+
+// --- LEAVE APPLICATION -----------------------------------------
 model LeaveApplication {
-  id          String   @id @default(cuid())
-  tenantId    String
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  leaveTypeId String
-  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  id                String    @id @default(cuid())
+  tenantId          String
+  employeeId        String
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId       String
+  leaveType         LeaveType @relation(fields: [leaveTypeId], references: [id])
+  leavePolicyItemId String? // which rule item configured this leave
+
   fromDate    DateTime
   toDate      DateTime
   days        Float
   halfDay     Boolean  @default(false)
-  reason      String?
-  attachmentUrl String?
-  status      String   @default("Pending") // Pending | Approved | Rejected | Cancelled | Withdrawn
-  appliedAt   DateTime @default(now())
-  decisionAt  DateTime?
-  decisionBy  String?
-  decisionComment String?
+  halfDayType String? // FirstHalf | SecondHalf (when halfDay)
+  hours       Float? // when hourly
+
+  reason         String?
+  attachmentUrl  String?
+  attachmentName String?
+
+  // Extra employee-supplied info
+  emergencyContact    String?
+  backupPersonId      String?
+  handoverNotes       String?
+  notifyTeamMemberIds String? // comma-separated employee ids
+  addressDuringLeave  String?
+  contactDuringLeave  String?
+
+  // Dynamic / leave-type-specific fields stored as JSON
+  extraFieldsJson String?
+
+  status             String    @default("Pending") // Draft | Pending | PendingHR | Approved | Rejected | Cancelled | Withdrawn | PartiallyApproved | AutoApproved | Expired
+  appliedAt          DateTime  @default(now())
+  decisionAt         DateTime?
+  decisionBy         String?
+  decisionComment    String?
+  currentApproverId  String?
   workflowInstanceId String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  // Partial approval
+  approvedFromDate DateTime?
+  approvedToDate   DateTime?
+  approvedDays     Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  days_log      LeaveApplicationDay[]
+  approvals     LeaveApproval[]
+  ledgerEntries LeaveLedger[]
 }
 
+// Per-day breakdown (half-day, sandwich, holiday inclusion, etc.)
+model LeaveApplicationDay {
+  id            String           @id @default(cuid())
+  applicationId String
+  application   LeaveApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  date          DateTime
+  dayType       String           @default("FullDay") // FullDay | FirstHalf | SecondHalf | Hourly
+  hours         Float?
+  isHoliday     Boolean          @default(false)
+  isWeeklyOff   Boolean          @default(false)
+  counted       Boolean          @default(true) // false if excluded by sandwich/holiday rule
+}
+
+// Approval chain records
+model LeaveApproval {
+  id            String           @id @default(cuid())
+  applicationId String
+  application   LeaveApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  stepOrder     Int
+  approverType  String // ReportingManager | DepartmentHead | HRManager | SpecificEmployee | Role
+  approverId    String?
+  approverName  String?
+  action        String // Pending | Approve | Reject | SendBack | Delegate | Escalate
+  comment       String?
+  actedAt       DateTime?
+  createdAt     DateTime         @default(now())
+}
+
+// --- LEAVE BALANCE (computed/materialized) ---------------------
 model LeaveBalance {
-  id          String   @id @default(cuid())
-  tenantId    String
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  leaveTypeId String
-  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
-  year        Int
-  opening     Float    @default(0)
-  accrued     Float    @default(0)
-  used        Float    @default(0)
-  pending     Float    @default(0)
-  lapsed      Float    @default(0)
+  id           String    @id @default(cuid())
+  tenantId     String
+  employeeId   String
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId  String
+  leaveType    LeaveType @relation(fields: [leaveTypeId], references: [id])
+  year         Int
+  opening      Float     @default(0)
+  accrued      Float     @default(0)
+  granted      Float     @default(0) // manual grants
+  adjusted     Float     @default(0) // net manual adjustments (+/-)
+  carryForward Float     @default(0)
+  used         Float     @default(0)
+  pending      Float     @default(0)
+  encashed     Float     @default(0)
+  lapsed       Float     @default(0)
+  expired      Float     @default(0)
 
   @@unique([employeeId, leaveTypeId, year])
+}
+
+// --- LEAVE LEDGER (immutable transaction log) ------------------
+model LeaveLedger {
+  id              String    @id @default(cuid())
+  tenantId        String
+  employeeId      String
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId     String
+  leaveType       LeaveType @relation(fields: [leaveTypeId], references: [id])
+  transactionDate DateTime  @default(now())
+  transactionType String // OpeningBalance | Accrual | ManualCredit | ManualDebit | LeaveApplied | LeaveApproved | LeaveCancelled | LeaveRejected | CarryForward | Encashment | Lapse | PayrollAdjustment | Migration
+  credit          Float     @default(0)
+  debit           Float     @default(0)
+  balanceAfter    Float     @default(0)
+  referenceType   String? // LeaveApplication | LeaveAdjustment | LeaveEncashment | LeaveCarryForward | Manual
+  referenceId     String?
+  remarks         String?
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+
+  application   LeaveApplication? @relation(fields: [applicationId], references: [id])
+  applicationId String?
+}
+
+// --- LEAVE ADJUSTMENT (manual balance tweaks by HR) ------------
+model LeaveAdjustment {
+  id             String    @id @default(cuid())
+  tenantId       String
+  employeeId     String
+  employee       Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId    String
+  leaveType      LeaveType @relation(fields: [leaveTypeId], references: [id])
+  adjustmentType String // Credit | Debit
+  amount         Float
+  effectiveDate  DateTime  @default(now())
+  reason         String?
+  remarks        String?
+  createdBy      String?
+  createdAt      DateTime  @default(now())
+}
+
+// --- COMP-OFF CREDIT -------------------------------------------
+model CompOffCredit {
+  id                       String    @id @default(cuid())
+  tenantId                 String
+  employeeId               String
+  employee                 Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  source                   String // WeeklyOffWork | HolidayWork | Overtime | OnCall | Manual
+  sourceDate               DateTime
+  earnedDate               DateTime  @default(now())
+  hours                    Float     @default(0)
+  days                     Float     @default(1)
+  expiryDate               DateTime?
+  status                   String    @default("Available") // Available | Used | Expired | Cancelled
+  usedAgainstApplicationId String?
+  approvedBy               String?
+  remarks                  String?
+  createdAt                DateTime  @default(now())
+}
+
+// --- LEAVE ENCASHMENT REQUEST ----------------------------------
+model LeaveEncashmentRequest {
+  id               String    @id @default(cuid())
+  tenantId         String
+  employeeId       String
+  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId      String
+  leaveType        LeaveType @relation(fields: [leaveTypeId], references: [id])
+  days             Float
+  amount           Float?
+  formula          String?
+  status           String    @default("Pending") // Pending | Approved | Rejected | Processed
+  requestedAt      DateTime  @default(now())
+  decisionAt       DateTime?
+  decisionBy       String?
+  decisionComment  String?
+  payrollComponent String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// --- LEAVE CARRY FORWARD LOG (year-end processing) -------------
+model LeaveCarryForwardLog {
+  id             String    @id @default(cuid())
+  tenantId       String
+  employeeId     String
+  employee       Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId    String
+  leaveType      LeaveType @relation(fields: [leaveTypeId], references: [id])
+  fromYear       Int
+  toYear         Int
+  carriedForward Float
+  lapsed         Float
+  encashed       Float
+  processedAt    DateTime  @default(now())
+  processedBy    String?
+}
+
+// --- WEEKLY OFF CALENDAR ---------------------------------------
+model WeeklyOffCalendar {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  code          String
+  entityIds     String? // comma-separated; null = all
+  locationIds   String?
+  weekOffType   String    @default("Fixed") // Fixed | AlternateSaturday | Rotational | ShiftBased | Custom
+  // comma-separated weekday numbers (0=Sun ... 6=Sat) for fixed off
+  fixedDays     String    @default("0") // default Sunday
+  // JSON config for rotational/alternate (e.g. {"weekNumbers":[2,4],"weekday":6})
+  configJson    String?
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  status        String    @default("Active")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([tenantId, code])
+}
+
+// --- LEAVE AUDIT LOG -------------------------------------------
+model LeaveAuditLog {
+  id            String    @id @default(cuid())
+  tenantId      String
+  employeeId    String?
+  employee      Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  module        String    @default("Leave")
+  action        String // LeaveTypeCreated | LeaveRuleCreated | LeaveApplied | LeaveApproved | BalanceAdjusted | CarryForwardProcessed | EncashmentProcessed | etc.
+  referenceType String?
+  referenceId   String?
+  oldValue      String?
+  newValue      String?
+  performedBy   String?
+  performedAt   DateTime  @default(now())
+  ipAddress     String?
+  reason        String?
 }
 
 // ============================================================
@@ -1065,62 +1464,72 @@ model LeaveBalance {
 // ============================================================
 
 model Shift {
-  id            String   @id @default(cuid())
-  tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  code          String
-  name          String
-  startTime     String   // "09:00"
-  endTime       String   // "18:00"
-  breakStart    String?
-  breakEnd      String?
-  workingHours  Float    @default(8)
-  graceMinutes Int      @default(15)
-  halfDayHours  Float    @default(4)
-  fullDayHours  Float    @default(8)
-  isNightShift  Boolean  @default(false)
-  isFlexible    Boolean  @default(false)
-  autoPunchOut  Boolean  @default(false)
-  overtimeEligible Boolean @default(false)
-  color         String   @default("#10b981")
-  status        String   @default("Active")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  tenantId            String
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code                String
+  name                String
+  startTime           String // "09:00"
+  endTime             String // "18:00"
+  breakStart          String?
+  breakEnd            String?
+  workingHours        Float    @default(8)
+  graceMinutes        Int      @default(15)
+  graceOutMinutes     Int      @default(15)
+  halfDayHours        Float    @default(4)
+  fullDayHours        Float    @default(8)
+  isNightShift        Boolean  @default(false)
+  isFlexible          Boolean  @default(false)
+  isCrossDay          Boolean  @default(false)
+  autoPunchOut        Boolean  @default(false)
+  overtimeEligible    Boolean  @default(false)
+  bufferBefore        Int      @default(0)
+  bufferAfter         Int      @default(0)
+  earlyClockInAllowed Boolean  @default(true)
+  lateClockOutAllowed Boolean  @default(true)
+  allowBreak          Boolean  @default(true)
+  paidBreak           Boolean  @default(false)
+  autoAssign          Boolean  @default(false)
+  color               String   @default("#10b981")
+  status              String   @default("Active")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   assignments   ShiftAssignment[]
   rosterEntries RosterEntry[]
+  attendances   Attendance[]
 
   @@unique([tenantId, code])
 }
 
 model ShiftAssignment {
-  id          String   @id @default(cuid())
-  tenantId    String
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  shiftId     String
-  shift       Shift    @relation(fields: [shiftId], references: [id])
+  id            String    @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shiftId       String
+  shift         Shift     @relation(fields: [shiftId], references: [id])
   effectiveDate DateTime
-  endDate     DateTime?
-  isRecurring Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  endDate       DateTime?
+  isRecurring   Boolean   @default(true)
+  createdAt     DateTime  @default(now())
 }
 
 model Roster {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String
   code        String
   startDate   DateTime
   endDate     DateTime
-  cycle       String   @default("Weekly") // Weekly | Monthly
-  status      String   @default("Draft") // Draft | Published | Locked
+  cycle       String    @default("Weekly") // Weekly | Monthly
+  status      String    @default("Draft") // Draft | Published | Locked
   publishedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  entries     RosterEntry[]
+  entries RosterEntry[]
 
   @@unique([tenantId, code])
 }
@@ -1158,24 +1567,250 @@ model Holiday {
 }
 
 model Attendance {
-  id          String   @id @default(cuid())
-  tenantId    String
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  date        DateTime
-  clockIn     DateTime?
-  clockOut    DateTime?
-  status      String   @default("Present") // Present | Absent | Half Day | Late | Weekly Off | Holiday | Leave | WFH | OD
-  workHours   Float    @default(0)
-  overtimeHours Float  @default(0)
-  isLate      Boolean  @default(false)
-  isEarlyGoing Boolean @default(false)
-  remarks     String?
-  source      String   @default("Web") // Web | Mobile | Biometric | Manual
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  tenantId             String
+  employeeId           String
+  employee             Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date                 DateTime
+  clockIn              DateTime?
+  clockOut             DateTime?
+  firstIn              DateTime?
+  lastOut              DateTime?
+  status               String    @default("Present") // Present | Absent | Half Day | Late | EarlyGoing | MissingInPunch | MissingOutPunch | WeeklyOff | Holiday | Leave | WFH | OnDuty | Permission | CompOff | LWP | NotYetPunched | AttendanceLocked | PayrollLocked
+  workHours            Float     @default(0)
+  breakHours           Float     @default(0)
+  effectiveHours       Float     @default(0)
+  overtimeHours        Float     @default(0)
+  isLate               Boolean   @default(false)
+  isEarlyGoing         Boolean   @default(false)
+  lateBy               Int       @default(0) // minutes
+  earlyBy              Int       @default(0) // minutes
+  remarks              String?
+  source               String    @default("Web") // Web | Mobile | Biometric | FaceRecognition | QRCode | GeoFence | AdminEntry | ExcelImport | API | Regularization
+  shiftId              String?
+  shift                Shift?    @relation(fields: [shiftId], references: [id])
+  regularizationStatus String? // Pending | Approved | Rejected | null
+  approvalStatus       String? // Pending | Approved | Rejected | null
+  isLocked             Boolean   @default(false)
+  isPayrollLocked      Boolean   @default(false)
+  geoLat               Float?
+  geoLng               Float?
+  geoAddress           String?
+  requestId            String? // linked attendance request if regularized
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@unique([employeeId, date])
+}
+
+// --- ATTENDANCE RULE / POLICY ---------------------------------
+model AttendanceRule {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  code          String
+  description   String?
+  country       String    @default("India")
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  isDefault     Boolean   @default(false)
+  priority      Int       @default(0)
+  status        String    @default("Active") // Active | Draft | Inactive
+  settingsJson  String? // shift rule, weekly off, holiday, grace, late/early, half-day, overtime, regularization, payroll, approval workflow
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdBy     String?
+
+  applicabilities AttendanceRuleApplicability[]
+
+  @@unique([tenantId, code])
+}
+
+model AttendanceRuleApplicability {
+  id                 String         @id @default(cuid())
+  tenantId           String
+  attendanceRuleId   String
+  attendanceRule     AttendanceRule @relation(fields: [attendanceRuleId], references: [id], onDelete: Cascade)
+  applyTo            String         @default("AllEmployees") // AllEmployees | SelectedEntities | SelectedLocations | SelectedDepartments | SelectedGrades | SelectedEmployeeTypes | SpecificEmployees
+  entityIds          String?
+  branchIds          String?
+  locationIds        String?
+  departmentIds      String?
+  designationIds     String?
+  gradeIds           String?
+  employeeTypeIds    String?
+  employeeIds        String?
+  excludeEmployeeIds String?
+  gender             String         @default("All")
+  createdAt          DateTime       @default(now())
+}
+
+// --- ATTENDANCE REQUEST (regularization, WFH, OD, permission, etc.)
+model AttendanceRequest {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  employeeId         String
+  employee           Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  requestType        String // Regularization | WFH | OnDuty | Permission | PartialDay | ShiftChange | WeeklyOffChange | Overtime | Correction | MissingPunch | ClientVisit | OfficialTravel | Training
+  attendanceDate     DateTime
+  fromDate           DateTime?
+  toDate             DateTime?
+  fromTime           String? // "09:00"
+  toTime             String? // "18:00"
+  duration           Float     @default(0) // hours
+  currentStatus      String? // current attendance status
+  requestedStatus    String? // requested attendance status
+  currentFirstIn     DateTime?
+  currentLastOut     DateTime?
+  requestedFirstIn   DateTime?
+  requestedLastOut   DateTime?
+  reason             String?
+  attachmentUrl      String?
+  attachmentName     String?
+  notifyTo           String? // csv employee ids
+  workLocation       String?
+  clientSiteName     String?
+  purpose            String?
+  permissionType     String?
+  extraFieldsJson    String?
+  status             String    @default("Submitted") // Draft | Submitted | PendingApproval | Approved | Rejected | Cancelled | Withdrawn | AutoApproved | Escalated
+  appliedAt          DateTime  @default(now())
+  decisionAt         DateTime?
+  decisionBy         String?
+  decisionComment    String?
+  currentApproverId  String?
+  workflowInstanceId String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  approvals AttendanceRequestApproval[]
+}
+
+model AttendanceRequestApproval {
+  id           String            @id @default(cuid())
+  requestId    String
+  request      AttendanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  stepOrder    Int
+  approverType String // ReportingManager | HR | DepartmentHead | LocationHR | PayrollAdmin | Custom
+  approverId   String?
+  approverName String?
+  action       String            @default("Pending") // Pending | Approved | Rejected | Forwarded | Delegated
+  comment      String?
+  actedAt      DateTime?
+  createdAt    DateTime          @default(now())
+}
+
+// --- ATTENDANCE RAW LOG (device / biometric) ------------------
+model AttendanceRawLog {
+  id              String    @id @default(cuid())
+  tenantId        String
+  employeeId      String?
+  employee        Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  deviceEmpId     String?
+  deviceName      String?
+  punchTime       DateTime
+  punchType       String    @default("In") // In | Out | Break | Resume
+  location        String?
+  latitude        Float?
+  longitude       Float?
+  source          String    @default("Biometric") // Biometric | FaceRecognition | Mobile | Web | QRCode | GeoFence | Kiosk | API | Manual | ExcelImport
+  syncStatus      String    @default("Synced") // Synced | Failed | Pending
+  errorMessage    String?
+  processedStatus String    @default("Processed") // Processed | Ignored | Reprocess | Unmapped
+  attendanceId    String?
+  createdAt       DateTime  @default(now())
+}
+
+// --- ATTENDANCE OVERTIME --------------------------------------
+model AttendanceOvertime {
+  id            String    @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date          DateTime
+  shiftHours    Float     @default(0)
+  actualHours   Float     @default(0)
+  overtimeHours Float     @default(0)
+  overtimeType  String    @default("Weekday") // Weekday | Weekend | Holiday
+  status        String    @default("Pending") // Pending | Approved | Rejected | SentToPayroll
+  approvedBy    String?
+  approvedAt    DateTime?
+  payrollStatus String? // null | Pending | Processed
+  remarks       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// --- ATTENDANCE LOCK ------------------------------------------
+model AttendanceLock {
+  id                     String   @id @default(cuid())
+  tenantId               String
+  lockType               String   @default("Monthly") // Daily | Weekly | Monthly | Manual | Auto
+  fromDate               DateTime
+  toDate                 DateTime
+  scope                  String   @default("Tenant") // Tenant | Entity | Department | Location
+  scopeId                String?
+  lockedBy               String?
+  lockedAt               DateTime @default(now())
+  unlockApprovalRequired Boolean  @default(false)
+  reason                 String?
+  createdAt              DateTime @default(now())
+}
+
+// --- ATTENDANCE BULK UPDATE -----------------------------------
+model AttendanceBulkUpdate {
+  id            String    @id @default(cuid())
+  tenantId      String
+  requestedBy   String?
+  actionType    String // MarkPresent | MarkAbsent | MarkHalfDay | MarkWeeklyOff | MarkHoliday | MarkWFH | MarkOnDuty | MarkLWP | UpdatePunchTime | AddMissingPunch | CancelPenalty | Regularize | AssignShift | ChangeWeeklyOff | Lock | Unlock | Recalculate
+  fromDate      DateTime
+  toDate        DateTime
+  employeeIds   String? // csv
+  filtersJson   String?
+  newStatus     String?
+  newInTime     String?
+  newOutTime    String?
+  reason        String?
+  attachmentUrl String?
+  status        String    @default("Pending") // Pending | Approved | Rejected | Processed
+  approvedBy    String?
+  approvedAt    DateTime?
+  affectedCount Int       @default(0)
+  processedAt   DateTime?
+  auditJson     String?
+  createdAt     DateTime  @default(now())
+}
+
+// --- ATTENDANCE AUDIT LOG -------------------------------------
+model AttendanceAuditLog {
+  id            String    @id @default(cuid())
+  tenantId      String
+  employeeId    String?
+  employee      Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  module        String    @default("Attendance")
+  action        String // AttendanceUpdated | RegularizationApplied | BulkUpdate | LockApplied | ShiftAssigned | etc.
+  referenceType String?
+  referenceId   String?
+  oldValue      String?
+  newValue      String?
+  performedBy   String?
+  performedAt   DateTime  @default(now())
+  ipAddress     String?
+  reason        String?
+}
+
+// --- ATTENDANCE SETTINGS (entity-scoped) ----------------------
+model AttendanceSetting {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityId     String   @default("__default__") // "__default__" or real entity id
+  settingsJson String   @default("{}")
+  updatedAt    DateTime @updatedAt
+  updatedBy    String?
+
+  @@unique([tenantId, entityId])
 }
 
 // ============================================================
@@ -1193,32 +1828,32 @@ model AssetCategory {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  assets      Asset[]
+  assets        Asset[]
   assetRequests AssetRequest[]
 
   @@unique([tenantId, code])
 }
 
 model Asset {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  assetCode   String
-  name        String
-  categoryId  String?
-  category    AssetCategory? @relation(fields: [categoryId], references: [id])
-  serialNumber String?
-  assetTag    String?
-  purchaseDate DateTime?
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assetCode     String
+  name          String
+  categoryId    String?
+  category      AssetCategory? @relation(fields: [categoryId], references: [id])
+  serialNumber  String?
+  assetTag      String?
+  purchaseDate  DateTime?
   purchaseValue Float?
-  condition   String   @default("Good") // Good | Fair | Damaged | Lost
-  status      String   @default("In Stock") // In Stock | Assigned | Returned | Damaged | Lost | Repair | Retired | Disposed
-  assignedToId String?
-  assignedDate DateTime?
-  returnDate  DateTime?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  condition     String         @default("Good") // Good | Fair | Damaged | Lost
+  status        String         @default("In Stock") // In Stock | Assigned | Returned | Damaged | Lost | Repair | Retired | Disposed
+  assignedToId  String?
+  assignedDate  DateTime?
+  returnDate    DateTime?
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   assignments AssetAssignment[]
 
@@ -1226,32 +1861,32 @@ model Asset {
 }
 
 model AssetAssignment {
-  id          String   @id @default(cuid())
-  assetId     String
-  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  assetId      String
+  asset        Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  employeeId   String
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   assignedDate DateTime
-  returnDate  DateTime?
-  condition   String   @default("Good")
-  acknowledged Boolean @default(false)
-  notes       String?
+  returnDate   DateTime?
+  condition    String    @default("Good")
+  acknowledged Boolean   @default(false)
+  notes        String?
 }
 
 model AssetRequest {
-  id          String   @id @default(cuid())
-  tenantId    String
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  categoryId  String?
-  category    AssetCategory? @relation(fields: [categoryId], references: [id])
-  requestType String   @default("New") // New | Replacement | Repair
-  reason      String?
-  status      String   @default("Pending") // Pending | Approved | Rejected | Fulfilled
-  priority    String   @default("Medium")
+  id                 String         @id @default(cuid())
+  tenantId           String
+  employeeId         String
+  employee           Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  categoryId         String?
+  category           AssetCategory? @relation(fields: [categoryId], references: [id])
+  requestType        String         @default("New") // New | Replacement | Repair
+  reason             String?
+  status             String         @default("Pending") // Pending | Approved | Rejected | Fulfilled
+  priority           String         @default("Medium")
   workflowInstanceId String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 }
 
 // ============================================================
@@ -1264,9 +1899,9 @@ model FormSchema {
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   code        String
   name        String
-  module      String   // employee | entity | leaveType | shift | roster | asset | leaveApplication | assetRequest | custom
+  module      String // employee | entity | leaveType | shift | roster | asset | leaveApplication | assetRequest | custom
   description String?
-  sections    String   // JSON: array of {title, fields: [...]}
+  sections    String // JSON: array of {title, fields: [...]}
   status      String   @default("Published") // Draft | Published
   version     Int      @default(1)
   createdAt   DateTime @default(now())
@@ -1280,67 +1915,67 @@ model FormSchema {
 // ============================================================
 
 model Workflow {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  code        String
-  name        String
-  module      String   // leave | asset | attendance | employee | expense | onboarding
-  event       String   // create | update | apply | request
-  description String?
-  approvalType String  @default("Sequential") // Sequential | Parallel | Auto
-  conditions  String?  // JSON
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code         String
+  name         String
+  module       String // leave | asset | attendance | employee | expense | onboarding
+  event        String // create | update | apply | request
+  description  String?
+  approvalType String   @default("Sequential") // Sequential | Parallel | Auto
+  conditions   String? // JSON
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  steps       WorkflowStep[]
-  instances   WorkflowInstance[]
+  steps     WorkflowStep[]
+  instances WorkflowInstance[]
 
   @@unique([tenantId, code])
 }
 
 model WorkflowStep {
-  id          String   @id @default(cuid())
-  workflowId  String
-  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  level       Int
-  approverType String  // ReportingManager | DepartmentHead | HRManager | SpecificEmployee | Role
-  approverId  String?  // employee id when SpecificEmployee
+  id           String   @id @default(cuid())
+  workflowId   String
+  workflow     Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  level        Int
+  approverType String // ReportingManager | DepartmentHead | HRManager | SpecificEmployee | Role
+  approverId   String? // employee id when SpecificEmployee
   approverRole String?
-  slaHours    Int?
-  name        String?
+  slaHours     Int?
+  name         String?
 
-  instances   WorkflowAction[]
+  instances WorkflowAction[]
 }
 
 model WorkflowInstance {
-  id          String   @id @default(cuid())
-  tenantId    String
-  workflowId  String
-  workflow    Workflow @relation(fields: [workflowId], references: [id])
-  module      String
-  recordId    String   // the entity being approved
-  initiatorId String?
-  status      String   @default("Pending") // Pending | Approved | Rejected | Cancelled
-  currentLevel Int     @default(1)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  completedAt DateTime?
+  id           String    @id @default(cuid())
+  tenantId     String
+  workflowId   String
+  workflow     Workflow  @relation(fields: [workflowId], references: [id])
+  module       String
+  recordId     String // the entity being approved
+  initiatorId  String?
+  status       String    @default("Pending") // Pending | Approved | Rejected | Cancelled
+  currentLevel Int       @default(1)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  completedAt  DateTime?
 
-  actions     WorkflowAction[]
+  actions WorkflowAction[]
 }
 
 model WorkflowAction {
-  id              String   @id @default(cuid())
-  instanceId      String
-  instance        WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  stepId          String
-  step            WorkflowStep @relation(fields: [stepId], references: [id])
-  action          String   // Approve | Reject | Escalate
-  actorId         String?
-  comment         String?
-  actedAt         DateTime @default(now())
+  id         String           @id @default(cuid())
+  instanceId String
+  instance   WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stepId     String
+  step       WorkflowStep     @relation(fields: [stepId], references: [id])
+  action     String // Approve | Reject | Escalate
+  actorId    String?
+  comment    String?
+  actedAt    DateTime         @default(now())
 }
 
 // ============================================================
@@ -1348,32 +1983,32 @@ model WorkflowAction {
 // ============================================================
 
 model Announcement {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   title       String
   body        String?
-  audience    String   @default("All") // All | Entity | Department | Location
+  audience    String    @default("All") // All | Entity | Department | Location
   audienceRef String?
-  publishDate DateTime @default(now())
+  publishDate DateTime  @default(now())
   expiryDate  DateTime?
-  priority    String   @default("Normal")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  priority    String    @default("Normal")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  module      String
-  action      String   // Create | Update | Delete | Approve | Reject
-  recordId    String?
-  userId      String?
-  userName    String?
-  details     String?  // JSON
-  ip          String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  module    String
+  action    String // Create | Update | Delete | Approve | Reject
+  recordId  String?
+  userId    String?
+  userName  String?
+  details   String? // JSON
+  ip        String?
+  createdAt DateTime @default(now())
 }
 
 // ============================================================
@@ -1381,134 +2016,134 @@ model AuditLog {
 // ============================================================
 
 model SalaryStructure {
-  id            String   @id @default(cuid())
-  tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  code          String
-  name          String
-  description   String?
+  id                      String   @id @default(cuid())
+  tenantId                String
+  tenant                  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code                    String
+  name                    String
+  description             String?
   // Default component percentages (of CTC)
-  basicPercent  Float    @default(50)
-  hraPercent    Float    @default(20)
-  specialAllowancePercent Float @default(20)
-  conveyanceAllowance Float @default(1600)
-  medicalAllowance Float  @default(1250)
-  bonusAmount   Float    @default(0)
+  basicPercent            Float    @default(50)
+  hraPercent              Float    @default(20)
+  specialAllowancePercent Float    @default(20)
+  conveyanceAllowance     Float    @default(1600)
+  medicalAllowance        Float    @default(1250)
+  bonusAmount             Float    @default(0)
   // Employer contributions
-  pfEmployerPercent Float @default(12)
-  esiEmployerPercent Float @default(3.25)
+  pfEmployerPercent       Float    @default(12)
+  esiEmployerPercent      Float    @default(3.25)
   // Employee deductions
-  pfEmployeePercent Float @default(12)
-  esiEmployeePercent Float @default(0.75)
-  professionalTax Float  @default(200)
-  tdsPercent     Float   @default(0)
-  status        String   @default("Active") // Active | Inactive
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  pfEmployeePercent       Float    @default(12)
+  esiEmployeePercent      Float    @default(0.75)
+  professionalTax         Float    @default(200)
+  tdsPercent              Float    @default(0)
+  status                  String   @default("Active") // Active | Inactive
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  assignments   SalaryAssignment[]
+  assignments SalaryAssignment[]
 
   @@unique([tenantId, code])
 }
 
 model SalaryAssignment {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  salaryStructureId String
-  salaryStructure SalaryStructure @relation(fields: [salaryStructureId], references: [id])
-  ctc           Float
-  basic         Float
-  hra           Float
-  specialAllowance Float
+  id                  String          @id @default(cuid())
+  tenantId            String
+  employeeId          String
+  employee            Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  salaryStructureId   String
+  salaryStructure     SalaryStructure @relation(fields: [salaryStructureId], references: [id])
+  ctc                 Float
+  basic               Float
+  hra                 Float
+  specialAllowance    Float
   conveyanceAllowance Float
-  medicalAllowance Float
-  bonusAmount   Float
-  pfEmployee    Float
-  pfEmployer    Float
-  esiEmployee   Float
-  esiEmployer   Float
-  professionalTax Float
-  tdsAmount     Float
-  grossSalary   Float
-  netSalary     Float
-  effectiveDate DateTime
-  endDate       DateTime?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  medicalAllowance    Float
+  bonusAmount         Float
+  pfEmployee          Float
+  pfEmployer          Float
+  esiEmployee         Float
+  esiEmployer         Float
+  professionalTax     Float
+  tdsAmount           Float
+  grossSalary         Float
+  netSalary           Float
+  effectiveDate       DateTime
+  endDate             DateTime?
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 }
 
 model PayrollRun {
-  id            String   @id @default(cuid())
-  tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  code          String   // PR-2026-06
-  name          String   // "June 2026 Payroll"
-  payPeriod     String   // "2026-06"
-  payPeriodStart DateTime
-  payPeriodEnd  DateTime
-  payDate       DateTime
-  status        String   @default("Draft") // Draft | Processing | Completed | Approved | Paid | Cancelled
-  processedAt   DateTime?
-  approvedAt    DateTime?
-  approvedBy    String?
-  paidAt        DateTime?
-  totalGross    Float    @default(0)
-  totalNet      Float    @default(0)
-  totalDeductions Float  @default(0)
-  totalEmployerContribution Float @default(0)
-  employeeCount Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                        String    @id @default(cuid())
+  tenantId                  String
+  tenant                    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code                      String // PR-2026-06
+  name                      String // "June 2026 Payroll"
+  payPeriod                 String // "2026-06"
+  payPeriodStart            DateTime
+  payPeriodEnd              DateTime
+  payDate                   DateTime
+  status                    String    @default("Draft") // Draft | Processing | Completed | Approved | Paid | Cancelled
+  processedAt               DateTime?
+  approvedAt                DateTime?
+  approvedBy                String?
+  paidAt                    DateTime?
+  totalGross                Float     @default(0)
+  totalNet                  Float     @default(0)
+  totalDeductions           Float     @default(0)
+  totalEmployerContribution Float     @default(0)
+  employeeCount             Int       @default(0)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 
-  payslips      Payslip[]
+  payslips Payslip[]
 
   @@unique([tenantId, code])
 }
 
 model Payslip {
-  id            String   @id @default(cuid())
-  tenantId      String
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  payrollRunId  String
-  payrollRun    PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
-  payPeriod     String
-  payPeriodStart DateTime
-  payPeriodEnd  DateTime
-  payDate       DateTime
+  id                        String     @id @default(cuid())
+  tenantId                  String
+  employeeId                String
+  employee                  Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payrollRunId              String
+  payrollRun                PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  payPeriod                 String
+  payPeriodStart            DateTime
+  payPeriodEnd              DateTime
+  payDate                   DateTime
   // Earnings
-  basic         Float
-  hra           Float
-  specialAllowance Float
-  conveyanceAllowance Float
-  medicalAllowance Float
-  bonusAmount   Float
-  grossEarnings Float
+  basic                     Float
+  hra                       Float
+  specialAllowance          Float
+  conveyanceAllowance       Float
+  medicalAllowance          Float
+  bonusAmount               Float
+  grossEarnings             Float
   // Deductions
-  pfEmployee    Float
-  esiEmployee   Float
-  professionalTax Float
-  tdsAmount     Float
-  totalDeductions Float
+  pfEmployee                Float
+  esiEmployee               Float
+  professionalTax           Float
+  tdsAmount                 Float
+  totalDeductions           Float
   // Net
-  netSalary     Float
+  netSalary                 Float
   // Employer contributions (cost to company)
-  pfEmployer    Float
-  esiEmployer   Float
+  pfEmployer                Float
+  esiEmployer               Float
   totalEmployerContribution Float
-  ctc           Float
+  ctc                       Float
   // Working days
-  workingDays   Int      @default(30)
-  daysPaid      Int      @default(30)
-  lopDays       Int      @default(0) // Loss of pay
-  status        String   @default("Generated") // Generated | Approved | Paid | Cancelled
-  generatedAt   DateTime @default(now())
-  paidAt        DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  workingDays               Int        @default(30)
+  daysPaid                  Int        @default(30)
+  lopDays                   Int        @default(0) // Loss of pay
+  status                    String     @default("Generated") // Generated | Approved | Paid | Cancelled
+  generatedAt               DateTime   @default(now())
+  paidAt                    DateTime?
+  createdAt                 DateTime   @default(now())
+  updatedAt                 DateTime   @updatedAt
 
   @@unique([payrollRunId, employeeId])
 }
@@ -1535,7 +2170,7 @@ model OnboardingWorkflow {
   status        String   @default("Active") // Active | Draft | Archived
   category      String   @default("General") // General | Fresher | Lateral | Leadership | Intern | Contractor
   isDefault     Boolean  @default(false)
-  applicability String?  // JSON: { departments: [], grades: [], employmentTypes: [] }
+  applicability String? // JSON: { departments: [], grades: [], employmentTypes: [] }
   icon          String   @default("LayoutGrid")
   color         String   @default("#10b981")
   // Board-level defaults
@@ -1547,207 +2182,207 @@ model OnboardingWorkflow {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  stages        OnboardingStage[]
-  candidates    OnboardingCandidate[]
+  stages     OnboardingStage[]
+  candidates OnboardingCandidate[]
 
   @@unique([tenantId, code])
 }
 
 model OnboardingStage {
-  id            String   @id @default(cuid())
-  tenantId      String
-  workflowId    String
-  workflow      OnboardingWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  name          String
-  code          String
-  order         Int      // position on the board (0-based)
-  description   String?
+  id          String             @id @default(cuid())
+  tenantId    String
+  workflowId  String
+  workflow    OnboardingWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  name        String
+  code        String
+  order       Int // position on the board (0-based)
+  description String?
 
   // ---- Visual customization ----
-  color         String   @default("#64748b") // column header + card accent
-  icon          String   @default("Circle")  // lucide icon name
-  stageType     String   @default("standard") // start | standard | gate | end
-  category      String   @default("process") // intake | process | review | gate | completion
+  color     String @default("#64748b") // column header + card accent
+  icon      String @default("Circle") // lucide icon name
+  stageType String @default("standard") // start | standard | gate | end
+  category  String @default("process") // intake | process | review | gate | completion
 
   // ---- Timing / SLA ----
-  slaDays       Int?     // expected duration in this stage; null = no SLA
-  slaWarningDays Int?    // days before SLA breach to flag amber
-  isMilestone   Boolean  @default(false) // key checkpoint stage
+  slaDays        Int? // expected duration in this stage; null = no SLA
+  slaWarningDays Int? // days before SLA breach to flag amber
+  isMilestone    Boolean @default(false) // key checkpoint stage
 
   // ---- Capacity ----
-  wipLimit      Int?     // max cards allowed in this column; null = unlimited
+  wipLimit        Int? // max cards allowed in this column; null = unlimited
   blockOnOverflow Boolean @default(false) // block incoming moves when wipLimit reached
 
   // ---- Gates / Conditions (JSON) ----
   // entryGates: [{ type: "approval"|"task_completion"|"field_required"|"document_required", config: {...} }]
-  entryGates    String?
+  entryGates String?
   // exitGates: [{ type: "approval"|"task_completion"|"form_submitted"|"document_uploaded", config: {...} }]
-  exitGates     String?
+  exitGates  String?
 
   // ---- Ownership ----
-  defaultOwnerId String?  // employee id of default stage owner
-  ownerType     String    @default("assignee") // assignee | default | role | dynamic
-  ownerRole     String?   // role-based assignment (e.g., "HR", "IT", "Manager")
+  defaultOwnerId String? // employee id of default stage owner
+  ownerType      String  @default("assignee") // assignee | default | role | dynamic
+  ownerRole      String? // role-based assignment (e.g., "HR", "IT", "Manager")
 
   // ---- Task Templates (auto-created when a card enters this stage) ----
   taskTemplates OnboardingTaskTemplate[]
 
   // ---- Form / Document requirements ----
-  requiresForm  Boolean  @default(false)
-  formSchemaId  String?  // reference to FormSchema.id if requiresForm
+  requiresForm      Boolean @default(false)
+  formSchemaId      String? // reference to FormSchema.id if requiresForm
   requiredDocuments String? // JSON array of doc types: ["offer_letter","id_proof","address_proof"]
 
   // ---- Automation triggers (JSON) ----
   // [{ event: "on_enter"|"on_exit"|"on_overdue", action: "notify"|"create_task"|"assign_owner"|"webhook", config: {...} }]
-  automations   String?
+  automations String?
 
   // ---- Behavior ----
-  isSkippable   Boolean  @default(false) // can a card jump past this stage
-  isRequired    Boolean  @default(true)  // must every pipeline pass through this stage
-  autoAdvance   Boolean  @default(false) // auto-advance to next when all exit gates met
+  isSkippable Boolean @default(false) // can a card jump past this stage
+  isRequired  Boolean @default(true) // must every pipeline pass through this stage
+  autoAdvance Boolean @default(false) // auto-advance to next when all exit gates met
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  instanceStages OnboardingInstanceStage[]
-  currentCandidates OnboardingCandidate[] @relation("CandidateCurrentStage")
+  instanceStages    OnboardingInstanceStage[]
+  currentCandidates OnboardingCandidate[]     @relation("CandidateCurrentStage")
 
   @@unique([workflowId, code])
   @@unique([workflowId, order])
 }
 
 model OnboardingTaskTemplate {
-  id            String   @id @default(cuid())
-  tenantId      String
-  stageId       String
-  stage         OnboardingStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
-  title         String
-  description   String?
-  daysFromStage Int      @default(0) // due date offset from stage entry
-  ownerType     String   @default("stage_owner") // stage_owner | candidate | default
+  id             String          @id @default(cuid())
+  tenantId       String
+  stageId        String
+  stage          OnboardingStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  daysFromStage  Int             @default(0) // due date offset from stage entry
+  ownerType      String          @default("stage_owner") // stage_owner | candidate | default
   defaultOwnerId String?
-  isBlocking    Boolean  @default(false) // must complete to exit stage
-  priority      String   @default("Medium") // Low | Medium | High
-  category      String   @default("General") // General | IT | HR | Admin | Documentation | Training
-  order         Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isBlocking     Boolean         @default(false) // must complete to exit stage
+  priority       String          @default("Medium") // Low | Medium | High
+  category       String          @default("General") // General | IT | HR | Admin | Documentation | Training
+  order          Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 model OnboardingCandidate {
-  id            String   @id @default(cuid())
-  tenantId      String
-  workflowId    String
-  workflow      OnboardingWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  id         String             @id @default(cuid())
+  tenantId   String
+  workflowId String
+  workflow   OnboardingWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   // Candidate identity
-  candidateName String
-  email         String?
-  phone         String?
-  employeeCode  String?  // proposed employee code
-  designation   String?
-  department    String?
-  grade         String?
-  employmentType String   @default("Full-time") // Full-time | Part-time | Contract | Intern
-  joinDate      DateTime?
-  reportTo      String?  // manager name/id
+  candidateName  String
+  email          String?
+  phone          String?
+  employeeCode   String? // proposed employee code
+  designation    String?
+  department     String?
+  grade          String?
+  employmentType String    @default("Full-time") // Full-time | Part-time | Contract | Intern
+  joinDate       DateTime?
+  reportTo       String? // manager name/id
 
   // Card display
-  priority      String   @default("Medium") // Low | Medium | High | Critical
-  avatarColor   String   @default("#10b981")
-  tags          String?  // JSON array of strings
+  priority    String  @default("Medium") // Low | Medium | High | Critical
+  avatarColor String  @default("#10b981")
+  tags        String? // JSON array of strings
 
   // Pipeline state
   currentStageId String?
   currentStage   OnboardingStage? @relation("CandidateCurrentStage", fields: [currentStageId], references: [id])
-  status        String   @default("Active") // Active | OnHold | Completed | Withdrawn | Terminated
-  progress      Int      @default(0) // 0-100 percentage
+  status         String           @default("Active") // Active | OnHold | Completed | Withdrawn | Terminated
+  progress       Int              @default(0) // 0-100 percentage
 
   // Ownership
-  ownerId       String?  // primary owner/HR BP
+  ownerId String? // primary owner/HR BP
 
-  enteredAt     DateTime? // when candidate entered current stage
-  startedAt     DateTime @default(now()) // onboarding started
-  completedAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  enteredAt   DateTime? // when candidate entered current stage
+  startedAt   DateTime  @default(now()) // onboarding started
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  instance      OnboardingInstance?
-  notes         OnboardingNote[]
+  instance OnboardingInstance?
+  notes    OnboardingNote[]
 
   @@unique([tenantId, email])
 }
 
 model OnboardingInstance {
-  id            String   @id @default(cuid())
-  tenantId      String
-  candidateId   String   @unique
-  candidate     OnboardingCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  workflowId    String
-  workflowSnapshot String? // JSON snapshot of workflow at creation time
-  currentStageOrder Int   @default(0)
-  overallProgress Int     @default(0)
-  isComplete    Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                String              @id @default(cuid())
+  tenantId          String
+  candidateId       String              @unique
+  candidate         OnboardingCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  workflowId        String
+  workflowSnapshot  String? // JSON snapshot of workflow at creation time
+  currentStageOrder Int                 @default(0)
+  overallProgress   Int                 @default(0)
+  isComplete        Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
-  stages        OnboardingInstanceStage[]
-  tasks         OnboardingInstanceTask[]
+  stages OnboardingInstanceStage[]
+  tasks  OnboardingInstanceTask[]
 }
 
 model OnboardingInstanceStage {
-  id            String   @id @default(cuid())
-  tenantId      String
-  instanceId    String
-  instance      OnboardingInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  stageId       String
-  stage         OnboardingStage @relation(fields: [stageId], references: [id])
-  order         Int
-  status        String   @default("Pending") // Pending | Active | Completed | Skipped | Blocked
-  enteredAt     DateTime?
-  completedAt   DateTime?
-  slaDueAt      DateTime?
-  ownerId       String?
-  notes         String?
-  metadata      String?  // JSON for gate evaluation results etc.
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String             @id @default(cuid())
+  tenantId    String
+  instanceId  String
+  instance    OnboardingInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stageId     String
+  stage       OnboardingStage    @relation(fields: [stageId], references: [id])
+  order       Int
+  status      String             @default("Pending") // Pending | Active | Completed | Skipped | Blocked
+  enteredAt   DateTime?
+  completedAt DateTime?
+  slaDueAt    DateTime?
+  ownerId     String?
+  notes       String?
+  metadata    String? // JSON for gate evaluation results etc.
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 
   @@unique([instanceId, stageId])
 }
 
 model OnboardingInstanceTask {
-  id            String   @id @default(cuid())
-  tenantId      String
-  instanceId    String
-  instance      OnboardingInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  stageId       String?
-  title         String
-  description   String?
-  status        String   @default("Pending") // Pending | InProgress | Completed | Skipped
-  priority      String   @default("Medium")
-  category      String   @default("General")
-  ownerType     String   @default("stage_owner")
-  ownerId       String?
-  dueDate       DateTime?
-  completedAt   DateTime?
-  isBlocking    Boolean  @default(false)
-  order         Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String             @id @default(cuid())
+  tenantId    String
+  instanceId  String
+  instance    OnboardingInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stageId     String?
+  title       String
+  description String?
+  status      String             @default("Pending") // Pending | InProgress | Completed | Skipped
+  priority    String             @default("Medium")
+  category    String             @default("General")
+  ownerType   String             @default("stage_owner")
+  ownerId     String?
+  dueDate     DateTime?
+  completedAt DateTime?
+  isBlocking  Boolean            @default(false)
+  order       Int                @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 }
 
 model OnboardingNote {
-  id            String   @id @default(cuid())
-  tenantId      String
-  candidateId   String
-  candidate     OnboardingCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  authorId      String?
-  authorName    String?
-  body          String
-  stageId       String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String              @id @default(cuid())
+  tenantId    String
+  candidateId String
+  candidate   OnboardingCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  authorId    String?
+  authorName  String?
+  body        String
+  stageId     String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 }
 
 // ============================================================
@@ -1757,34 +2392,34 @@ model OnboardingNote {
 
 // ----- Document Library (spec #8) — 15 categories -----
 model OnboardingDocumentTemplate {
-  id              String   @id @default(cuid())
-  tenantId        String
-  name            String
-  code            String
-  documentType    String   // Offer Letter | Appointment Letter | NDA | ... | Custom Document
-  scopeType       String   @default("tenant") // tenant | entity | branch | location | department | employee_type
-  entityId        String?
-  branchId        String?
-  locationId      String?
-  departmentId    String?
-  employeeType    String?
-  language        String   @default("en")
-  version         Int      @default(1)
-  isDefault       Boolean  @default(false)
-  status          String   @default("Active") // Active | Draft | Archived
-  createdBy       String?
+  id            String    @id @default(cuid())
+  tenantId      String
+  name          String
+  code          String
+  documentType  String // Offer Letter | Appointment Letter | NDA | ... | Custom Document
+  scopeType     String    @default("tenant") // tenant | entity | branch | location | department | employee_type
+  entityId      String?
+  branchId      String?
+  locationId    String?
+  departmentId  String?
+  employeeType  String?
+  language      String    @default("en")
+  version       Int       @default(1)
+  isDefault     Boolean   @default(false)
+  status        String    @default("Active") // Active | Draft | Archived
+  createdBy     String?
   // Template editor sections
-  headerHtml      String?
-  bodyHtml        String
-  footerHtml      String?
+  headerHtml    String?
+  bodyHtml      String
+  footerHtml    String?
   // Page settings (JSON: pageSize, orientation, margins, logo, signature, watermark)
-  pageSettings    String?
+  pageSettings  String?
   // Comma-separated list of variable slugs used (for validation/preview)
-  variablesUsed   String?
-  effectiveFrom   DateTime?
-  effectiveTo     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  variablesUsed String?
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([tenantId, code])
   @@index([tenantId, documentType])
@@ -1792,34 +2427,34 @@ model OnboardingDocumentTemplate {
 
 // ----- Email Templates (spec #9) — 21 event categories -----
 model OnboardingEmailTemplate {
-  id              String   @id @default(cuid())
-  tenantId        String
-  name            String
-  code            String
-  eventType       String   // Candidate Invite | Invite Reminder | ... | Candidate Dropped
-  scopeType       String   @default("tenant")
-  entityId        String?
-  workflowId      String?
-  language        String   @default("en")
-  subject         String
-  headerHtml      String?
-  bodyHtml        String
-  footerHtml      String?
-  isDefault       Boolean  @default(false)
-  status          String   @default("Active")
-  version         Int      @default(1)
-  createdBy       String?
+  id            String    @id @default(cuid())
+  tenantId      String
+  name          String
+  code          String
+  eventType     String // Candidate Invite | Invite Reminder | ... | Candidate Dropped
+  scopeType     String    @default("tenant")
+  entityId      String?
+  workflowId    String?
+  language      String    @default("en")
+  subject       String
+  headerHtml    String?
+  bodyHtml      String
+  footerHtml    String?
+  isDefault     Boolean   @default(false)
+  status        String    @default("Active")
+  version       Int       @default(1)
+  createdBy     String?
   // Recipient settings (JSON: { to: [], cc: [], bcc: [] })
   // Each entry: { type: "candidate"|"hr_owner"|"recruiter"|...|"specific_email", value: string }
-  recipients      String?
+  recipients    String?
   // Reply-to / from override
-  fromEmail       String?
-  replyToEmail    String?
-  variablesUsed   String?
-  effectiveFrom   DateTime?
-  effectiveTo     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  fromEmail     String?
+  replyToEmail  String?
+  variablesUsed String?
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([tenantId, code])
   @@index([tenantId, eventType])
@@ -1827,53 +2462,53 @@ model OnboardingEmailTemplate {
 
 // ----- Checklists (spec #10) — 9 categories -----
 model OnboardingChecklist {
-  id              String   @id @default(cuid())
-  tenantId        String
-  name            String
-  code            String
-  description     String?
-  category        String   // Candidate | HR | Manager | IT | Admin | Payroll | Finance | Training | Compliance
-  scopeType       String   @default("tenant")
-  entityId        String?
-  departmentId    String?
-  employeeType    String?
-  isDefault       Boolean  @default(false)
-  status          String   @default("Active")
-  version         Int      @default(1)
-  tasks           OnboardingChecklistTask[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id           String                    @id @default(cuid())
+  tenantId     String
+  name         String
+  code         String
+  description  String?
+  category     String // Candidate | HR | Manager | IT | Admin | Payroll | Finance | Training | Compliance
+  scopeType    String                    @default("tenant")
+  entityId     String?
+  departmentId String?
+  employeeType String?
+  isDefault    Boolean                   @default(false)
+  status       String                    @default("Active")
+  version      Int                       @default(1)
+  tasks        OnboardingChecklistTask[]
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
 
   @@unique([tenantId, code])
   @@index([tenantId, category])
 }
 
 model OnboardingChecklistTask {
-  id              String   @id @default(cuid())
-  tenantId        String
-  checklistId     String
-  checklist       OnboardingChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-  name            String
-  code            String
-  description     String?
-  ownerType       String   @default("hr_owner") // candidate | hr_owner | recruiter | reporting_manager | department_head | it_admin | admin_team | payroll_admin | finance_admin | training_owner | specific_employee | role_based
-  ownerId         String?
-  dueDateRule     String   @default("on_joining") // on_start | before_joining_X | on_joining | after_joining_X | after_previous_X | manual
-  dueDateOffset   Int      @default(0) // X days for the X-based rules
-  priority        String   @default("Medium") // Low | Medium | High | Critical
-  isMandatory     Boolean  @default(false)
-  isBlocking      Boolean  @default(false)
-  requiresAttachment Boolean @default(false)
-  requiresComment Boolean  @default(false)
-  requiresApproval Boolean @default(false)
+  id                    String              @id @default(cuid())
+  tenantId              String
+  checklistId           String
+  checklist             OnboardingChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  name                  String
+  code                  String
+  description           String?
+  ownerType             String              @default("hr_owner") // candidate | hr_owner | recruiter | reporting_manager | department_head | it_admin | admin_team | payroll_admin | finance_admin | training_owner | specific_employee | role_based
+  ownerId               String?
+  dueDateRule           String              @default("on_joining") // on_start | before_joining_X | on_joining | after_joining_X | after_previous_X | manual
+  dueDateOffset         Int                 @default(0) // X days for the X-based rules
+  priority              String              @default("Medium") // Low | Medium | High | Critical
+  isMandatory           Boolean             @default(false)
+  isBlocking            Boolean             @default(false)
+  requiresAttachment    Boolean             @default(false)
+  requiresComment       Boolean             @default(false)
+  requiresApproval      Boolean             @default(false)
   autoCompleteCondition String?
-  reminderRule    String?  // JSON
-  escalationRule  String?  // JSON
-  stageMapping    String?  // stage code or id
-  status          String   @default("Active")
-  order           Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  reminderRule          String? // JSON
+  escalationRule        String? // JSON
+  stageMapping          String? // stage code or id
+  status                String              @default("Active")
+  order                 Int                 @default(0)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 
   @@unique([checklistId, code])
 }
@@ -1882,12 +2517,12 @@ model OnboardingChecklistTask {
 model OnboardingLog {
   id              String   @id @default(cuid())
   tenantId        String
-  logType         String   // Candidate Activity | Workflow | Stage Movement | Document | Email | Checklist | Approval | Verification | Employee Conversion | System | Error
+  logType         String // Candidate Activity | Workflow | Stage Movement | Document | Email | Checklist | Approval | Verification | Employee Conversion | System | Error
   candidateId     String?
   candidateName   String?
   employeeCode    String?
   entityId        String?
-  entityType      String?  // Entity / Company name (denormalized for fast display)
+  entityType      String? // Entity / Company name (denormalized for fast display)
   actionType      String
   oldValue        String?
   newValue        String?
@@ -1898,7 +2533,7 @@ model OnboardingLog {
   device          String?
   status          String   @default("Success") // Success | Failed | Warning
   remarks         String?
-  metadata        String?  // JSON for extra context
+  metadata        String? // JSON for extra context
   createdAt       DateTime @default(now())
 
   @@index([tenantId, logType])
@@ -1908,41 +2543,41 @@ model OnboardingLog {
 
 // ----- Settings (spec #13) — 15 sub-tabs, key-value store -----
 model OnboardingSetting {
-  id              String   @id @default(cuid())
-  tenantId        String
-  category        String   // general | candidate | kanban | workflow | document | template | checklist | email | verification | approval | candidate_portal | employee_conversion | import_export | audit
-  key             String
-  value           String?  // JSON-encoded value (string | number | boolean | object)
-  updatedAt       DateTime @updatedAt
+  id        String   @id @default(cuid())
+  tenantId  String
+  category  String // general | candidate | kanban | workflow | document | template | checklist | email | verification | approval | candidate_portal | employee_conversion | import_export | audit
+  key       String
+  value     String? // JSON-encoded value (string | number | boolean | object)
+  updatedAt DateTime @updatedAt
 
   @@unique([tenantId, category, key])
 }
 
 // ----- Entity Configuration (spec #14) — 7-level scope defaults per entity -----
 model OnboardingEntityConfig {
-  id              String   @id @default(cuid())
-  tenantId        String
-  entityId        String
-  useTenantDefault Boolean @default(true)
-  defaultWorkflowId      String?
-  defaultKanbanBoardId   String?
-  defaultCandidateFormId String?
-  defaultDocumentSet     String?  // JSON array of doc template ids
-  defaultChecklistSet    String?  // JSON array of checklist ids
-  defaultEmailGroup      String?  // JSON array of email template ids
-  defaultVerificationRule String?
-  defaultApprovalWorkflow String?
+  id                            String    @id @default(cuid())
+  tenantId                      String
+  entityId                      String
+  useTenantDefault              Boolean   @default(true)
+  defaultWorkflowId             String?
+  defaultKanbanBoardId          String?
+  defaultCandidateFormId        String?
+  defaultDocumentSet            String? // JSON array of doc template ids
+  defaultChecklistSet           String? // JSON array of checklist ids
+  defaultEmailGroup             String? // JSON array of email template ids
+  defaultVerificationRule       String?
+  defaultApprovalWorkflow       String?
   defaultCandidatePortalSetting String?
   defaultEmployeeConversionRule String?
-  defaultHrOwner         String?
-  defaultRecruiter       String?
-  defaultReportingManagerRule String?
-  defaultSetupRule       String?
-  effectiveFrom   DateTime?
-  effectiveTo     DateTime?
-  status          String   @default("Active")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  defaultHrOwner                String?
+  defaultRecruiter              String?
+  defaultReportingManagerRule   String?
+  defaultSetupRule              String?
+  effectiveFrom                 DateTime?
+  effectiveTo                   DateTime?
+  status                        String    @default("Active")
+  createdAt                     DateTime  @default(now())
+  updatedAt                     DateTime  @updatedAt
 
   @@unique([tenantId, entityId])
 }

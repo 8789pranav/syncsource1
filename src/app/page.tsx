@@ -19,7 +19,7 @@ const OffboardingModule = dynamic(() => import("@/components/hrms/modules/offboa
 const LeaveModule = dynamic(() => import("@/components/hrms/modules/leave").then(m => ({ default: m.LeaveModule })), { loading })
 const ShiftModule = dynamic(() => import("@/components/hrms/modules/shift").then(m => ({ default: m.ShiftModule })), { loading })
 const RosterModule = dynamic(() => import("@/components/hrms/modules/roster").then(m => ({ default: m.RosterModule })), { loading })
-const AttendanceModule = dynamic(() => import("@/components/hrms/modules/attendance").then(m => ({ default: m.AttendanceModule })), { loading })
+const AttendanceModule = dynamic(() => import("@/components/hrms/attendance").then(m => ({ default: m.AttendanceModule })), { loading })
 const HolidayModule = dynamic(() => import("@/components/hrms/modules/holiday").then(m => ({ default: m.HolidayModule })), { loading })
 const AssetsModule = dynamic(() => import("@/components/hrms/modules/asset").then(m => ({ default: m.AssetsModule })), { loading })
 const PayrollModule = dynamic(() => import("@/components/hrms/modules/payroll").then(m => ({ default: m.PayrollModule })), { loading })
