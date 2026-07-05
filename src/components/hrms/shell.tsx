@@ -17,7 +17,7 @@ import {
 import {
   LayoutDashboard, Building2, Users, CalendarDays, CalendarRange, Clock,
   Package, FileEdit, Workflow, Megaphone, Settings, ScrollText, Sun, Moon,
-  Bell, Search, Menu, ChevronLeft, Sparkles, ShieldCheck, HelpCircle, LogOut,
+  Bell, Search, Menu, ChevronLeft, Sparkles, ShieldCheck, HelpCircle, LogOut, X,
   Wallet, Banknote, UserPlus, UserMinus, ArrowLeftRight, Receipt,
   FileStack, ShieldAlert,
 } from "lucide-react"
@@ -126,7 +126,8 @@ function Logo() {
 }
 
 function NavItem({ m }: { m: ShellModule }) {
-  const { activeModule, activeSubModule, setModule, sidebarOpen } = useHrmsStore()
+  const { activeModule, activeSubModule, setModule, sidebarOpen, mobileNavOpen, setMobileNavOpen } = useHrmsStore()
+  const showFull = sidebarOpen || mobileNavOpen
   // For payroll children: active only when both module and sub-menu match.
   // For non-child items: active when module matches (and either no payrollMenu, or sub-module is null/undefined).
   const isChildPayroll = !!m.payrollMenu
@@ -146,7 +147,7 @@ function NavItem({ m }: { m: ShellModule }) {
 
   return (
     <button
-      onClick={() => setModule(m.id as ModuleId, m.payrollMenu ?? null)}
+      onClick={() => { setModule(m.id as ModuleId, m.payrollMenu ?? null); setMobileNavOpen(false) }}
       title={m.label}
       className={cn(
         "group relative flex w-full items-center gap-2 rounded-lg text-sm font-medium transition-all",
@@ -160,11 +161,11 @@ function NavItem({ m }: { m: ShellModule }) {
           : m.isChild
             ? "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
             : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        !sidebarOpen && "justify-center px-0",
+        !showFull && "justify-center px-0",
       )}
     >
       {/* Left rail indicator for child items (when collapsed, hide since we center icon) */}
-      {m.isChild && sidebarOpen && (
+      {m.isChild && showFull && (
         <span
           className={cn(
             "absolute left-2 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full",
@@ -173,7 +174,7 @@ function NavItem({ m }: { m: ShellModule }) {
         />
       )}
       <Icon className={cn("h-[16px] w-[16px] shrink-0", active ? (m.isChild ? "text-white" : "text-primary-foreground") : "text-muted-foreground group-hover:text-sidebar-accent-foreground", m.isChild && "h-[15px] w-[15px]")} />
-      {sidebarOpen && (
+      {showFull && (
         <span className={cn("truncate", m.isChild && "text-[13px]")}>{m.label}</span>
       )}
     </button>
@@ -181,7 +182,8 @@ function NavItem({ m }: { m: ShellModule }) {
 }
 
 function Sidebar() {
-  const { sidebarOpen, setSidebar, toggleSidebar, allowedModules } = useHrmsStore()
+  const { sidebarOpen, setSidebar, toggleSidebar, mobileNavOpen, setMobileNavOpen, allowedModules } = useHrmsStore()
+  const showFull = sidebarOpen || mobileNavOpen
   // Filter modules by permission
   const visibleModules = React.useMemo(() => {
     if (!allowedModules) return MODULES // null = not loaded yet = show all
@@ -193,51 +195,76 @@ function Sidebar() {
     })
   }, [allowedModules])
   return (
-    <aside
-      className={cn(
-        "sticky top-0 h-screen shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col overflow-hidden transition-[width] duration-200 z-30",
-        sidebarOpen ? "w-64" : "w-16",
+    <>
+      {/* Mobile backdrop overlay */}
+      {mobileNavOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden="true"
+        />
       )}
-    >
-      <div className={cn("flex h-16 items-center border-b border-sidebar-border", sidebarOpen ? "px-4 justify-between" : "px-2 justify-center")}>
-        {sidebarOpen ? <Logo /> : (
-          <div className="grid h-9 w-9 place-items-center rounded-xl gradient-emerald text-primary-foreground">
-            <Sparkles className="h-5 w-5" />
-          </div>
+      <aside
+        className={cn(
+          "flex flex-col overflow-hidden border-r border-sidebar-border bg-sidebar h-screen",
+          // Mobile: fixed overlay drawer, slide in/out
+          "fixed inset-y-0 left-0 z-50 w-64 transition-transform duration-200 lg:translate-x-0",
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          // Desktop: sticky, width transitions between w-64 and w-16
+          "lg:sticky lg:top-0 lg:z-30 lg:transition-[width] lg:duration-200",
+          sidebarOpen ? "lg:w-64" : "lg:w-16",
         )}
-      </div>
-      <ScrollArea className="flex-1 min-h-0 px-2 py-3">
-        <nav className="space-y-4">
-          {GROUPS.map((g) => {
-            const items = visibleModules.filter((m) => m.group === g.id)
-            if (items.length === 0) return null
-            return (
-              <div key={g.id}>
-                {sidebarOpen && <p className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{g.label}</p>}
-                <div className="space-y-0.5">
-                  {items.map((m) => <NavItem key={m.id + (m.payrollMenu ? `-${m.payrollMenu}` : "")} m={m} />)}
+      >
+        <div className={cn("flex h-16 items-center border-b border-sidebar-border shrink-0", showFull ? "px-4 justify-between" : "px-2 justify-center")}>
+          {showFull ? <Logo /> : (
+            <div className="grid h-9 w-9 place-items-center rounded-xl gradient-emerald text-primary-foreground">
+              <Sparkles className="h-5 w-5" />
+            </div>
+          )}
+          {/* Close button on mobile */}
+          {mobileNavOpen && (
+            <button
+              onClick={() => setMobileNavOpen(false)}
+              className="lg:hidden grid h-8 w-8 place-items-center rounded-lg hover:bg-sidebar-accent text-muted-foreground"
+              aria-label="Close menu"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <ScrollArea className="flex-1 min-h-0 px-2 py-3">
+          <nav className="space-y-4">
+            {GROUPS.map((g) => {
+              const items = visibleModules.filter((m) => m.group === g.id)
+              if (items.length === 0) return null
+              return (
+                <div key={g.id}>
+                  {showFull && <p className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{g.label}</p>}
+                  <div className="space-y-0.5">
+                    {items.map((m) => <NavItem key={m.id + (m.payrollMenu ? `-${m.payrollMenu}` : "")} m={m} />)}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </nav>
-      </ScrollArea>
-      <div className={cn("border-t border-sidebar-border p-3", !sidebarOpen && "px-2")}>
-        <button
-          onClick={toggleSidebar}
-          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-        >
-          <ChevronLeft className={cn("h-4 w-4 transition-transform", !sidebarOpen && "rotate-180")} />
-          {sidebarOpen && <span>Collapse</span>}
-        </button>
-      </div>
-    </aside>
+              )
+            })}
+          </nav>
+        </ScrollArea>
+        <div className={cn("border-t border-sidebar-border p-3 shrink-0", !showFull && "px-2")}>
+          <button
+            onClick={toggleSidebar}
+            className="hidden lg:flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+          >
+            <ChevronLeft className={cn("h-4 w-4 transition-transform", !sidebarOpen && "rotate-180")} />
+            {sidebarOpen && <span>Collapse</span>}
+          </button>
+        </div>
+      </aside>
+    </>
   )
 }
 
 function Topbar() {
   const { theme, setTheme } = useTheme()
-  const { toggleSidebar, activeModule, currentUserName, currentUserRole, currentRoleName, currentRoleType, currentRiskLevel, isViewAs } = useHrmsStore()
+  const { toggleSidebar, setMobileNavOpen, activeModule, currentUserName, currentUserRole, currentRoleName, currentRoleType, currentRiskLevel, isViewAs } = useHrmsStore()
   const perm = usePermissions()
   const [mounted, setMounted] = React.useState(false)
   const [myPermOpen, setMyPermOpen] = React.useState(false)
@@ -252,7 +279,7 @@ function Topbar() {
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border/60 bg-background/80 backdrop-blur-md px-4 sm:px-6">
-      <button onClick={toggleSidebar} className="grid h-9 w-9 place-items-center rounded-lg hover:bg-muted text-muted-foreground">
+      <button onClick={() => { if (window.innerWidth < 1024) setMobileNavOpen(true); else toggleSidebar() }} className="grid h-9 w-9 place-items-center rounded-lg hover:bg-muted text-muted-foreground" aria-label="Toggle menu">
         <Menu className="h-[18px] w-[18px]" />
       </button>
       <div className="hidden md:block min-w-0">

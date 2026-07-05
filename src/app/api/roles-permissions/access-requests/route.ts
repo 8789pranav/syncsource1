@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const items = await db.accessRequest.findMany({
     where,
     include: {
-      requestedBy: { select: { id: true, employeeCode: true, firstName: true, lastName: true, displayName: true, workEmail: true } },
+      requestedBy: { select: { id: true, employeeCode: true, firstName: true, lastName: true, displayName: true, officialEmail: true } },
       approver: { select: { id: true, employeeCode: true, firstName: true, lastName: true, displayName: true } },
       approvedBy: { select: { id: true, firstName: true, lastName: true, displayName: true } },
     },

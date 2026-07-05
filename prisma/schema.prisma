@@ -390,6 +390,11 @@ model Employee {
   loginAccess         EmployeeLoginAccess[]
   roleMappings        EmployeeRoleMapping[]
   userRoles           UserRole[]
+  accessRequestsRequested AccessRequest[] @relation("AccessRequestRequestedBy")
+  accessRequestsApproving AccessRequest[] @relation("AccessRequestApprover")
+  accessRequestsApproved  AccessRequest[] @relation("AccessRequestApprovedBy")
+  delegationsFrom         Delegation[]    @relation("DelegationFrom")
+  delegationsTo           Delegation[]    @relation("DelegationTo")
   customFieldValues   EmployeeCustomFieldValue[]
   formSubmissions     EmployeeFormSubmission[]
   skills              EmployeeSkill[]
@@ -2756,6 +2761,7 @@ model RoleDataScope {
   roleId        String
   role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
   ruleId        String?  // link to a reusable DataAccessRule
+  rule          DataAccessRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
   scopeType     String   @default("All") // Self | DirectReports | DirectIndirectReports | SameDepartment | SameLocation | SameEntity | Selected... | Custom | All
   entityId      String?
   branchIds     String?  // JSON array
@@ -2798,6 +2804,7 @@ model DataAccessRule {
   code            String
   description     String?
   entityId        String?
+  dataScopes      RoleDataScope[]
   branchIds       String?  // JSON array
   locationIds     String?  // JSON array
   departmentIds   String?  // JSON array
@@ -2847,7 +2854,9 @@ model Delegation {
   id              String   @id @default(cuid())
   tenantId        String
   fromEmployeeId  String
+  fromEmployee    Employee @relation("DelegationFrom", fields: [fromEmployeeId], references: [id])
   toEmployeeId    String
+  toEmployee      Employee @relation("DelegationTo", fields: [toEmployeeId], references: [id])
   delegationType  String   // ApprovalDelegation | TaskDelegation | TemporaryRole | ReadOnlyAccess
   module          String?  // optional, null = all
   permissionScope String?  // JSON describing scope override
@@ -2867,6 +2876,7 @@ model AccessRequest {
   id              String   @id @default(cuid())
   tenantId        String
   requestedById   String
+  requestedBy     Employee @relation("AccessRequestRequestedBy", fields: [requestedById], references: [id])
   requestType     String   // NewRole | TemporaryAccess | ModuleAccess | ReportAccess | DocumentAccess | PayrollAccess
   requestedRole   String?
   requestedModule String?
@@ -2874,8 +2884,10 @@ model AccessRequest {
   requiredFrom    DateTime
   requiredTo      DateTime?
   approverId      String?
+  approver        Employee? @relation("AccessRequestApprover", fields: [approverId], references: [id])
   status          String   @default("Draft") // Draft | Submitted | PendingApproval | Approved | Rejected | Expired | Revoked
   approvedById    String?
+  approvedBy      Employee? @relation("AccessRequestApprovedBy", fields: [approvedById], references: [id])
   approvedAt      DateTime?
   approverComments String?
   createdAt       DateTime @default(now())

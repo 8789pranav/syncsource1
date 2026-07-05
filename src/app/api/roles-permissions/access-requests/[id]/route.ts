@@ -7,7 +7,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const ar = await db.accessRequest.findUnique({
     where: { id },
     include: {
-      requestedBy: { select: { id: true, employeeCode: true, firstName: true, lastName: true, displayName: true, workEmail: true } },
+      requestedBy: { select: { id: true, employeeCode: true, firstName: true, lastName: true, displayName: true, officialEmail: true } },
       approver: { select: { id: true, firstName: true, lastName: true, displayName: true } },
       approvedBy: { select: { id: true, firstName: true, lastName: true, displayName: true } },
     },

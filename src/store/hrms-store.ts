@@ -80,6 +80,8 @@ interface HrmsState {
   setSubModule: (sub: string | null) => void
   toggleSidebar: () => void
   setSidebar: (open: boolean) => void
+  mobileNavOpen: boolean
+  setMobileNavOpen: (open: boolean) => void
   setTheme: (t: "light" | "dark") => void
   setSearch: (q: string) => void
 }
@@ -90,6 +92,7 @@ export const useHrmsStore = create<HrmsState>()(
       activeModule: "dashboard",
       activeSubModule: null,
       sidebarOpen: true,
+      mobileNavOpen: false,
       theme: "light",
       searchQuery: "",
       currentUserId: null,
@@ -145,6 +148,7 @@ export const useHrmsStore = create<HrmsState>()(
       setSubModule: (sub) => set({ activeSubModule: sub }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setSidebar: (open) => set({ sidebarOpen: open }),
+      setMobileNavOpen: (open) => set({ mobileNavOpen: open }),
       setTheme: (t) => set({ theme: t }),
       setSearch: (q) => set({ searchQuery: q }),
     }),
