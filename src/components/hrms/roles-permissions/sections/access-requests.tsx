@@ -204,7 +204,7 @@ export function AccessRequestsSection() {
         title="Access Requests"
         description="Users can request new roles, temporary access, module access, report access or document access. Approvers review and approve/reject."
         icon={UserCog}
-        actions={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-fuchsia-500 to-pink-500" onClick={openCreate}><Plus className="h-4 w-4" /> New Request</Button>}
+        actions={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-fuchsia-500 to-pink-500 hover:shadow-md hover:shadow-fuchsia-500/25 hover:-translate-y-0.5 transition-all" onClick={openCreate}><Plus className="h-4 w-4" /> New Request</Button>}
       />
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -216,7 +216,7 @@ export function AccessRequestsSection() {
         <TabsContent value={tab} className="mt-3 space-y-3">
           <div className="flex gap-2">
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="h-9 w-[200px]"><SelectValue placeholder="All Types" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[200px] focus-visible:ring-violet-400/40"><SelectValue placeholder="All Types" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all__">All Types</SelectItem>
                 {ACCESS_REQUEST_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
@@ -227,7 +227,7 @@ export function AccessRequestsSection() {
           {loading ? (
             <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : items.length === 0 ? (
-            <EmptyState icon={UserCog} title="No access requests" description="Submit a new request to get started." action={<Button size="sm" className="gap-1.5" onClick={openCreate}><Plus className="h-4 w-4" /> New Request</Button>} />
+            <EmptyState icon={UserCog} title="No access requests" description="Submit a new request to get started." action={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-fuchsia-500 to-pink-500 hover:shadow-md hover:shadow-fuchsia-500/25 hover:-translate-y-0.5 transition-all" onClick={openCreate}><Plus className="h-4 w-4" /> New Request</Button>} />
           ) : (
             <DataTable columns={columns} rows={items} onRowClick={(r) => setViewTarget(r)} />
           )}

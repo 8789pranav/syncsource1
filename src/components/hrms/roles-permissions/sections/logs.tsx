@@ -168,13 +168,13 @@ export function LogsSection() {
         title="Audit Logs"
         description="Every permission change, role assignment, access request and sensitive data view is logged for compliance."
         icon={ScrollText}
-        actions={<Button size="sm" variant="outline" className="gap-1.5" onClick={exportCSV}><Download className="h-4 w-4" /> Export CSV</Button>}
+        actions={<Button size="sm" variant="outline" className="gap-1.5 hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300 hover:text-violet-600 transition-all" onClick={exportCSV}><Download className="h-4 w-4" /> Export CSV</Button>}
       />
 
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search logs..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 bg-background" />
+          <Input placeholder="Search logs..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 bg-background focus-visible:ring-violet-400/40" />
         </div>
         <Select value={filterAction} onValueChange={setFilterAction}>
           <SelectTrigger className="h-9 w-[200px]"><SelectValue placeholder="All Actions" /></SelectTrigger>
@@ -196,7 +196,7 @@ export function LogsSection() {
       {loading ? (
         <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
       ) : items.length === 0 ? (
-        <EmptyState icon={ScrollText} title="No audit logs" description="Permission changes will be logged here." />
+        <EmptyState icon={ScrollText} title="No audit logs" description="Permission changes will be logged here." action={<Button size="sm" variant="outline" className="gap-1.5 hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300 hover:text-violet-600 transition-all" onClick={exportCSV}><Download className="h-4 w-4" /> Export CSV</Button>} />
       ) : (
         <>
           <DataTable columns={columns} rows={items} onRowClick={(l) => setViewLog(l)} />
@@ -214,19 +214,19 @@ export function LogsSection() {
           {viewLog && (
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-lg border border-border/40 p-2">
+                <div className="rounded-lg border border-border/40 p-2 transition-colors hover:border-violet-300/60 hover:bg-violet-50/30 dark:hover:bg-violet-500/5">
                   <p className="text-[10px] text-muted-foreground uppercase">Date</p>
                   <p className="font-medium text-xs">{new Date(viewLog.createdAt).toLocaleString()}</p>
                 </div>
-                <div className="rounded-lg border border-border/40 p-2">
+                <div className="rounded-lg border border-border/40 p-2 transition-colors hover:border-violet-300/60 hover:bg-violet-50/30 dark:hover:bg-violet-500/5">
                   <p className="text-[10px] text-muted-foreground uppercase">Performed By</p>
                   <p className="font-medium text-xs">{viewLog.performedByName || "System"}</p>
                 </div>
-                <div className="rounded-lg border border-border/40 p-2">
+                <div className="rounded-lg border border-border/40 p-2 transition-colors hover:border-violet-300/60 hover:bg-violet-50/30 dark:hover:bg-violet-500/5">
                   <p className="text-[10px] text-muted-foreground uppercase">Status</p>
                   <Badge variant="outline" className={`text-[10px] ${viewLog.status === "Failed" ? "border-rose-300 text-rose-600" : "border-emerald-300 text-emerald-600"}`}>{viewLog.status}</Badge>
                 </div>
-                <div className="rounded-lg border border-border/40 p-2">
+                <div className="rounded-lg border border-border/40 p-2 transition-colors hover:border-violet-300/60 hover:bg-violet-50/30 dark:hover:bg-violet-500/5">
                   <p className="text-[10px] text-muted-foreground uppercase">IP / Device</p>
                   <p className="font-mono text-[10px]">{viewLog.ipAddress || "—"} {viewLog.device && `· ${viewLog.device}`}</p>
                 </div>

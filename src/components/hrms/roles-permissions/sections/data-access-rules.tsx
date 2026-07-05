@@ -198,11 +198,11 @@ export function DataAccessRulesSection() {
         title="Data Access Rules"
         description="Reusable data scopes that control which employee records a role can see. Link them to roles for fine-grained row-level access."
         icon={Filter}
-        actions={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500" onClick={openCreate}><Plus className="h-4 w-4" /> Create Rule</Button>}
+        actions={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500 hover:shadow-md hover:shadow-rose-500/25 hover:-translate-y-0.5 transition-all" onClick={openCreate}><Plus className="h-4 w-4" /> Create Rule</Button>}
       />
 
       <div className="flex gap-2">
-        <div className="flex-1 max-w-xs"><Input placeholder="Search rules..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 bg-background" /></div>
+        <div className="flex-1 max-w-xs"><Input placeholder="Search rules..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 bg-background focus-visible:ring-violet-400/40" /></div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="h-9 w-[140px]"><SelectValue placeholder="All Status" /></SelectTrigger>
           <SelectContent>{STATUS_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
@@ -212,7 +212,7 @@ export function DataAccessRulesSection() {
       {loading ? (
         <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
       ) : rules.length === 0 ? (
-        <EmptyState icon={Filter} title="No data access rules" description="Create reusable data scopes to control row-level access." action={<Button size="sm" className="gap-1.5" onClick={openCreate}><Plus className="h-4 w-4" /> Create Rule</Button>} />
+        <EmptyState icon={Filter} title="No data access rules" description="Create reusable data scopes to control row-level access." action={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500 hover:shadow-md hover:shadow-rose-500/25 hover:-translate-y-0.5 transition-all" onClick={openCreate}><Plus className="h-4 w-4" /> Create Rule</Button>} />
       ) : (
         <DataTable columns={columns} rows={rules} onRowClick={(r) => viewPreview(r)} />
       )}

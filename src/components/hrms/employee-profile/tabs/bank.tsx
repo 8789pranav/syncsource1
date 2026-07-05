@@ -37,6 +37,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { SectionCard, StatCard, EmptyState, StatusBadge } from "@/components/hrms/ui"
+import { MaskedValue } from "@/components/hrms/permissions/masked-value"
 import { cn } from "@/lib/utils"
 
 // ---------- helpers ----------
@@ -279,21 +280,14 @@ export default function BankTab({ employeeId, employee }: { employeeId: string; 
                 icon={Banknote}
                 label="Account Number"
                 value={
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="font-mono">{maskAccount(active.accountNumber, revealActive)}</span>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setRevealActive((v) => !v)}>
-                      {revealActive ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </Button>
-                  </span>
+                  <MaskedValue module="employees" field="bankAccount" value={active.accountNumber} maskStyle="account" showBadge />
                 }
               />
               <Field
                 icon={ShieldCheck}
                 label="IFSC Code"
                 value={
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="font-mono">{maskIfsc(active.ifscCode, revealActive)}</span>
-                  </span>
+                  <MaskedValue module="employees" field="ifsc" value={active.ifscCode} maskStyle="ifsc" />
                 }
               />
               <Field icon={Building2} label="Branch" value={active.branchName || "—"} />
@@ -358,12 +352,7 @@ export default function BankTab({ employeeId, employee }: { employeeId: string; 
                       >
                         <TableCell className="text-sm font-medium">{b.bankName}</TableCell>
                         <TableCell className="text-sm font-mono">
-                          <span className="inline-flex items-center gap-1.5">
-                            {maskAccount(b.accountNumber, revealRowId === b.id)}
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setRevealRowId((p) => (p === b.id ? null : b.id))}>
-                              {revealRowId === b.id ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                            </Button>
-                          </span>
+                          <MaskedValue module="employees" field="bankAccount" value={b.accountNumber} maskStyle="account" />
                         </TableCell>
                         <TableCell className="text-sm">{b.accountType || "—"}</TableCell>
                         <TableCell className="text-sm">{fmtDate(b.effectiveDate)}</TableCell>

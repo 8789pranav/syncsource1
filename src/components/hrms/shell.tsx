@@ -23,25 +23,52 @@ import {
 } from "lucide-react"
 import { useHrmsStore } from "@/store/hrms-store"
 import { ModuleId, ModuleDef } from "@/lib/types"
+import { ROLE_TYPE_MAP, RISK_LEVEL_MAP } from "@/lib/permissions-constants"
+import { ViewAsRoleDropdown } from "@/components/hrms/permissions/view-as-dropdown"
+import { ViewAsBanner } from "@/components/hrms/permissions/view-as-banner"
+import { AccessDenied } from "@/components/hrms/permissions/access-denied"
+import { MyPermissionsDialog } from "@/components/hrms/permissions/my-permissions-dialog"
+import { usePermissions } from "@/lib/use-permissions"
 
 // Hook: loads current-user permissions on mount
 function usePermissionInit() {
-  const { currentUserId, allowedModules, setCurrentUser } = useHrmsStore()
+  const { allowedModules, permissionsLoaded, setCurrentUser } = useHrmsStore()
   React.useEffect(() => {
-    if (allowedModules !== null) return // already loaded
+    if (permissionsLoaded) return // already loaded
     // Load default HR Admin permissions on first load
     fetch("/api/roles-permissions/me")
       .then(r => r.json())
       .then(data => {
-        if (data?.allowedModules) {
-          setCurrentUser(data.userId || "default", data.userName || "HR Admin", data.roleCode || "HR_ADMIN", data.allowedModules)
+        const d = data?.data || data
+        if (d?.allowedModules) {
+          setCurrentUser({
+            userId: d.userId || "default",
+            userName: d.userName || "HR Admin",
+            roleCode: d.roleCode || "HR_ADMIN",
+            roleName: d.roleName,
+            roleType: d.roleType,
+            riskLevel: d.riskLevel,
+            allowedModules: d.allowedModules,
+            deniedModules: d.deniedModules || [],
+            fieldAccess: d.fieldAccess || {},
+            dataScopes: d.dataScopes || [],
+            conflicts: d.conflicts || [],
+            moduleAccess: d.moduleAccess || {},
+            isViewAs: false,
+            viewAsRoleId: null,
+          })
         }
       })
       .catch(() => {
         // On error, allow everything
-        setCurrentUser("default", "HR Admin", "HR_ADMIN", ["dashboard","organization","employees","onboarding","offboarding","leave","shift","roster","attendance","holiday","payroll","documents","asset","announcements","forms","workflows","roles-permissions","audit","settings"])
+        setCurrentUser({
+          userId: "default",
+          userName: "HR Admin",
+          roleCode: "HR_ADMIN",
+          allowedModules: ["dashboard","organization","employees","onboarding","offboarding","leave","shift","roster","attendance","holiday","payroll","documents","asset","announcements","forms","workflows","roles-permissions","audit","settings"],
+        })
       })
-  }, [allowedModules, currentUserId, setCurrentUser])
+  }, [allowedModules, permissionsLoaded, setCurrentUser])
 }
 
 type ShellModule = ModuleDef & { icon: any; payrollMenu?: string; isChild?: boolean }
@@ -210,11 +237,18 @@ function Sidebar() {
 
 function Topbar() {
   const { theme, setTheme } = useTheme()
-  const { toggleSidebar, activeModule } = useHrmsStore()
+  const { toggleSidebar, activeModule, currentUserName, currentUserRole, currentRoleName, currentRoleType, currentRiskLevel, isViewAs } = useHrmsStore()
+  const perm = usePermissions()
   const [mounted, setMounted] = React.useState(false)
+  const [myPermOpen, setMyPermOpen] = React.useState(false)
   React.useEffect(() => setMounted(true), [])
 
   const current = MODULES.find((m) => m.id === activeModule)
+
+  // Build role badge info
+  const rt = ROLE_TYPE_MAP[currentRoleType || ""] || null
+  const rl = RISK_LEVEL_MAP[currentRiskLevel || ""] || null
+  const initials = (currentUserName || "HR").split(" ").map(s => s[0]).slice(0, 2).join("").toUpperCase()
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border/60 bg-background/80 backdrop-blur-md px-4 sm:px-6">
@@ -222,7 +256,15 @@ function Topbar() {
         <Menu className="h-[18px] w-[18px]" />
       </button>
       <div className="hidden md:block min-w-0">
-        <p className="text-sm font-semibold text-foreground truncate">{current?.label}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-foreground truncate">{current?.label}</p>
+          {perm.loaded && currentRoleName && (
+            <Badge variant="outline" className={cn("text-[9px] h-4 px-1.5 gap-1 shrink-0", isViewAs ? "border-amber-400 text-amber-700 bg-amber-50" : "border-border text-muted-foreground")}>
+              {rt && <span className={cn("h-1.5 w-1.5 rounded-full", rt.color)} />}
+              {currentRoleName}
+            </Badge>
+          )}
+        </div>
         <p className="text-[11px] text-muted-foreground truncate">{current?.description}</p>
       </div>
       <div className="relative hidden lg:block w-full max-w-sm ml-auto">
@@ -230,6 +272,7 @@ function Topbar() {
         <Input placeholder="Search employees, requests, assets..." className="pl-9 h-9 bg-muted/40 border-0 focus-visible:ring-1" />
       </div>
       <div className="flex items-center gap-1.5 ml-auto lg:ml-2">
+        <ViewAsRoleDropdown />
         <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} title="Toggle theme">
           {mounted && theme === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
         </Button>
@@ -261,27 +304,43 @@ function Topbar() {
         <Separator orientation="vertical" className="h-6 mx-1" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-lg hover:bg-muted p-1 pr-2 transition-colors">
-              <Avatar className="h-8 w-8 border border-border">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">HR</AvatarFallback>
+            <button data-testid="user-menu-trigger" className="flex items-center gap-2 rounded-lg hover:bg-muted p-1 pr-2 transition-colors">
+              <Avatar className={cn("h-8 w-8 border border-border", isViewAs && "ring-2 ring-amber-400 ring-offset-1 ring-offset-background")}>
+                <AvatarFallback className={cn("text-xs font-semibold", isViewAs ? "bg-amber-500 text-white" : "bg-primary/10 text-primary")}>{initials}</AvatarFallback>
               </Avatar>
               <div className="hidden sm:block text-left leading-tight">
-                <p className="text-xs font-semibold text-foreground">HR Admin</p>
-                <p className="text-[10px] text-muted-foreground">ACME Corp</p>
+                <p className="text-xs font-semibold text-foreground truncate max-w-[120px]">{currentUserName || "HR Admin"}</p>
+                <p className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                  {currentRoleName || "ACME Corp"}
+                  {isViewAs && <span className="text-amber-600"> · view-as</span>}
+                </p>
               </div>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-64">
+            <div className="px-2 py-2">
+              <p className="text-sm font-semibold">{currentUserName || "HR Admin"}</p>
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                {currentRoleName && <Badge variant="secondary" className="text-[10px] h-5">{currentRoleName}</Badge>}
+                {rt && <Badge variant="outline" className="text-[9px] h-5 gap-1"><span className={cn("h-1.5 w-1.5 rounded-full", rt.color)} />{rt.label}</Badge>}
+                {rl && <Badge variant="outline" className="text-[9px] h-5">{rl.label} risk</Badge>}
+              </div>
+              {perm.loaded && (
+                <p className="text-[10px] text-muted-foreground mt-1.5">
+                  {perm.allowedModules?.length || 0} modules accessible · {Object.values(perm.fieldAccess || {}).reduce((n, m) => n + Object.keys(m).length, 0)} field rules
+                </p>
+              )}
+            </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem><ShieldCheck className="mr-2 h-4 w-4" /> Permissions</DropdownMenuItem>
-            <DropdownMenuItem><Settings className="mr-2 h-4 w-4" /> Settings</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setMyPermOpen(true)}><ShieldCheck className="mr-2 h-4 w-4" /> My Permissions</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => useHrmsStore.getState().setModule("settings" as any)}><Settings className="mr-2 h-4 w-4" /> Settings</DropdownMenuItem>
             <DropdownMenuItem><HelpCircle className="mr-2 h-4 w-4" /> Help & Support</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-rose-600 focus:text-rose-600"><LogOut className="mr-2 h-4 w-4" /> Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      <MyPermissionsDialog open={myPermOpen} onOpenChange={setMyPermOpen} />
     </header>
   )
 }
@@ -316,13 +375,31 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className="flex flex-1 flex-col min-w-0">
         <Topbar />
+        <ViewAsBanner />
         <main className="flex-1 px-4 sm:px-6 py-5">
-          <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+          <div className="mx-auto w-full max-w-[1400px]">
+            <AccessGate>{children}</AccessGate>
+          </div>
         </main>
         <Footer />
       </div>
     </div>
   )
+}
+
+// Wraps children — if the active module isn't accessible, show AccessDenied
+function AccessGate({ children }: { children: React.ReactNode }) {
+  const activeModule = useHrmsStore(s => s.activeModule)
+  const perm = usePermissions()
+  // While permissions haven't loaded yet, show children (avoid flash)
+  if (!perm.loaded) return <>{children}</>
+  // Dashboard is always accessible
+  if (activeModule === "dashboard") return <>{children}</>
+  // If allowedModules is null (not loaded) or includes the module, allow
+  if (!perm.allowedModules || perm.allowedModules.includes(activeModule as any)) {
+    return <>{children}</>
+  }
+  return <AccessDenied module={activeModule as string} />
 }
 
 export { MODULES }

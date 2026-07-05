@@ -191,16 +191,16 @@ export function ApprovalRolesSection() {
         icon={GitBranch}
         actions={
           <>
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setGroupByModule(g => !g)}>
+            <Button size="sm" variant="outline" className="gap-1.5 hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300 hover:text-violet-600 transition-all" onClick={() => setGroupByModule(g => !g)}>
               <Layers className="h-4 w-4" /> {groupByModule ? "Flat View" : "Group by Module"}
             </Button>
-            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-teal-500 to-emerald-500" onClick={openCreate}><Plus className="h-4 w-4" /> Create</Button>
+            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:shadow-md hover:shadow-teal-500/25 hover:-translate-y-0.5 transition-all" onClick={openCreate}><Plus className="h-4 w-4" /> Create</Button>
           </>
         }
       />
 
       <div className="flex gap-2">
-        <div className="flex-1 max-w-xs"><Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 bg-background" /></div>
+        <div className="flex-1 max-w-xs"><Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 bg-background focus-visible:ring-violet-400/40" /></div>
         <Select value={filterModule} onValueChange={setFilterModule}>
           <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="All Modules" /></SelectTrigger>
           <SelectContent>
@@ -213,11 +213,11 @@ export function ApprovalRolesSection() {
       {loading ? (
         <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
       ) : items.length === 0 ? (
-        <EmptyState icon={GitBranch} title="No approval roles" description="Create approval roles to define who approves what." action={<Button size="sm" className="gap-1.5" onClick={openCreate}><Plus className="h-4 w-4" /> Create</Button>} />
+        <EmptyState icon={GitBranch} title="No approval roles" description="Create approval roles to define who approves what." action={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:shadow-md hover:shadow-teal-500/25 hover:-translate-y-0.5 transition-all" onClick={openCreate}><Plus className="h-4 w-4" /> Create</Button>} />
       ) : grouped ? (
         <div className="space-y-4">
           {Object.entries(grouped).map(([mod, rs]) => (
-            <SectionCard key={mod} title={`${mod.charAt(0).toUpperCase() + mod.slice(1)} Approvals`} description={`${rs.length} role(s)`}>
+            <SectionCard key={mod} title={`${mod.charAt(0).toUpperCase() + mod.slice(1)} Approvals`} description={`${rs.length} role(s)`} className="transition-shadow hover:shadow-md">
               <DataTable columns={columns.filter(c => c.key !== "module")} rows={rs} onRowClick={(r) => openEdit(r)} />
             </SectionCard>
           ))}

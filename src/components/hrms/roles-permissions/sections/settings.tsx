@@ -7,7 +7,7 @@ import {
   Settings as SettingsIcon, Shield, Lock, Eye, GitBranch, Database, Key, Save, Bell,
 } from "lucide-react"
 
-import { PageHeader, StatCard, SectionCard, EmptyState } from "@/components/hrms/ui"
+import { PageHeader, StatCard, SectionCard } from "@/components/hrms/ui"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,6 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { SENSITIVE_FIELDS } from "@/lib/permissions-constants"
+import { EntityConfigSection } from "./entity-config"
 
 interface Settings {
   allowCustomRoles: boolean; allowMultipleRolesPerUser: boolean; allowTemporaryRoles: boolean;
@@ -100,12 +101,12 @@ export function SettingsSection() {
         title="Roles & Permissions Settings"
         description="Configure how the access control system behaves across the entire tenant."
         icon={SettingsIcon}
-        actions={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-slate-600 to-zinc-600" onClick={save} disabled={saving}><Save className="h-4 w-4" /> {saving ? "Saving..." : "Save Changes"}</Button>}
+        actions={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:shadow-md hover:shadow-violet-500/25 hover:-translate-y-0.5 transition-all" onClick={save} disabled={saving}><Save className="h-4 w-4" /> {saving ? "Saving..." : "Save Changes"}</Button>}
       />
 
       <div className="grid lg:grid-cols-[200px_1fr] gap-4">
         {/* Tabs sidebar */}
-        <Card className="lg:sticky lg:top-20 h-fit">
+        <Card className="lg:sticky lg:top-20 h-fit transition-shadow hover:shadow-md">
           <CardContent className="p-2">
             {TABS.map(t => {
               const Icon = t.icon
@@ -113,8 +114,8 @@ export function SettingsSection() {
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
-                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
-                    tab === t.id ? "bg-gradient-to-r from-slate-600 to-zinc-600 text-white" : "text-muted-foreground hover:bg-muted"
+                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/40 ${
+                    tab === t.id ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-sm shadow-violet-500/25" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5" /> {t.label}
@@ -193,7 +194,7 @@ export function SettingsSection() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Sensitive Fields Catalog ({SENSITIVE_FIELDS.length})</p>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {SENSITIVE_FIELDS.map(f => (
-                    <div key={f.field} className="rounded-lg border border-border/40 p-2">
+                    <div key={f.field} className="rounded-lg border border-border/40 p-2 transition-all hover:border-violet-300/60 hover:bg-violet-50/30 dark:hover:bg-violet-500/5 hover:shadow-sm">
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-medium">{f.label}</p>
                         <Badge variant="outline" className="text-[9px]">{f.riskLevel}</Badge>
@@ -234,16 +235,7 @@ export function SettingsSection() {
           )}
 
           {tab === "entity" && (
-            <SectionCard title="Entity Configuration" description="Per-entity default roles & policies (multi-tenant)">
-              <EmptyState
-                icon={Database}
-                title="Entity configs coming soon"
-                description="Per-entity default role mappings will be available here. For now, all entities use tenant defaults."
-              />
-              <div className="mt-3 p-3 rounded-lg bg-muted/30 border border-border/40 text-xs text-muted-foreground">
-                Use the <strong>Roles</strong> tab to create entity-specific roles (set Entity Scope), then assign them at the user level. The RoleEntityConfig model is ready in the database for full per-entity defaults in a future phase.
-              </div>
-            </SectionCard>
+            <EntityConfigSection />
           )}
         </motion.div>
       </div>

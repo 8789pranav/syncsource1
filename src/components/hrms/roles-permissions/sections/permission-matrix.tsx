@@ -124,7 +124,7 @@ export function PermissionMatrixSection() {
         description="Bird's-eye view of every role's access to every module. Click any cell to change access level."
         icon={Grid3x3}
         actions={
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={exportCSV}>
+          <Button size="sm" variant="outline" className="gap-1.5 hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300 hover:text-violet-600 transition-all" onClick={exportCSV}>
             <Download className="h-4 w-4" /> Export CSV
           </Button>
         }
@@ -133,14 +133,14 @@ export function PermissionMatrixSection() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-2">
         <Select value={filterRoleType} onValueChange={setFilterRoleType}>
-          <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="All Role Types" /></SelectTrigger>
+          <SelectTrigger className="h-9 w-[180px] focus-visible:ring-violet-400/40"><SelectValue placeholder="All Role Types" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">All Role Types</SelectItem>
             {ROLE_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterGroup} onValueChange={setFilterGroup}>
-          <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="All Module Groups" /></SelectTrigger>
+          <SelectTrigger className="h-9 w-[180px] focus-visible:ring-violet-400/40"><SelectValue placeholder="All Module Groups" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">All Groups</SelectItem>
             {Array.from(new Set(MODULES.map(m => m.group))).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
@@ -174,7 +174,7 @@ export function PermissionMatrixSection() {
             <tbody>
               {groupedModules.map(([group, mods]) => (
                 <React.Fragment key={group}>
-                  <tr className="bg-violet-50/50 dark:bg-violet-500/5">
+                  <tr className="bg-gradient-to-r from-violet-50/80 to-fuchsia-50/60 dark:from-violet-500/10 dark:to-fuchsia-500/5 border-y border-violet-200/40 dark:border-violet-500/20">
                     <td colSpan={data.roles.length + 1} className="p-1.5 text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
                       {group}
                     </td>
@@ -248,10 +248,10 @@ export function PermissionMatrixSection() {
       </div>
 
       {/* Legend */}
-      <SectionCard title="Legend" description="Access level colors and short codes">
+      <SectionCard title="Legend" description="Access level colors and short codes" className="transition-shadow hover:shadow-md">
         <div className="flex flex-wrap gap-2">
           {ACCESS_LEVELS.map(a => (
-            <div key={a.value} className="flex items-center gap-2 rounded-lg border border-border/40 px-3 py-1.5">
+            <div key={a.value} className="flex items-center gap-2 rounded-lg border border-border/40 px-3 py-1.5 transition-colors hover:border-violet-300 hover:bg-violet-50/30 dark:hover:bg-violet-500/5">
               <span className={`inline-flex items-center justify-center h-6 w-6 rounded-md ${a.color} text-white text-[10px] font-bold`}>{a.short}</span>
               <span className="text-xs font-medium">{a.label}</span>
             </div>

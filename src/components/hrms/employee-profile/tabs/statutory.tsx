@@ -39,6 +39,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { SectionCard, StatCard, EmptyState } from "@/components/hrms/ui"
+import { MaskedValue } from "@/components/hrms/permissions/masked-value"
 import { cn } from "@/lib/utils"
 
 // ---------- helpers ----------
@@ -286,30 +287,16 @@ export default function StatutoryTab({ employeeId, employee }: { employeeId: str
               <Field
                 icon={FileText}
                 label="PAN Number"
-                value={
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="font-mono">{maskPan(employee?.panNumber, revealPan)}</span>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setRevealPan((v) => !v)}>
-                      {revealPan ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </Button>
-                  </span>
-                }
+                value={<MaskedValue module="employees" field="panNumber" value={employee?.panNumber} maskStyle="pan" showBadge />}
               />
               <Field
                 icon={Shield}
                 label="Aadhaar Number"
-                value={
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="font-mono">{maskAadhaar(employee?.aadhaarNumber, revealAadhaar)}</span>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setRevealAadhaar((v) => !v)}>
-                      {revealAadhaar ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </Button>
-                  </span>
-                }
+                value={<MaskedValue module="employees" field="aadhaarNumber" value={employee?.aadhaarNumber} maskStyle="aadhaar" showBadge />}
               />
-              <Field icon={Wallet} label="UAN Number" value={employee?.uanNumber || "—"} />
-              <Field icon={ShieldCheck} label="PF Number" value={employee?.pfNumber || "—"} />
-              <Field icon={Shield} label="ESI Number" value={employee?.esiNumber || "—"} />
+              <Field icon={Wallet} label="UAN Number" value={<MaskedValue module="employees" field="uan" value={employee?.uanNumber} />} />
+              <Field icon={ShieldCheck} label="PF Number" value={<MaskedValue module="employees" field="esiNumber" value={employee?.pfNumber} />} />
+              <Field icon={Shield} label="ESI Number" value={<MaskedValue module="employees" field="esiNumber" value={employee?.esiNumber} />} />
               <Field icon={Building2} label="PT Location" value={employee?.ptLocation || "—"} />
               <Field icon={ShieldCheck} label="LWF Applicability" value={employee?.lwfApplicability || "—"} />
               <Field icon={ShieldCheck} label="Gratuity Applicability" value={employee?.gratuityApplicability || "—"} />
@@ -394,7 +381,7 @@ export default function StatutoryTab({ employeeId, employee }: { employeeId: str
                   {history.map((h) => (
                     <TableRow key={h.id} className="hover:bg-muted/30">
                       <TableCell className="text-sm">{fmtDate(h.effectiveDate)}</TableCell>
-                      <TableCell className="text-sm font-mono">{maskPan(h.panNumber)}</TableCell>
+                      <TableCell className="text-sm font-mono"><MaskedValue module="employees" field="panNumber" value={h.panNumber} maskStyle="pan" /></TableCell>
                       <TableCell className="text-sm">{h.uanNumber || "—"}</TableCell>
                       <TableCell className="text-sm">{h.pfNumber || "—"}</TableCell>
                       <TableCell className="text-sm">{h.taxRegime || "—"}</TableCell>

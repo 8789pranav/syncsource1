@@ -202,7 +202,7 @@ export function UsersSection() {
         description="Assign one or more roles to each employee. The system calculates effective permissions automatically."
         icon={Users}
         actions={
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => toast.info("Use the row 'Role' button to assign")}>
+          <Button size="sm" variant="outline" className="gap-1.5 hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300 hover:text-violet-600 transition-all" onClick={() => toast.info("Use the row 'Role' button to assign")}>
             <Plus className="h-4 w-4" /> Bulk Assign
           </Button>
         }
@@ -210,7 +210,7 @@ export function UsersSection() {
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="flex-1 max-w-xs">
-          <Input placeholder="Search employees..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 bg-background" />
+          <Input placeholder="Search employees..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 bg-background focus-visible:ring-violet-400/40" />
         </div>
         <Select value={filterHasRole} onValueChange={setFilterHasRole}>
           <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="All Employees" /></SelectTrigger>
@@ -225,7 +225,7 @@ export function UsersSection() {
       {loading ? (
         <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
       ) : users.length === 0 ? (
-        <EmptyState icon={Users} title="No users found" description="Try a different search." />
+        <EmptyState icon={Users} title="No users found" description="Try a different search." action={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-violet-500 to-emerald-500 hover:shadow-md hover:shadow-violet-500/25 hover:-translate-y-0.5 transition-all" onClick={() => toast.info("Use the row 'Role' button to assign")}><Plus className="h-4 w-4" /> Assign Role</Button>} />
       ) : (
         <DataTable columns={columns} rows={users} onRowClick={(u) => u.roleCount > 0 && viewEffective(u)} />
       )}

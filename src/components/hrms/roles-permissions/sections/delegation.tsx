@@ -198,11 +198,11 @@ export function DelegationSection() {
         title="Delegation"
         description="Temporarily delegate permissions when a manager or admin is on leave. Supports approval, task, temporary role and read-only access delegation."
         icon={Send}
-        actions={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-cyan-500 to-sky-500" onClick={openCreate}><Plus className="h-4 w-4" /> Create Delegation</Button>}
+        actions={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-cyan-500 to-sky-500 hover:shadow-md hover:shadow-cyan-500/25 hover:-translate-y-0.5 transition-all" onClick={openCreate}><Plus className="h-4 w-4" /> Create Delegation</Button>}
       />
 
       <div className="flex flex-wrap gap-2">
-        <div className="flex-1 max-w-xs"><Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 bg-background" /></div>
+        <div className="flex-1 max-w-xs"><Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 bg-background focus-visible:ring-violet-400/40" /></div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="h-9 w-[140px]"><SelectValue placeholder="All Status" /></SelectTrigger>
           <SelectContent>
@@ -225,7 +225,7 @@ export function DelegationSection() {
       {loading ? (
         <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
       ) : items.length === 0 ? (
-        <EmptyState icon={Send} title="No delegations" description="Create a delegation to temporarily transfer permissions." action={<Button size="sm" className="gap-1.5" onClick={openCreate}><Plus className="h-4 w-4" /> Create</Button>} />
+        <EmptyState icon={Send} title="No delegations" description="Create a delegation to temporarily transfer permissions." action={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-cyan-500 to-sky-500 hover:shadow-md hover:shadow-cyan-500/25 hover:-translate-y-0.5 transition-all" onClick={openCreate}><Plus className="h-4 w-4" /> Create</Button>} />
       ) : (
         <DataTable columns={columns} rows={items} />
       )}

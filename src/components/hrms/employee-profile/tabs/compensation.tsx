@@ -31,6 +31,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { SectionCard, EmptyState, StatCard } from "@/components/hrms/ui"
+import { usePermissions } from "@/lib/use-permissions"
+import { MaskedValue } from "@/components/hrms/permissions/masked-value"
 import { cn } from "@/lib/utils"
 
 // ---------- types ----------
@@ -55,6 +57,36 @@ interface CompRec {
 
 const REASON_OPTIONS = ["Annual appraisal", "Promotion", "Off-cycle", "Joining", "Correction"]
 const STATUS_OPTIONS = ["Draft", "Approved", "Rejected"]
+
+// Salary stat card — masks the CTC value when the viewer's role restricts the salary field
+function SalaryStatCard({ label, shortValue, fullValue, icon, accent }: {
+  label: string
+  shortValue: string
+  fullValue: string
+  icon: any
+  accent: any
+}) {
+  const perm = usePermissions()
+  const access = perm.getFieldAccess("employees", "salary")
+  if (access === "Hidden") {
+    return <StatCard label={label} value="—" icon={icon} accent={accent} sub="Restricted" />
+  }
+  if (access === "Masked") {
+    return <StatCard label={label} value="₹ ••••••" icon={icon} accent={accent} sub="Masked by role" />
+  }
+  if (access === "ViewOnlyOwn") {
+    return <StatCard label={label} value="₹ ••••••" icon={icon} accent={accent} sub="View-own-only" />
+  }
+  // View / Edit / Required — show with optional reveal
+  return (
+    <div className="relative">
+      <StatCard label={label} value={shortValue} icon={icon} accent={accent} sub={fullValue} />
+      {access === "View" && (
+        <span className="absolute top-2 right-2 inline-flex items-center rounded px-1 py-0.5 text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-200">RESTRICTED</span>
+      )}
+    </div>
+  )
+}
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400",
@@ -171,7 +203,13 @@ export default function CompensationTab({
 
       {/* Stat strip */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard label="Current CTC" value={inrShort(currentCtc)} icon={TrendingUp} accent="emerald" sub={inr(currentCtc)} />
+        <SalaryStatCard
+          label="Current CTC"
+          shortValue={inrShort(currentCtc)}
+          fullValue={inr(currentCtc)}
+          icon={TrendingUp}
+          accent="emerald"
+        />
         <StatCard label="Total Revisions" value={items.length} icon={History} accent="cyan" />
         <StatCard
           label="Total Increment"
@@ -232,9 +270,9 @@ export default function CompensationTab({
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            <span className="text-sm text-muted-foreground tabular-nums">{inr(rec.oldCtc)}</span>
+                            <MaskedValue module="employees" field="salary" value={inr(rec.oldCtc)} maskStyle="salary" />
                             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-sm font-bold tabular-nums text-foreground">{inr(rec.newCtc)}</span>
+                            <MaskedValue module="employees" field="salary" value={inr(rec.newCtc)} maskStyle="salary" className="font-bold text-foreground" />
                             <Badge variant="secondary" className={cn(
                               "font-medium border-0 tabular-nums",
                               inc > 0 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
@@ -255,7 +293,7 @@ export default function CompensationTab({
                             </div>
                             <div>
                               <p className="text-muted-foreground">Basic</p>
-                              <p className="font-medium tabular-nums">{inr(rec.newBasic)}</p>
+                              <p className="font-medium tabular-nums"><MaskedValue module="employees" field="salary" value={inr(rec.newBasic)} maskStyle="salary" /></p>
                             </div>
                           </div>
                         </div>

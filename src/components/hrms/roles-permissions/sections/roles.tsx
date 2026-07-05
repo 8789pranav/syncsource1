@@ -330,13 +330,13 @@ export function RolesSection() {
         icon={Shield}
         actions={
           <>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setCompareOpen(true)}>
+            <Button variant="outline" size="sm" className="gap-1.5 hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300 hover:text-violet-600 transition-all" onClick={() => setCompareOpen(true)}>
               <GitCompare className="h-4 w-4" /> Compare
             </Button>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => toast.info("Export coming soon")}>
+            <Button variant="outline" size="sm" className="gap-1.5 hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300 hover:text-violet-600 transition-all" onClick={() => toast.info("Export coming soon")}>
               <Download className="h-4 w-4" /> Export
             </Button>
-            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-violet-500 to-emerald-500" onClick={openCreate}>
+            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-violet-500 to-emerald-500 hover:shadow-md hover:shadow-violet-500/25 hover:-translate-y-0.5 transition-all" onClick={openCreate}>
               <Plus className="h-4 w-4" /> Create Role
             </Button>
           </>
@@ -346,7 +346,7 @@ export function RolesSection() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1 max-w-xs">
-          <Input placeholder="Search roles..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 bg-background" />
+          <Input placeholder="Search roles..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 bg-background focus-visible:ring-violet-400/40" />
         </div>
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="All Types" /></SelectTrigger>
@@ -375,7 +375,7 @@ export function RolesSection() {
       {loading ? (
         <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
       ) : roles.length === 0 ? (
-        <EmptyState icon={Shield} title="No roles found" description="Adjust filters or create a new role." action={<Button size="sm" className="gap-1.5" onClick={openCreate}><Plus className="h-4 w-4" /> Create Role</Button>} />
+        <EmptyState icon={Shield} title="No roles found" description="Adjust filters or create a new role." action={<Button size="sm" className="gap-1.5 bg-gradient-to-r from-violet-500 to-emerald-500 hover:shadow-md hover:shadow-violet-500/25 hover:-translate-y-0.5 transition-all" onClick={openCreate}><Plus className="h-4 w-4" /> Create Role</Button>} />
       ) : (
         <DataTable columns={columns} rows={roles} onRowClick={(r) => setViewRole(r)} />
       )}

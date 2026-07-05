@@ -2481,3 +2481,106 @@ Stage Summary:
 - Key files: `prisma/schema.prisma` (+13 models, +310 lines), `src/lib/permissions-constants.ts` (new, 300+ lines), `src/lib/permissions-engine.ts` (new, 200+ lines), `src/lib/permissions-audit.ts` (new, 200+ lines), `src/app/api/roles-permissions/` (25 route files), `src/components/hrms/roles-permissions/sections/` (10 files, ~3,500 lines), `src/components/hrms/modules/roles-permissions.tsx` (shell), updates to `shell.tsx`, `page.tsx`, `types.ts`.
 - Screenshots: qa-rp-dashboard.png, qa-rp-roles.png, qa-rp-users.png, qa-rp-matrix.png, qa-rp-wizard.png, qa-rp-final.png.
 - Next-phase recommendations: (1) Wire effective-permission engine into actual sidebar visibility (currently the shell shows all modules regardless of role — the engine exists but isn't enforcing); (2) Wire field-level masking into the employee profile tabs (salary/bank/PAN should be masked based on the viewer's role); (3) Add workflow integration so leave/attendance/onboarding approvals route through the Approval Roles defined here; (4) Implement the entity-config UI (currently placeholder); (5) Add login/access-request email notifications.
+
+---
+Task ID: webDevReview-2
+Agent: main (orchestrator)
+Task: Recurring webDevReview — wire permission engine into actual sidebar/field masking (the "completely dynamic and wired" user requirement), add View-As feature, polish R&P module
+
+Work Log:
+- Reviewed worklog.md: prior session built complete R&P module (10 sub-sections, 13 Prisma models, 25 API routes, 10 React sections). Engine existed but wasn't enforcing.
+- QA via agent-browser confirmed all 10 R&P tabs render correctly (Roles: 12, Matrix: 19×11, Logs: 19, etc.) with 0 errors.
+- Identified 5 next-phase items from prior worklog; selected highest-impact 3 to wire:
+  1. Sidebar visibility (engine → actual sidebar filtering)
+  2. Field-level masking in employee profile (engine → actual field rendering)
+  3. View-As Role feature (admin can preview app as any role)
+
+BACKEND — /api/roles-permissions/me rewrite:
+- Added `?roleId=xxx` mode for View-As: synthesises a virtual employee using only the selected role's permissions (modulePermissions + fieldPermissions + dataScopes + moduleAccess detail).
+- Added `?employeeId=xxx` mode that calls computeEffectivePermission engine.
+- Default mode (no params) returns HR Admin role permissions.
+- All 3 modes now return: userId, userName, roleCode, roleName, roleType, riskLevel, allowedModules, deniedModules, fieldAccess (module→field→access), dataScopes, conflicts, moduleAccess (per-module canView/canCreate/.../reason), isViewAs, viewAsRoleId.
+
+STORE — src/store/hrms-store.ts:
+- Extended state with: currentRoleName, currentRoleType, currentRiskLevel, deniedModules, fieldAccess, dataScopes, conflicts, moduleAccess, isViewAs, viewAsRoleId, permissionsLoaded.
+- New setCurrentUser signature takes a single object with all permission fields.
+- Added `partialize` to persist middleware: only UI prefs (activeModule, sidebarOpen, theme, searchQuery) are persisted — permission state always re-fetches on load (avoids stale permission cache).
+
+CLIENT HOOK — src/lib/use-permissions.ts (new):
+- `usePermissions()` hook reads from store, returns: loaded, userId/Name/Role/Type/RiskLevel, isViewAs, allowedModules, deniedModules, conflicts, canView/canCreate/canEdit/canDelete/canApprove/canExport/canImport/canDownload/canUpload(module), moduleAccess(module), getFieldAccess(module,field), isFieldHidden/isFieldMasked/isFieldEditable, dataScopes.
+
+COMPONENTS — src/components/hrms/permissions/ (new folder):
+- masked-value.tsx: <MaskedValue module field value maskStyle showBadge isOwn /> — renders Hidden as "Restricted", Masked as forced-masked (no reveal), ViewOnlyOwn as masked-unless-owner, View/Edit/Required with eye-toggle reveal. Style-aware masking (account/pan/aadhaar/ifsc/salary/generic). Logs SensitiveDataViewed audit event on reveal (fire-and-forget POST).
+- access-denied.tsx: <AccessDenied module /> — friendly "Access restricted" card with lock icon, role info, View-As indicator, Request Access / Exit View-As / Back to Dashboard buttons.
+- view-as-dropdown.tsx: <ViewAsRoleDropdown /> — header dropdown that fetches all roles, lets admin pick any role to preview as. On select: fetches /me?roleId=xxx, updates store, shows toast "View-As active". Search filter, role-type-colored icons, risk badges, user counts. Exit button.
+- view-as-banner.tsx: <ViewAsBanner /> — amber banner below topbar when View-As active. Shows: "View-As preview active — You're seeing the app as {role} would", role-type badge, risk badge, allowed-modules count, denied count, masked-fields count, Exit button, dismiss X.
+
+SHELL — src/components/hrms/shell.tsx:
+- usePermissionInit: now uses permissionsLoaded guard, fetches /me, parses response correctly (data not wrapped), calls new setCurrentUser signature.
+- Topbar: shows actual currentUserName + currentRoleName (was hardcoded "HR Admin"/"ACME Corp"). Role badge in breadcrumb header (with role-type color dot). ViewAsRoleDropdown added before theme toggle. User menu avatar initials computed from currentUserName, ring-amber when View-As. User dropdown shows role name + role-type + risk-level badges + "N modules accessible · N field rules" stats.
+- Sidebar: unchanged (already filtered by allowedModules).
+- Shell layout: added <ViewAsBanner /> below <Topbar />.
+- AccessGate: new wrapper around {children} — if activeModule isn't in allowedModules, shows <AccessDenied /> instead of children. Dashboard always allowed. Children shown while permissions loading (avoid flash).
+
+EMPLOYEE PROFILE — field masking wired:
+- tabs/bank.tsx: Account Number + IFSC now use <MaskedValue> (was local maskAccount/maskIfsc with manual reveal). Both active account card and history table use permission-aware masking.
+- tabs/statutory.tsx: PAN + Aadhaar + UAN + PF + ESI + history-table PAN all use <MaskedValue> with style-aware masking (pan/aadhaar/generic).
+- tabs/compensation.tsx: Current CTC StatCard wrapped in <SalaryStatCard> (Hidden→"—", Masked→"₹ ••••••", ViewOnlyOwn→masked, View→value+RESTRICTED badge). Timeline oldCtc/newCtc/newBasic all use <MaskedValue maskStyle="salary">.
+
+VERIFICATION (agent-browser):
+- /me default: HR Admin, 18 allowed, 1 denied, isViewAs=false ✓
+- /me?roleId=EMPLOYEE: "Viewing as: Employee", 8 allowed (dashboard, leave, shift, attendance, holiday, documents, asset, announcements), 11 denied, isViewAs=true ✓
+- Sidebar after View-As Employee: exactly 8 modules visible (Dashboard, Announcements, Leave, Shifts, Attendance, Holidays, Documents, Assets) ✓
+- Header after View-As: "View-As: Employee" button, "VA" avatar, "Viewing as: Employee" name, "Employee · view-as" subtitle, amber ring on avatar ✓
+- ViewAsBanner: "View-As preview active — You're seeing the app as Employee would", badges (System Role, Low risk, 8 modules, 11 hidden) ✓
+- AccessDenied: when View-As Employee + active module = roles-permissions → shows "Access restricted" card with lock icon, role info, Exit View-As button ✓
+- Statutory tab masking: PAN shown as "LM****5L", Aadhaar as "XXXX-XXXX-2625" / "XXXX-XXXX-7890" ✓
+- Lint: 0 errors (1 pre-existing benign warning in dynamic-form.tsx).
+
+Stage Summary:
+- ✅ Permission engine now ENFORCED across sidebar (filtered), Topbar (role-aware), main content (AccessDenied gate), and employee profile sensitive fields (MaskedValue).
+- ✅ View-As Role feature fully functional — admin can preview app as any of 12 roles with instant sidebar/field/banner updates.
+- ✅ Field-level masking wired into Bank (account, IFSC), Statutory (PAN, Aadhaar, UAN, PF, ESI), Compensation (CTC, Basic, salary timeline).
+- ✅ SensitiveDataViewed audit events auto-logged when masked values are revealed.
+- Key files: src/app/api/roles-permissions/me/route.ts (rewritten), src/store/hrms-store.ts (extended + partialize), src/lib/use-permissions.ts (new), src/components/hrms/permissions/{masked-value,access-denied,view-as-dropdown,view-as-banner}.tsx (4 new), src/components/hrms/shell.tsx (Topbar + AccessGate + banner), src/components/hrms/employee-profile/tabs/{bank,statutory,compensation}.tsx (masking wired).
+- Next-phase recommendations: (1) Build Entity Config UI (currently placeholder in R&P settings tab); (2) Wire approval roles into actual leave/attendance/payroll workflow routing; (3) Apply MaskedValue to payroll/payslip tab; (4) Add "Request Access" workflow integration from AccessDenied page; (5) Add per-field ViewOnlyOwn enforcement using current user vs employee being viewed.
+
+ADDITIONAL WORK (same session, after main wiring):
+
+MyPermissionsDialog — src/components/hrms/permissions/my-permissions-dialog.tsx (new, 267 lines):
+- Quick-view modal accessible from Topbar user menu → "My Permissions".
+- Shows: role name + role-type badge + risk-level badge, user name, module counts.
+- 4 stat boxes: Allowed (emerald), Denied (rose), Field Rules (amber), Conflicts (slate/rose).
+- "Accessible Modules" grid: each module as a card with 2-letter icon tile, name, access-level label (View/Manage/FullAccess/Custom).
+- "Restricted Modules" grid: locked cards with rose tint.
+- "Field Restrictions" list: sensitive fields with Hidden/Masked/ViewOnlyOwn access, color-coded by access type.
+- "Permission Conflicts" list: modules/fields with conflict details (rose tint).
+- "Data Scopes" badges: scope types with icons (All→Users, SameDepartment→Building2, etc.).
+- View-As aware: shows "View-As active" badge + "Showing preview permissions for the selected role" description when isViewAs.
+- Fixed React Compiler memoization warning by removing useMemo (React Compiler auto-memoizes).
+
+Topbar wiring:
+- Added data-testid="user-menu-trigger" to user button for reliable test targeting.
+- "My Permissions" menu item now opens the dialog (was navigating to R&P module).
+- MyPermissionsDialog rendered at end of Topbar with open/onOpenChange state.
+
+VERIFICATION (agent-browser + VLM):
+- My Permissions dialog (HR Admin mode): shows "HR Admin" role, System Role badge, High risk badge, 18 allowed / 1 denied / 0 field rules / 0 conflicts, all 18 modules listed with access levels. Polish 8/10.
+- My Permissions dialog (View-As Employee mode): shows "View-As active" badge, "Employee" role, System Role, Low risk, 8 allowed / 11 denied / 0 field rules, 8 accessible modules (Dashboard, Leave, Shifts, Attendance, Holidays, Documents, Assets, Announcements — all "View Only"), 11 restricted modules (Organization, Employee Master, Onboarding, Offboarding, Roster, Payroll, Form Builder, Workflows, Roles & Permissions, Audit Log, Settings). Polish 8/10.
+- Dashboard regression: 4 stat cards (Total Employees: 12, Pending Approvals: 2, On Leave Today: 0, Assets Assigned: 2), charts render, polish 8/10. No errors.
+- Employees module regression: 12 employees load, 13 rows in table. No errors.
+- Footer: present, "Nexus HR · Industry-grade HRMS v1.0 · Phase 1 · Privacy · Terms · Docs · All systems operational", visible at viewport bottom on short pages.
+- Sidebar: 19 buttons (18 modules + Collapse) for HR Admin, correctly filtered to 8 for View-As Employee.
+- Lint: 0 errors, 1 pre-existing benign warning (react-hooks/incompatible-library in dynamic-form.tsx).
+
+Stage Summary (full session):
+- ✅ Permission engine fully ENFORCED across: sidebar (filtered by allowedModules), Topbar (role-aware with badge/avatar/View-As indicator), main content (AccessGate shows AccessDenied for restricted modules), employee profile sensitive fields (MaskedValue with style-aware masking + audit logging).
+- ✅ View-As Role feature: admin can preview app as any of 12 roles with instant sidebar/field/banner/dialog updates. Amber banner with role/risk/modules/masked-fields stats. Exit button.
+- ✅ MyPermissionsDialog: quick-view of effective permissions from user menu. Works in both normal and View-As modes.
+- ✅ Field masking wired into Bank (account, IFSC), Statutory (PAN, Aadhaar, UAN, PF, ESI), Compensation (CTC, Basic, salary timeline) — all permission-driven via MaskedValue component.
+- ✅ SensitiveDataViewed audit events auto-logged when masked values are revealed.
+- ✅ Entity Config UI verified working (pre-existing 911-line implementation, polish 8/10).
+- ✅ No regressions in Dashboard, Employees, or any R&P tab.
+- Key files created: src/lib/use-permissions.ts, src/components/hrms/permissions/{masked-value,access-denied,view-as-dropdown,view-as-banner,my-permissions-dialog}.tsx (5 new components).
+- Key files modified: src/app/api/roles-permissions/me/route.ts (rewritten for view-as + fieldAccess), src/store/hrms-store.ts (extended + partialize), src/components/hrms/shell.tsx (Topbar + AccessGate + banner + dialog), src/components/hrms/employee-profile/tabs/{bank,statutory,compensation}.tsx (masking wired).
+- Next-phase recommendations: (1) Wire approval roles into actual leave/attendance/payroll workflow routing; (2) Apply MaskedValue to payroll/payslip/offboarding tabs; (3) Add "Request Access" workflow integration from AccessDenied page (currently the button is a stub); (4) Add per-field ViewOnlyOwn enforcement using current user vs employee being viewed (currently ViewOnlyOwn masks unless isOwn prop is passed); (5) Add login/access-request email notifications; (6) Mobile responsive polish for ViewAsBanner (currently wraps on small screens).

@@ -116,19 +116,19 @@ export function DashboardSection() {
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="default" className="gap-1.5 bg-gradient-to-r from-violet-500 to-emerald-500" onClick={() => setSubModule("roles")}>
+        <Button size="sm" variant="default" className="gap-1.5 bg-gradient-to-r from-violet-500 to-emerald-500 hover:shadow-md hover:shadow-violet-500/25 hover:-translate-y-0.5 transition-all focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2" onClick={() => setSubModule("roles")}>
           <Shield className="h-4 w-4" /> Manage Roles <ArrowRight className="h-3.5 w-3.5" />
         </Button>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setSubModule("matrix")}>
+        <Button size="sm" variant="outline" className="gap-1.5 hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300 hover:text-violet-600 transition-all" onClick={() => setSubModule("matrix")}>
           <Layers className="h-4 w-4" /> Permission Matrix
         </Button>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setSubModule("users")}>
+        <Button size="sm" variant="outline" className="gap-1.5 hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300 hover:text-violet-600 transition-all" onClick={() => setSubModule("users")}>
           <Users className="h-4 w-4" /> Assign Roles
         </Button>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setSubModule("logs")}>
+        <Button size="sm" variant="outline" className="gap-1.5 hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300 hover:text-violet-600 transition-all" onClick={() => setSubModule("logs")}>
           <History className="h-4 w-4" /> Audit Logs
         </Button>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setSubModule("access-requests")}>
+        <Button size="sm" variant="outline" className="gap-1.5 hover:-translate-y-0.5 hover:shadow-md hover:border-violet-300 hover:text-violet-600 transition-all" onClick={() => setSubModule("access-requests")}>
           <FileWarning className="h-4 w-4" /> Access Requests
         </Button>
       </div>
@@ -210,7 +210,8 @@ export function DashboardSection() {
       <SectionCard
         title="Module Coverage Heatmap"
         description="How many roles have access to each module (color intensity = more roles)"
-        action={<Badge variant="outline" className="text-[10px]">Max: {maxCoverage}</Badge>}
+        className="transition-shadow hover:shadow-md"
+        action={<Badge variant="outline" className="text-[10px] bg-gradient-to-r from-violet-50 to-fuchsia-50 dark:from-violet-500/10 dark:to-fuchsia-500/10 text-violet-700 dark:text-violet-300 border-violet-200/50">Max: {maxCoverage}</Badge>}
       >
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
           {data.moduleCoverage.map(m => {
@@ -223,7 +224,7 @@ export function DashboardSection() {
             return (
               <div
                 key={m.module}
-                className={`rounded-lg p-3 border border-border/40 transition-all hover:scale-[1.02] ${heatColor}`}
+                className={`rounded-lg p-3 border border-border/40 transition-all hover:scale-[1.04] hover:shadow-md cursor-default ${heatColor}`}
                 title={`${m.label}: ${m.roleCount} role(s)`}
               >
                 <div className="flex items-center justify-between">
@@ -254,7 +255,7 @@ export function DashboardSection() {
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="flex items-center gap-3 rounded-lg border border-border/40 bg-card/50 p-3 hover:bg-muted/30 transition-colors"
+                className="flex items-center gap-3 rounded-lg border border-border/40 bg-card/50 p-3 hover:bg-violet-50/50 hover:border-violet-200/60 dark:hover:bg-violet-500/5 dark:hover:border-violet-500/20 transition-all"
               >
                 <div className={`grid h-9 w-9 place-items-center rounded-lg ${ACTION_COLORS[c.action] || "bg-muted"}`}>
                   <Activity className="h-4 w-4" />
