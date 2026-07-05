@@ -116,12 +116,13 @@ export type ModuleId =
   | "workflows"
   | "announcements"
   | "settings"
-  | "audit";
+  | "audit"
+  | "roles-permissions";
 
 export interface ModuleDef {
   id: ModuleId;
   label: string;
   icon: string; // lucide icon name
-  group: "Main" | "People" | "Time" | "Config" | "System";
+  group: "Main" | "People" | "Time" | "Config" | "System" | "Access";
   description?: string;
 }

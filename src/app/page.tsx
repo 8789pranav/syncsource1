@@ -29,6 +29,7 @@ const WorkflowsModule = dynamic(() => import("@/components/hrms/modules/workflow
 const AnnouncementsModule = dynamic(() => import("@/components/hrms/modules/announcements").then(m => ({ default: m.AnnouncementsModule })), { loading })
 const AuditModule = dynamic(() => import("@/components/hrms/modules/audit").then(m => ({ default: m.AuditModule })), { loading })
 const SettingsModule = dynamic(() => import("@/components/hrms/modules/settings").then(m => ({ default: m.SettingsModule })), { loading })
+const RolesPermissionsModule = dynamic(() => import("@/components/hrms/modules/roles-permissions").then(m => ({ default: m.RolesPermissionsModule })), { loading })
 
 export default function Home() {
   const { activeModule } = useHrmsStore()
@@ -53,6 +54,7 @@ export default function Home() {
       {activeModule === "announcements" && <AnnouncementsModule />}
       {activeModule === "audit" && <AuditModule />}
       {activeModule === "settings" && <SettingsModule />}
+      {activeModule === "roles-permissions" && <RolesPermissionsModule />}
       </ErrorBoundary>
     </Shell>
   )

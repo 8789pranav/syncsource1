@@ -389,6 +389,7 @@ model Employee {
   exitRecords         EmployeeExit[]
   loginAccess         EmployeeLoginAccess[]
   roleMappings        EmployeeRoleMapping[]
+  userRoles           UserRole[]
   customFieldValues   EmployeeCustomFieldValue[]
   formSubmissions     EmployeeFormSubmission[]
   skills              EmployeeSkill[]
@@ -2650,4 +2651,316 @@ model OnboardingEntityConfig {
   updatedAt                     DateTime  @updatedAt
 
   @@unique([tenantId, entityId])
+}
+
+// =====================================================================
+// ROLES & PERMISSIONS MODULE (Enterprise Access Control)
+// =====================================================================
+
+model Role {
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  code            String
+  description     String?
+  roleType        String   @default("Custom") // System | Custom | Functional | Implicit | Workflow | Temporary
+  entityScope     String?  // entity id or "ALL"
+  isSystem        Boolean  @default(false)
+  isDefault       Boolean  @default(false)
+  status          String   @default("Active") // Active | Inactive | Draft
+  riskLevel       String   @default("Low") // Low | Medium | High | Critical
+  version         Int      @default(1)
+  effectiveFrom   DateTime?
+  effectiveTo     DateTime?
+  parentRoleId    String?
+  createdBy       String?
+  updatedBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  modulePermissions  RoleModulePermission[]
+  pagePermissions    RolePagePermission[]
+  actionPermissions  RoleActionPermission[]
+  fieldPermissions   RoleFieldPermission[]
+  dataScopes         RoleDataScope[]
+  userRoles          UserRole[]
+  auditLogs          PermissionAuditLog[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, roleType])
+  @@index([tenantId, status])
+}
+
+model RoleModulePermission {
+  id            String   @id @default(cuid())
+  tenantId      String
+  roleId        String
+  role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  module        String   // dashboard | employees | leave | attendance | payroll | ...
+  accessLevel   String   @default("NoAccess") // NoAccess | View | Manage | FullAccess | Custom
+  riskLevel     String   @default("Low")
+  updatedAt     DateTime @updatedAt
+  @@unique([tenantId, roleId, module])
+  @@index([roleId])
+}
+
+model RolePagePermission {
+  id            String   @id @default(cuid())
+  tenantId      String
+  roleId        String
+  role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  module        String
+  page          String   // e.g. "employee-list" | "employee-profile" | "leave-types"
+  canView       Boolean  @default(false)
+  canCreate     Boolean  @default(false)
+  canEdit       Boolean  @default(false)
+  canDelete     Boolean  @default(false)
+  canApprove    Boolean  @default(false)
+  canExport     Boolean  @default(false)
+  canImport     Boolean  @default(false)
+  canDownload   Boolean  @default(false)
+  canUpload     Boolean  @default(false)
+  @@unique([tenantId, roleId, module, page])
+  @@index([roleId])
+}
+
+model RoleActionPermission {
+  id            String   @id @default(cuid())
+  tenantId      String
+  roleId        String
+  role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  module        String
+  action        String   // view | create | edit | delete | approve | reject | export | ...
+  allowed       Boolean  @default(false)
+  riskLevel     String   @default("Low")
+  @@unique([tenantId, roleId, module, action])
+  @@index([roleId])
+}
+
+model RoleFieldPermission {
+  id            String   @id @default(cuid())
+  tenantId      String
+  roleId        String
+  role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  module        String
+  field         String   // e.g. "salary" | "panNumber" | "bankAccount"
+  access        String   @default("Hidden") // Hidden | View | Edit | Required | Masked | ViewOnlyOwn
+  riskLevel     String   @default("Low")
+  @@unique([tenantId, roleId, module, field])
+  @@index([roleId])
+}
+
+model RoleDataScope {
+  id            String   @id @default(cuid())
+  tenantId      String
+  roleId        String
+  role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  ruleId        String?  // link to a reusable DataAccessRule
+  scopeType     String   @default("All") // Self | DirectReports | DirectIndirectReports | SameDepartment | SameLocation | SameEntity | Selected... | Custom | All
+  entityId      String?
+  branchIds     String?  // JSON array
+  locationIds   String?  // JSON array
+  departmentIds String?  // JSON array
+  gradeIds      String?  // JSON array
+  employeeTypeIds String? // JSON array
+  includeEmployees String? // JSON array of employee ids
+  excludeEmployees String? // JSON array of employee ids
+  includeExited Boolean  @default(false)
+  includeNotice Boolean  @default(false)
+  @@index([roleId])
+}
+
+model UserRole {
+  id            String   @id @default(cuid())
+  tenantId      String
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  roleId        String
+  role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  scopeType     String?  // overrides role scope
+  scopeRef      String?
+  effectiveFrom DateTime @default(now())
+  effectiveTo   DateTime? // null = permanent; set for temporary roles
+  isTemporary   Boolean  @default(false)
+  reason        String?
+  assignedBy    String?
+  status        String   @default("Active") // Active | Revoked | Expired
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([employeeId])
+  @@index([roleId])
+}
+
+model DataAccessRule {
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  code            String
+  description     String?
+  entityId        String?
+  branchIds       String?  // JSON array
+  locationIds     String?  // JSON array
+  departmentIds   String?  // JSON array
+  gradeIds        String?  // JSON array
+  designationIds  String?  // JSON array
+  employeeTypeIds String?  // JSON array
+  businessUnitIds String?  // JSON array
+  costCenterIds   String?  // JSON array
+  managerRelation String?  // Self | DirectReports | DirectIndirectReports | DottedLine
+  includeEmployees String? // JSON array
+  excludeEmployees String? // JSON array
+  includeFutureJoiners Boolean @default(false)
+  includeExited   Boolean  @default(false)
+  includeNotice   Boolean  @default(false)
+  status          String   @default("Active")
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model ApprovalRole {
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  code            String
+  module          String   // leave | attendance | onboarding | payroll | document | expense | asset | helpdesk | offboarding | salaryRevision
+  approvalType    String   // Approver | Verifier | Owner | Reviewer
+  approverType    String   // Employee | Role | ReportingManager | DepartmentHead | Position
+  approverRef     String?  // employee id or role id
+  scopeType       String?  // Global | Entity | Department | Location
+  scopeRef        String?
+  level           Int      @default(1)
+  mode            String   @default("Sequential") // Sequential | Parallel
+  fallbackApproverId String?
+  escalationApproverId String?
+  escalationAfterHours Int?
+  status          String   @default("Active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@unique([tenantId, code])
+  @@index([tenantId, module])
+}
+
+model Delegation {
+  id              String   @id @default(cuid())
+  tenantId        String
+  fromEmployeeId  String
+  toEmployeeId    String
+  delegationType  String   // ApprovalDelegation | TaskDelegation | TemporaryRole | ReadOnlyAccess
+  module          String?  // optional, null = all
+  permissionScope String?  // JSON describing scope override
+  startDate       DateTime
+  endDate         DateTime
+  reason          String?
+  approvalRequired Boolean @default(false)
+  approvedById    String?
+  status          String   @default("Active") // Active | Expired | Revoked | Pending
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([fromEmployeeId])
+  @@index([toEmployeeId])
+}
+
+model AccessRequest {
+  id              String   @id @default(cuid())
+  tenantId        String
+  requestedById   String
+  requestType     String   // NewRole | TemporaryAccess | ModuleAccess | ReportAccess | DocumentAccess | PayrollAccess
+  requestedRole   String?
+  requestedModule String?
+  reason          String?
+  requiredFrom    DateTime
+  requiredTo      DateTime?
+  approverId      String?
+  status          String   @default("Draft") // Draft | Submitted | PendingApproval | Approved | Rejected | Expired | Revoked
+  approvedById    String?
+  approvedAt      DateTime?
+  approverComments String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([requestedById])
+  @@index([status])
+}
+
+model PermissionAuditLog {
+  id              String   @id @default(cuid())
+  tenantId        String
+  action          String   // RoleCreated | RoleUpdated | RoleDeleted | PermissionChanged | UserRoleAssigned | UserRoleRemoved | DataScopeChanged | FieldPermissionChanged | AccessRequestApproved | AccessRequestRejected | TemporaryAccessGranted | TemporaryAccessExpired | LoginAttempt | PermissionDenied | SensitiveDataViewed | ExportPerformed
+  entityType      String?  // Role | User | DataAccessRule | ApprovalRole | Delegation | AccessRequest
+  entityId        String?
+  roleName        String?
+  oldValue        String?  // JSON
+  newValue        String?  // JSON
+  performedById   String?
+  performedByName String?
+  ipAddress       String?
+  device          String?
+  reason          String?
+  status          String   @default("Success") // Success | Failed
+  roleId          String?
+  role            Role?    @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  @@index([tenantId, action])
+  @@index([entityType, entityId])
+  @@index([performedById])
+}
+
+model RoleEntityConfig {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  entityId            String
+  useTenantDefault    Boolean  @default(true)
+  defaultEmployeeRole String?
+  defaultManagerRole  String?
+  defaultHrRole       String?
+  defaultPayrollRole  String?
+  defaultDocumentRole String?
+  defaultOnboardingRole String?
+  defaultOffboardingRole String?
+  defaultLeaveAdminRole  String?
+  defaultAttendanceAdminRole String?
+  defaultDataScope    String?
+  defaultFieldMasking String?  // JSON
+  defaultMfaRule      String?
+  defaultLoginPolicy  String?
+  effectiveFrom       DateTime?
+  effectiveTo         DateTime?
+  status              String   @default("Active")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  @@unique([tenantId, entityId])
+}
+
+model RoleSetting {
+  id                  String   @id @default(cuid())
+  tenantId            String   @unique
+  allowCustomRoles              Boolean @default(true)
+  allowMultipleRolesPerUser     Boolean @default(true)
+  allowTemporaryRoles           Boolean @default(true)
+  allowRoleCloning              Boolean @default(true)
+  allowRoleVersioning           Boolean @default(true)
+  allowRoleApprovalBeforePublish Boolean @default(false)
+  allowRoleExpiry               Boolean @default(true)
+  preventSelfPermissionEscalation Boolean @default(true)
+  requireReasonForSensitive     Boolean @default(true)
+  defaultPermissionMode         String  @default("DenyByDefault") // DenyByDefault | AllowByDefault
+  conflictHandling             String  @default("ExplicitDenyWins") // ExplicitDenyWins | HigherPriorityWins | AdminResolve
+  allowModuleLevelPermission    Boolean @default(true)
+  allowPageLevelPermission      Boolean @default(true)
+  allowActionLevelPermission    Boolean @default(true)
+  allowFieldLevelPermission     Boolean @default(true)
+  allowRecordLevelPermission    Boolean @default(true)
+  enableFieldMasking            Boolean @default(true)
+  enableSensitiveFieldRestriction Boolean @default(true)
+  enableDocumentFolderPermission Boolean @default(true)
+  requireMfaForAdmin            Boolean @default(true)
+  requireMfaForPayroll          Boolean @default(true)
+  requireMfaForDocumentAdmin    Boolean @default(false)
+  sessionTimeoutMinutes         Int     @default(30)
+  loginIpRestriction            String? // JSON array of CIDRs
+  blockConcurrentLogin          Boolean @default(false)
+  autoRevokeInactiveDays        Int     @default(90)
+  updatedAt                     DateTime @updatedAt
 }

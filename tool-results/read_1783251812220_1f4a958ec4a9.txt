@@ -1,0 +1,576 @@
+     1→'use client'
+     2→
+     3→import * as React from "react"
+     4→import { motion } from "framer-motion"
+     5→import { toast } from "sonner"
+     6→import { Plus, Pencil, Trash2, Package, Boxes, ClipboardList, CheckCircle2, XCircle, PackageCheck, PackageX, Wrench, Search } from "lucide-react"
+     7→
+     8→import { PageHeader, StatCard, ListToolbar, DataTable, StatusBadge, EmptyState, SectionCard, useAsyncAction, type Column } from "@/components/hrms/ui"
+     9→import { DynamicForm } from "@/components/dynamic-form/dynamic-form"
+    10→import { assetFormSchema, assetCategoryFormSchema } from "@/lib/form-schemas"
+    11→import { FormSchema } from "@/lib/types"
+    12→
+    13→import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+    14→import { Button } from "@/components/ui/button"
+    15→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+    16→import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+    17→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+    18→import { Input } from "@/components/ui/input"
+    19→import { Label } from "@/components/ui/label"
+    20→import { Textarea } from "@/components/ui/textarea"
+    21→import { Badge } from "@/components/ui/badge"
+    22→import { Card, CardContent } from "@/components/ui/card"
+    23→import { Separator } from "@/components/ui/separator"
+    24→
+    25→const uid = (p: string) => `${p}-${Math.random().toString(36).slice(2, 9)}`
+    26→
+    27→// Asset request schema (local; not in default registry)
+    28→const assetRequestFormSchema: FormSchema = {
+    29→  code: "assetRequest-default",
+    30→  name: "New Asset Request",
+    31→  module: "assetRequest",
+    32→  sections: [{
+    33→    id: "sec-1",
+    34→    title: "Request Details",
+    35→    fields: [
+    36→      { id: uid("f"), key: "employeeId", label: "Employee", type: "employee", width: "full", endpoint: "/api/employees/picker", validation: { required: true } },
+    37→      { id: uid("f"), key: "categoryId", label: "Asset Category", type: "assetCategory", width: "half", endpoint: "/api/asset-categories" },
+    38→      { id: uid("f"), key: "requestType", label: "Request Type", type: "select", width: "half", defaultValue: "New", options: [
+    39→        { label: "New", value: "New" }, { label: "Replacement", value: "Replacement" }, { label: "Repair", value: "Repair" },
+    40→      ] },
+    41→      { id: uid("f"), key: "priority", label: "Priority", type: "select", width: "half", defaultValue: "Medium", options: [
+    42→        { label: "Low", value: "Low" }, { label: "Medium", value: "Medium" }, { label: "High", value: "High" }, { label: "Urgent", value: "Urgent" },
+    43→      ] },
+    44→      { id: uid("f"), key: "reason", label: "Reason / Justification", type: "textarea", width: "full" },
+    45→    ],
+    46→  }],
+    47→}
+    48→
+    49→interface Category { id: string; code: string; name: string; icon?: string | null; description?: string | null; assetCount?: number }
+    50→interface Employee { id: string; employeeCode: string; firstName?: string; lastName?: string; displayName?: string }
+    51→interface AssetAssignment { id: string; assignedDate: string; returnDate?: string | null; condition: string; notes?: string | null; employee: Employee }
+    52→interface Asset {
+    53→  id: string
+    54→  assetCode: string
+    55→  name: string
+    56→  category?: { id: string; name: string; code: string } | null
+    57→  categoryId?: string | null
+    58→  serialNumber?: string | null
+    59→  assetTag?: string | null
+    60→  purchaseDate?: string | null
+    61→  purchaseValue?: number | null
+    62→  condition: string
+    63→  status: string
+    64→  assignedToId?: string | null
+    65→  assignedTo?: Employee | null
+    66→  assignedDate?: string | null
+    67→  returnDate?: string | null
+    68→  notes?: string | null
+    69→  assignments?: AssetAssignment[]
+    70→  createdAt: string
+    71→}
+    72→interface AssetRequest {
+    73→  id: string
+    74→  employee: Employee
+    75→  category?: { id: string; name: string; code: string } | null
+    76→  requestType: string
+    77→  reason?: string | null
+    78→  status: string
+    79→  priority: string
+    80→  createdAt: string
+    81→}
+    82→
+    83→const fmtDate = (v?: string | null) => (v ? new Date(v).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—")
+    84→const empName = (e?: Employee | null) => e ? (e.displayName || `${e.firstName || ""} ${e.lastName || ""}`.trim() || e.employeeCode) : "—"
+    85→const fmtMoney = (v?: number | null) => (v !== null && v !== undefined) ? `₹${Number(v).toLocaleString("en-IN")}` : "—"
+    86→
+    87→// ============================================================
+    88→// ASSETS MODULE
+    89→// ============================================================
+    90→
+    91→export function AssetsModule() {
+    92→  return (
+    93→    <div className="space-y-5">
+    94→      <PageHeader
+    95→        title="Asset Management"
+    96→        description="Track, assign, and request company assets. Manage categories and approvals in one place."
+    97→        icon={Package}
+    98→      />
+    99→      <Tabs defaultValue="assets" className="space-y-4">
+   100→        <TabsList className="bg-muted/60">
+   101→          <TabsTrigger value="assets" className="gap-1.5"><Package className="h-4 w-4" /> Assets</TabsTrigger>
+   102→          <TabsTrigger value="categories" className="gap-1.5"><Boxes className="h-4 w-4" /> Categories</TabsTrigger>
+   103→          <TabsTrigger value="requests" className="gap-1.5"><ClipboardList className="h-4 w-4" /> Requests</TabsTrigger>
+   104→        </TabsList>
+   105→        <TabsContent value="assets"><AssetsTab /></TabsContent>
+   106→        <TabsContent value="categories"><CategoriesTab /></TabsContent>
+   107→        <TabsContent value="requests"><RequestsTab /></TabsContent>
+   108→      </Tabs>
+   109→    </div>
+   110→  )
+   111→}
+   112→
+   113→// ============================================================
+   114→// ASSETS TAB
+   115→// ============================================================
+   116→
+   117→function AssetsTab() {
+   118→  const [rows, setRows] = React.useState<Asset[]>([])
+   119→  const [loading, setLoading] = React.useState(true)
+   120→  const [search, setSearch] = React.useState("")
+   121→  const [statusFilter, setStatusFilter] = React.useState("all")
+   122→  const [catFilter, setCatFilter] = React.useState("all")
+   123→  const [categories, setCategories] = React.useState<Category[]>([])
+   124→  const [open, setOpen] = React.useState(false)
+   125→  const [editing, setEditing] = React.useState<Asset | null>(null)
+   126→  const [detail, setDetail] = React.useState<Asset | null>(null)
+   127→  const { loading: saving, run } = useAsyncAction()
+   128→
+   129→  const load = React.useCallback(async () => {
+   130→    setLoading(true)
+   131→    try {
+   132→      const params = new URLSearchParams()
+   133→      if (statusFilter !== "all") params.set("status", statusFilter)
+   134→      if (catFilter !== "all") params.set("category", catFilter)
+   135→      if (search) params.set("q", search)
+   136→      const res = await fetch(`/api/assets?${params.toString()}`)
+   137→      const data = await res.json()
+   138→      setRows(data.items || [])
+   139→    } catch {
+   140→      toast.error("Failed to load assets")
+   141→    } finally {
+   142→      setLoading(false)
+   143→    }
+   144→  }, [statusFilter, catFilter, search])
+   145→
+   146→  const loadCategories = React.useCallback(async () => {
+   147→    try {
+   148→      const res = await fetch("/api/asset-categories")
+   149→      const data = await res.json()
+   150→      setCategories(data.items || [])
+   151→    } catch {}
+   152→  }, [])
+   153→
+   154→  React.useEffect(() => { load() }, [load])
+   155→  React.useEffect(() => { loadCategories() }, [loadCategories])
+   156→
+   157→  const stats = React.useMemo(() => {
+   158→    const inStock = rows.filter((r) => r.status === "In Stock").length
+   159→    const assigned = rows.filter((r) => r.status === "Assigned").length
+   160→    const damagedLost = rows.filter((r) => r.status === "Damaged" || r.status === "Lost").length
+   161→    return { inStock, assigned, damagedLost, total: rows.length }
+   162→  }, [rows])
+   163→
+   164→  const handleSave = async (values: any) => {
+   165→    await run(async () => {
+   166→      const isEdit = !!editing
+   167→      const url = isEdit ? `/api/assets/${editing!.id}` : "/api/assets"
+   168→      const method = isEdit ? "PATCH" : "POST"
+   169→      const res = await fetch(url, {
+   170→        method,
+   171→        headers: { "Content-Type": "application/json" },
+   172→        body: JSON.stringify(values),
+   173→      })
+   174→      if (!res.ok) {
+   175→        const err = await res.json().catch(() => ({}))
+   176→        throw new Error(err.error || "Save failed")
+   177→      }
+   178→      toast.success(isEdit ? "Asset updated" : "Asset created")
+   179→      setOpen(false)
+   180→      setEditing(null)
+   181→      load()
+   182→    })
+   183→  }
+   184→
+   185→  const handleDelete = async (id: string) => {
+   186→    if (!confirm("Delete this asset?")) return
+   187→    const res = await fetch(`/api/assets/${id}`, { method: "DELETE" })
+   188→    if (res.ok) { toast.success("Asset deleted"); setDetail(null); load() }
+   189→    else toast.error("Delete failed")
+   190→  }
+   191→
+   192→  const columns: Column<Asset>[] = [
+   193→    { key: "assetCode", header: "Code", width: "120px", render: (r) => <span className="font-mono text-xs font-semibold text-foreground">{r.assetCode}</span> },
+   194→    { key: "name", header: "Name", render: (r) => (
+   195→      <div className="min-w-0">
+   196→        <p className="font-medium text-foreground truncate">{r.name}</p>
+   197→        {r.serialNumber && <p className="text-xs text-muted-foreground truncate">SN: {r.serialNumber}</p>}
+   198→      </div>
+   199→    ) },
+   200→    { key: "category", header: "Category", render: (r) => r.category ? <Badge variant="outline" className="font-normal">{r.category.name}</Badge> : <span className="text-muted-foreground/50 italic text-xs">—</span> },
+   201→    { key: "assignedTo", header: "Assigned To", render: (r) => r.assignedTo ? <span className="text-sm">{empName(r.assignedTo)}</span> : <span className="text-muted-foreground/50 italic text-xs">—</span> },
+   202→    { key: "status", header: "Status", render: (r) => <StatusBadge status={r.status} /> },
+   203→    { key: "condition", header: "Condition", render: (r) => <span className="text-xs text-muted-foreground">{r.condition}</span> },
+   204→    { key: "purchaseValue", header: "Value", render: (r) => <span className="text-sm tabular-nums">{fmtMoney(r.purchaseValue)}</span>, className: "text-right" },
+   205→    { key: "actions", header: "", width: "60px", render: (r) => (
+   206→      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setEditing(r); setOpen(true) }}>
+   207→        <Pencil className="h-4 w-4" />
+   208→      </Button>
+   209→    ) },
+   210→  ]
+   211→
+   212→  return (
+   213→    <div className="space-y-4">
+   214→      <motion.div
+   215→        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
+   216→        className="grid grid-cols-2 lg:grid-cols-4 gap-3"
+   217→      >
+   218→        <StatCard label="Total Assets" value={stats.total} icon={Package} accent="emerald" />
+   219→        <StatCard label="In Stock" value={stats.inStock} icon={PackageCheck} accent="emerald" />
+   220→        <StatCard label="Assigned" value={stats.assigned} icon={ClipboardList} accent="cyan" />
+   221→        <StatCard label="Damaged / Lost" value={stats.damagedLost} icon={PackageX} accent="coral" />
+   222→      </motion.div>
+   223→
+   224→      <ListToolbar
+   225→        search={search}
+   226→        onSearch={setSearch}
+   227→        onAdd={() => { setEditing(null); setOpen(true) }}
+   228→        addLabel="Add Asset"
+   229→        extra={
+   230→          <div className="flex items-center gap-2">
+   231→            <Select value={statusFilter} onValueChange={setStatusFilter}>
+   232→              <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+   233→              <SelectContent>
+   234→                <SelectItem value="all">All Status</SelectItem>
+   235→                <SelectItem value="In Stock">In Stock</SelectItem>
+   236→                <SelectItem value="Assigned">Assigned</SelectItem>
+   237→                <SelectItem value="Returned">Returned</SelectItem>
+   238→                <SelectItem value="Damaged">Damaged</SelectItem>
+   239→                <SelectItem value="Lost">Lost</SelectItem>
+   240→                <SelectItem value="Repair">Repair</SelectItem>
+   241→                <SelectItem value="Retired">Retired</SelectItem>
+   242→              </SelectContent>
+   243→            </Select>
+   244→            <Select value={catFilter} onValueChange={setCatFilter}>
+   245→              <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Category" /></SelectTrigger>
+   246→              <SelectContent>
+   247→                <SelectItem value="all">All Categories</SelectItem>
+   248→                {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+   249→              </SelectContent>
+   250→            </Select>
+   251→          </div>
+   252→        }
+   253→      />
+   254→
+   255→      <DataTable
+   256→        columns={columns}
+   257→        rows={rows}
+   258→        loading={loading}
+   259→        onRowClick={(r) => setDetail(r)}
+   260→        emptyState={<EmptyState icon={Package} title="No assets found" description="Adjust your filters or add a new asset to get started." />}
+   261→      />
+   262→
+   263→      {/* Add/Edit Dialog */}
+   264→      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null) }}>
+   265→        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+   266→          <DialogHeader>
+   267→            <DialogTitle>{editing ? "Edit Asset" : "Add Asset"}</DialogTitle>
+   268→            <DialogDescription>{editing ? `Update ${editing.assetCode}` : "Create a new asset record."}</DialogDescription>
+   269→          </DialogHeader>
+   270→          <DynamicForm
+   271→            schema={assetFormSchema}
+   272→            initialValues={editing || {}}
+   273→            onSubmit={handleSave}
+   274→            onCancel={() => { setOpen(false); setEditing(null) }}
+   275→            submitLabel={editing ? "Update" : "Create"}
+   276→            loading={saving}
+   277→            layout="flat"
+   278→          />
+   279→        </DialogContent>
+   280→      </Dialog>
+   281→
+   282→      {/* Detail Sheet */}
+   283→      <Sheet open={!!detail} onOpenChange={(o) => { if (!o) setDetail(null) }}>
+   284→        <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
+   285→          {detail && (
+   286→            <>
+   287→              <SheetHeader>
+   288→                <SheetTitle className="flex items-center gap-2">
+   289→                  <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary"><Package className="h-5 w-5" /></span>
+   290→                  <span>{detail.name}</span>
+   291→                </SheetTitle>
+   292→                <SheetDescription className="font-mono text-xs">{detail.assetCode}</SheetDescription>
+   293→              </SheetHeader>
+   294→              <div className="px-4 pb-6 space-y-4">
+   295→                <div className="flex items-center gap-2">
+   296→                  <StatusBadge status={detail.status} />
+   297→                  <Badge variant="outline" className="text-xs">{detail.condition}</Badge>
+   298→                  {detail.category && <Badge variant="outline" className="text-xs">{detail.category.name}</Badge>}
+   299→                </div>
+   300→
+   301→                <SectionCard title="Details">
+   302→                  <dl className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+   303→                    <DetailItem label="Serial #" value={detail.serialNumber} />
+   304→                    <DetailItem label="Asset Tag" value={detail.assetTag} />
+   305→                    <DetailItem label="Purchase Date" value={fmtDate(detail.purchaseDate)} />
+   306→                    <DetailItem label="Purchase Value" value={fmtMoney(detail.purchaseValue)} />
+   307→                    <DetailItem label="Assigned To" value={detail.assignedTo ? empName(detail.assignedTo) : null} />
+   308→                    <DetailItem label="Assigned Date" value={fmtDate(detail.assignedDate)} />
+   309→                  </dl>
+   310→                </SectionCard>
+   311→
+   312→                {detail.notes && (
+   313→                  <SectionCard title="Notes">
+   314→                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{detail.notes}</p>
+   315→                  </SectionCard>
+   316→                )}
+   317→
+   318→                <SectionCard title="Assignment History">
+   319→                  {detail.assignments && detail.assignments.length > 0 ? (
+   320→                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+   321→                      {detail.assignments.map((a, i) => (
+   322→                        <div key={a.id} className="rounded-lg border border-border/60 p-2.5 text-sm">
+   323→                          <div className="flex items-center justify-between">
+   324→                            <p className="font-medium">{empName(a.employee)}</p>
+   325→                            {a.returnDate
+   326→                              ? <Badge variant="secondary" className="text-[10px] bg-muted">Returned</Badge>
+   327→                              : <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">Active</Badge>
+   328→                            }
+   329→                          </div>
+   330→                          <p className="text-xs text-muted-foreground mt-0.5">
+   331→                            Assigned: {fmtDate(a.assignedDate)} {a.returnDate && `· Returned: ${fmtDate(a.returnDate)}`}
+   332→                          </p>
+   333→                          {a.notes && <p className="text-xs text-muted-foreground italic mt-0.5">{a.notes}</p>}
+   334→                        </div>
+   335→                      ))}
+   336→                    </div>
+   337→                  ) : (
+   338→                    <p className="text-sm text-muted-foreground">No assignments yet.</p>
+   339→                  )}
+   340→                </SectionCard>
+   341→
+   342→                <Separator />
+   343→                <div className="flex items-center gap-2">
+   344→                  <Button variant="outline" size="sm" onClick={() => { setEditing(detail); setDetail(null); setOpen(true) }}>
+   345→                    <Pencil className="h-4 w-4 mr-1.5" /> Edit
+   346→                  </Button>
+   347→                  <Button variant="outline" size="sm" className="text-rose-600 hover:text-rose-700" onClick={() => handleDelete(detail.id)}>
+   348→                    <Trash2 className="h-4 w-4 mr-1.5" /> Delete
+   349→                  </Button>
+   350→                </div>
+   351→              </div>
+   352→            </>
+   353→          )}
+   354→        </SheetContent>
+   355→      </Sheet>
+   356→    </div>
+   357→  )
+   358→}
+   359→
+   360→function DetailItem({ label, value }: { label: string; value?: string | null }) {
+   361→  return (
+   362→    <div>
+   363→      <dt className="text-xs text-muted-foreground uppercase tracking-wide">{label}</dt>
+   364→      <dd className="text-sm font-medium text-foreground mt-0.5">{value || <span className="text-muted-foreground/50 italic font-normal">—</span>}</dd>
+   365→    </div>
+   366→  )
+   367→}
+   368→
+   369→// ============================================================
+   370→// CATEGORIES TAB
+   371→// ============================================================
+   372→
+   373→function CategoriesTab() {
+   374→  const [rows, setRows] = React.useState<Category[]>([])
+   375→  const [loading, setLoading] = React.useState(true)
+   376→  const [open, setOpen] = React.useState(false)
+   377→  const [editing, setEditing] = React.useState<Category | null>(null)
+   378→  const { loading: saving, run } = useAsyncAction()
+   379→
+   380→  const load = React.useCallback(async () => {
+   381→    setLoading(true)
+   382→    try {
+   383→      const res = await fetch("/api/asset-categories")
+   384→      const data = await res.json()
+   385→      setRows(data.items || [])
+   386→    } catch { toast.error("Failed to load categories") }
+   387→    finally { setLoading(false) }
+   388→  }, [])
+   389→
+   390→  React.useEffect(() => { load() }, [load])
+   391→
+   392→  const handleSave = async (values: any) => {
+   393→    await run(async () => {
+   394→      const isEdit = !!editing
+   395→      const url = isEdit ? `/api/asset-categories/${editing!.id}` : "/api/asset-categories"
+   396→      const method = isEdit ? "PATCH" : "POST"
+   397→      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) })
+   398→      if (!res.ok) {
+   399→        const err = await res.json().catch(() => ({}))
+   400→        throw new Error(err.error || "Save failed")
+   401→      }
+   402→      toast.success(isEdit ? "Category updated" : "Category created")
+   403→      setOpen(false); setEditing(null); load()
+   404→    })
+   405→  }
+   406→
+   407→  const handleDelete = async (id: string) => {
+   408→    if (!confirm("Delete this category?")) return
+   409→    const res = await fetch(`/api/asset-categories/${id}`, { method: "DELETE" })
+   410→    if (res.ok) { toast.success("Category deleted"); load() }
+   411→    else toast.error("Delete failed")
+   412→  }
+   413→
+   414→  return (
+   415→    <div className="space-y-4">
+   416→      <ListToolbar search="" onSearch={() => {}} onAdd={() => { setEditing(null); setOpen(true) }} addLabel="Add Category" />
+   417→      {loading ? (
+   418→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+   419→          {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-32 rounded-xl bg-muted animate-pulse" />)}
+   420→        </div>
+   421→      ) : rows.length === 0 ? (
+   422→        <EmptyState icon={Boxes} title="No categories" description="Add categories like Laptops, Monitors, Phones to organize assets." />
+   423→      ) : (
+   424→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+   425→          {rows.map((c, i) => (
+   426→            <motion.div key={c.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+   427→              <Card className="group hover:shadow-card transition-shadow">
+   428→                <CardContent className="p-4">
+   429→                  <div className="flex items-start justify-between">
+   430→                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+   431→                      <Boxes className="h-5 w-5" />
+   432→                    </div>
+   433→                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+   434→                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(c); setOpen(true) }}><Pencil className="h-3.5 w-3.5" /></Button>
+   435→                      <Button variant="ghost" size="icon" className="h-7 w-7 text-rose-600" onClick={() => handleDelete(c.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+   436→                    </div>
+   437→                  </div>
+   438→                  <p className="mt-3 font-semibold text-foreground">{c.name}</p>
+   439→                  <p className="text-xs text-muted-foreground font-mono">{c.code}</p>
+   440→                  {c.description && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{c.description}</p>}
+   441→                  <div className="mt-3 flex items-center gap-2 text-xs">
+   442→                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+   443→                      {c.assetCount || 0} assets
+   444→                    </Badge>
+   445→                  </div>
+   446→                </CardContent>
+   447→              </Card>
+   448→            </motion.div>
+   449→          ))}
+   450→        </div>
+   451→      )}
+   452→
+   453→      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null) }}>
+   454→        <DialogContent className="sm:max-w-lg">
+   455→          <DialogHeader>
+   456→            <DialogTitle>{editing ? "Edit Category" : "Add Category"}</DialogTitle>
+   457→            <DialogDescription>{editing ? `Update ${editing.name}` : "Create a new asset category."}</DialogDescription>
+   458→          </DialogHeader>
+   459→          <DynamicForm
+   460→            schema={assetCategoryFormSchema}
+   461→            initialValues={editing || {}}
+   462→            onSubmit={handleSave}
+   463→            onCancel={() => { setOpen(false); setEditing(null) }}
+   464→            submitLabel={editing ? "Update" : "Create"}
+   465→            loading={saving}
+   466→            layout="flat"
+   467→          />
+   468→        </DialogContent>
+   469→      </Dialog>
+   470→    </div>
+   471→  )
+   472→}
+   473→
+   474→// ============================================================
+   475→// REQUESTS TAB
+   476→// ============================================================
+   477→
+   478→function RequestsTab() {
+   479→  const [rows, setRows] = React.useState<AssetRequest[]>([])
+   480→  const [loading, setLoading] = React.useState(true)
+   481→  const [open, setOpen] = React.useState(false)
+   482→  const { loading: saving, run } = useAsyncAction()
+   483→
+   484→  const load = React.useCallback(async () => {
+   485→    setLoading(true)
+   486→    try {
+   487→      const res = await fetch("/api/asset-requests")
+   488→      const data = await res.json()
+   489→      setRows(data.items || [])
+   490→    } catch { toast.error("Failed to load requests") }
+   491→    finally { setLoading(false) }
+   492→  }, [])
+   493→
+   494→  React.useEffect(() => { load() }, [load])
+   495→
+   496→  const handleSave = async (values: any) => {
+   497→    await run(async () => {
+   498→      const res = await fetch("/api/asset-requests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) })
+   499→      if (!res.ok) {
+   500→        const err = await res.json().catch(() => ({}))
+   501→        throw new Error(err.error || "Save failed")
+   502→      }
+   503→      toast.success("Request submitted")
+   504→      setOpen(false); load()
+   505→    })
+   506→  }
+   507→
+   508→  const decide = async (id: string, status: "Approved" | "Rejected") => {
+   509→    const res = await fetch(`/api/asset-requests/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) })
+   510→    if (res.ok) { toast.success(`Request ${status.toLowerCase()}`); load() }
+   511→    else toast.error("Action failed")
+   512→  }
+   513→
+   514→  const priorityColor: Record<string, string> = {
+   515→    Low: "bg-muted text-muted-foreground",
+   516→    Medium: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400",
+   517→    High: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+   518→    Urgent: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
+   519→  }
+   520→
+   521→  const columns: Column<AssetRequest>[] = [
+   522→    { key: "employee", header: "Employee", render: (r) => (
+   523→      <div>
+   524→        <p className="font-medium">{empName(r.employee)}</p>
+   525→        <p className="text-xs text-muted-foreground">{r.employee.employeeCode}</p>
+   526→      </div>
+   527→    ) },
+   528→    { key: "requestType", header: "Type", render: (r) => <Badge variant="outline" className="font-normal">{r.requestType}</Badge> },
+   529→    { key: "category", header: "Category", render: (r) => r.category ? r.category.name : <span className="text-muted-foreground/50 italic text-xs">—</span> },
+   530→    { key: "priority", header: "Priority", render: (r) => <Badge variant="secondary" className={`font-normal ${priorityColor[r.priority] || ""}`}>{r.priority}</Badge> },
+   531→    { key: "createdAt", header: "Requested", render: (r) => <span className="text-xs text-muted-foreground">{fmtDate(r.createdAt)}</span> },
+   532→    { key: "status", header: "Status", render: (r) => <StatusBadge status={r.status} /> },
+   533→    { key: "actions", header: "", width: "180px", render: (r) => (
+   534→      r.status === "Pending" ? (
+   535→        <div className="flex items-center gap-1.5 justify-end">
+   536→          <Button size="sm" variant="outline" className="h-7 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10" onClick={() => decide(r.id, "Approved")}>
+   537→            <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+   538→          </Button>
+   539→          <Button size="sm" variant="outline" className="h-7 gap-1 text-rose-600 border-rose-500/30 hover:bg-rose-500/10" onClick={() => decide(r.id, "Rejected")}>
+   540→            <XCircle className="h-3.5 w-3.5" /> Reject
+   541→          </Button>
+   542→        </div>
+   543→      ) : <span className="text-xs text-muted-foreground italic">—</span>
+   544→    ) },
+   545→  ]
+   546→
+   547→  return (
+   548→    <div className="space-y-4">
+   549→      <ListToolbar search="" onSearch={() => {}} onAdd={() => setOpen(true)} addLabel="New Request" />
+   550→      <DataTable
+   551→        columns={columns}
+   552→        rows={rows}
+   553→        loading={loading}
+   554→        emptyState={<EmptyState icon={ClipboardList} title="No asset requests" description="Submit a new asset request to start the approval flow." />}
+   555→      />
+   556→      <Dialog open={open} onOpenChange={setOpen}>
+   557→        <DialogContent className="sm:max-w-xl">
+   558→          <DialogHeader>
+   559→            <DialogTitle>New Asset Request</DialogTitle>
+   560→            <DialogDescription>Submit a request for a new, replacement, or repair asset.</DialogDescription>
+   561→          </DialogHeader>
+   562→          <DynamicForm
+   563→            schema={assetRequestFormSchema}
+   564→            initialValues={{}}
+   565→            onSubmit={handleSave}
+   566→            onCancel={() => setOpen(false)}
+   567→            submitLabel="Submit Request"
+   568→            loading={saving}
+   569→            layout="flat"
+   570→          />
+   571→        </DialogContent>
+   572→      </Dialog>
+   573→    </div>
+   574→  )
+   575→}
+   576→
