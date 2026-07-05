@@ -2584,3 +2584,24 @@ Stage Summary (full session):
 - Key files created: src/lib/use-permissions.ts, src/components/hrms/permissions/{masked-value,access-denied,view-as-dropdown,view-as-banner,my-permissions-dialog}.tsx (5 new components).
 - Key files modified: src/app/api/roles-permissions/me/route.ts (rewritten for view-as + fieldAccess), src/store/hrms-store.ts (extended + partialize), src/components/hrms/shell.tsx (Topbar + AccessGate + banner + dialog), src/components/hrms/employee-profile/tabs/{bank,statutory,compensation}.tsx (masking wired).
 - Next-phase recommendations: (1) Wire approval roles into actual leave/attendance/payroll workflow routing; (2) Apply MaskedValue to payroll/payslip/offboarding tabs; (3) Add "Request Access" workflow integration from AccessDenied page (currently the button is a stub); (4) Add per-field ViewOnlyOwn enforcement using current user vs employee being viewed (currently ViewOnlyOwn masks unless isOwn prop is passed); (5) Add login/access-request email notifications; (6) Mobile responsive polish for ViewAsBanner (currently wraps on small screens).
+
+---
+Task ID: github-push-1
+Agent: main
+Task: Push the Role & Permissions work to the user's GitHub (token provided)
+
+Work Log:
+- Verified GitHub PAT owner = 8789pranav (Pranav Kaushlic); token valid.
+- Confirmed RBAC module already built in prior sessions: prisma schema grew to 2966 lines with 11 RBAC models (Role, RoleModulePermission, RolePagePermission, RoleActionPermission, RoleFieldPermission, RoleDataScope, UserRole, AccessRequest, PermissionAuditLog, RoleEntityConfig, RoleSetting); src has permissions-engine.ts, use-permissions.ts, permissions-audit.ts, permissions-constants.ts, roles-permissions sections (roles, matrix, data-access, access-requests, approval-roles), my-permissions-dialog, access-denied, employee roles + login-access tabs.
+- Security pre-flight: untracked .env, db/custom.db, .zscripts/dev.pid, tool-results/ from git; updated .gitignore to keep them out. Grepped working tree + tracked files for the PAT string -> not present anywhere (safe).
+- Committed all pending work as fdd83fc "feat(rbac): Role & Access Control module + security cleanup".
+- Compared local main vs remote syncsource1 main: histories DIVERGED (remote has 20+ feature commits not in local, e.g. HR Documents, sidebar scroll fix). Force-push to main would destroy remote work -> AVOIDED.
+- Pushed local main to a NEW branch `rbac-access-control` on 8789pranav/syncsource1 (non-destructive). Push verified: remote branch HEAD = fdd83fc.
+- Cleaned up temporary fetch ref refs/tmp/remote-main.
+
+Stage Summary:
+- Branch pushed: https://github.com/8789pranav/syncsource1/tree/rbac-access-control
+- PR link offered by GitHub: https://github.com/8789pranav/syncsource1/pull/new/rbac-access-control
+- Remote `main` was intentionally NOT overwritten (histories diverged; preserving 20+ remote commits).
+- Secrets (.env, db/custom.db) removed from tracking; .gitignore hardened.
+- SECURITY: the PAT was shared in plaintext in chat -> user should revoke/rotate it at https://github.com/settings/tokens after verifying the push.
