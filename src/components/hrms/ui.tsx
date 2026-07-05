@@ -47,8 +47,63 @@ export function PageHeader({
 
 // ---------- Stat Card ----------
 
+// accent config: icon tile gradient, top accent bar gradient, soft glow color, sparkline color
+const STAT_ACCENTS: Record<string, { tile: string; bar: string; glow: string; spark: string }> = {
+  emerald: {
+    tile: "from-emerald-500/15 to-emerald-500/5 text-emerald-600 dark:text-emerald-400",
+    bar: "from-emerald-500 to-teal-400",
+    glow: "bg-emerald-500/15",
+    spark: "#10b981",
+  },
+  amber: {
+    tile: "from-amber-500/15 to-amber-500/5 text-amber-600 dark:text-amber-400",
+    bar: "from-amber-500 to-orange-400",
+    glow: "bg-amber-500/15",
+    spark: "#f59e0b",
+  },
+  fuchsia: {
+    tile: "from-fuchsia-500/15 to-fuchsia-500/5 text-fuchsia-600 dark:text-fuchsia-400",
+    bar: "from-fuchsia-500 to-pink-400",
+    glow: "bg-fuchsia-500/15",
+    spark: "#d946ef",
+  },
+  coral: {
+    tile: "from-rose-500/15 to-rose-500/5 text-rose-600 dark:text-rose-400",
+    bar: "from-rose-500 to-red-400",
+    glow: "bg-rose-500/15",
+    spark: "#f43f5e",
+  },
+  cyan: {
+    tile: "from-cyan-500/15 to-cyan-500/5 text-cyan-600 dark:text-cyan-400",
+    bar: "from-cyan-500 to-sky-400",
+    glow: "bg-cyan-500/15",
+    spark: "#06b6d4",
+  },
+}
+
+// Mini bar sparkline for trend visualization inside stat cards
+export function Sparkline({ data, color, className }: { data: number[]; color: string; className?: string }) {
+  if (!data || data.length === 0) return null
+  const max = Math.max(...data, 1)
+  return (
+    <div className={cn("flex items-end gap-[3px] h-7", className)} aria-hidden="true">
+      {data.map((v, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded-sm min-w-[3px] transition-all"
+          style={{
+            height: `${Math.max((v / max) * 100, 14)}%`,
+            background: color,
+            opacity: 0.3 + (i / Math.max(data.length - 1, 1)) * 0.7,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 export function StatCard({
-  label, value, icon: Icon, trend, accent = "emerald", sub,
+  label, value, icon: Icon, trend, accent = "emerald", sub, spark,
 }: {
   label: string
   value: React.ReactNode
@@ -56,33 +111,41 @@ export function StatCard({
   trend?: { value: string; up: boolean }
   accent?: "emerald" | "amber" | "fuchsia" | "coral" | "cyan"
   sub?: string
+  spark?: number[]
 }) {
-  const accents: Record<string, string> = {
-    emerald: "from-emerald-500/10 to-emerald-500/5 text-emerald-600 dark:text-emerald-400",
-    amber: "from-amber-500/10 to-amber-500/5 text-amber-600 dark:text-amber-400",
-    fuchsia: "from-fuchsia-500/10 to-fuchsia-500/5 text-fuchsia-600 dark:text-fuchsia-400",
-    coral: "from-rose-500/10 to-rose-500/5 text-rose-600 dark:text-rose-400",
-    cyan: "from-cyan-500/10 to-cyan-500/5 text-cyan-600 dark:text-cyan-400",
-  }
+  const a = STAT_ACCENTS[accent] || STAT_ACCENTS.emerald
   return (
-    <Card className="relative overflow-hidden border-border/60 shadow-soft hover:shadow-card transition-shadow">
-      <CardContent className="p-5">
+    <Card className="group relative overflow-hidden border-border/60 shadow-soft hover:shadow-card hover:-translate-y-0.5 transition-all duration-200">
+      {/* top accent gradient bar */}
+      <div className={cn("absolute inset-x-0 top-0 h-1 bg-gradient-to-r", a.bar)} />
+      {/* decorative corner glow */}
+      <div className={cn("pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl opacity-70", a.glow)} />
+      <CardContent className="relative p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
             <p className="text-2xl font-semibold mt-1 text-foreground tabular-nums">{value}</p>
             {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
             {trend && (
-              <div className={cn("inline-flex items-center gap-1 mt-2 text-xs font-medium", trend.up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+              <div className={cn("inline-flex items-center gap-1 mt-2 text-xs font-medium px-1.5 py-0.5 rounded-md", trend.up ? "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10" : "text-rose-700 dark:text-rose-400 bg-rose-500/10")}>
                 <span>{trend.up ? "▲" : "▼"}</span>
                 <span>{trend.value}</span>
               </div>
             )}
           </div>
-          <div className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br", accents[accent])}>
-            <Icon className="h-5 w-5" />
+          <div className="relative">
+            {/* glow ring behind icon */}
+            <div className={cn("absolute inset-0 rounded-xl blur-md opacity-60", a.glow)} />
+            <div className={cn("relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br ring-1 ring-white/15 dark:ring-white/5", a.tile)}>
+              <Icon className="h-5 w-5" />
+            </div>
           </div>
         </div>
+        {spark && spark.length > 0 && (
+          <div className="mt-3 -mb-1">
+            <Sparkline data={spark} color={a.spark} />
+          </div>
+        )}
       </CardContent>
     </Card>
   )

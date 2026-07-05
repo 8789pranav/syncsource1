@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import {
   Users, Clock, CalendarCheck, Package, Activity, UserPlus,
   TrendingUp, CalendarOff, Plus, FileText, Monitor, ChevronRight,
-  Sparkles, ArrowRight,
+  Sparkles, ArrowRight, Cake, PartyPopper, Plane,
 } from "lucide-react"
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -48,6 +48,17 @@ type PendingRequest = {
   id: string; kind: "Leave" | "Asset"; employeeName: string; employeeCode: string;
   type: string; date: string; status: string
 }
+type OnLeaveTodayItem = {
+  id: string; name: string; code: string; designation: string; returnDate: string
+}
+type UpcomingBirthday = {
+  id: string; name: string; code: string; designation: string;
+  nextDate: string; ageTurning: number; daysUntil: number
+}
+type UpcomingAnniversary = {
+  id: string; name: string; code: string; designation: string;
+  joiningDate: string; nextDate: string; yearsCompleted: number; daysUntil: number
+}
 type DashboardData = {
   stats: Stats
   headcountByDept: NameValue[]
@@ -60,6 +71,9 @@ type DashboardData = {
   recentJoiners: RecentJoiner[]
   upcomingHolidays: UpcomingHoliday[]
   pendingRequests: PendingRequest[]
+  onLeaveTodayList: OnLeaveTodayItem[]
+  upcomingBirthdays: UpcomingBirthday[]
+  upcomingAnniversaries: UpcomingAnniversary[]
 }
 
 // ---- chart palette (matches chart-1..5 CSS vars; emerald/teal/amber/fuchsia/coral) ----
@@ -144,6 +158,11 @@ export function DashboardModule() {
 
   const s = data.stats
 
+  // sparkline series derived from trend data
+  const joiningsSpark = data.joiningsByMonth.map((m) => m.joinings)
+  const attendanceSpark = data.attendanceTrend.map((d) => d.present)
+  const leaveSpark = data.leaveTrend.map((m) => m.leaves)
+
   return (
     <div className="space-y-5">
       <WelcomeBanner todayLabel={todayLabel} setModule={setModule} />
@@ -156,13 +175,13 @@ export function DashboardModule() {
         animate="show"
       >
         <motion.div variants={item}>
-          <StatCard label="Total Employees" value={s.totalEmployees} icon={Users} accent="emerald" trend={{ value: "+2 this month", up: true }} sub={`${s.activeEmployees} active · ${s.onNotice} on notice`} />
+          <StatCard label="Total Employees" value={s.totalEmployees} icon={Users} accent="emerald" trend={{ value: "+2 this month", up: true }} sub={`${s.activeEmployees} active · ${s.onNotice} on notice`} spark={joiningsSpark} />
         </motion.div>
         <motion.div variants={item}>
           <StatCard label="Pending Approvals" value={s.pendingApprovals} icon={Clock} accent="amber" sub={`${data.pendingRequests.length} awaiting review`} />
         </motion.div>
         <motion.div variants={item}>
-          <StatCard label="On Leave Today" value={s.onLeaveToday} icon={CalendarOff} accent="fuchsia" sub="Approved leaves" />
+          <StatCard label="On Leave Today" value={s.onLeaveToday} icon={CalendarOff} accent="fuchsia" sub="Approved leaves" spark={leaveSpark} />
         </motion.div>
         <motion.div variants={item}>
           <StatCard label="Assets Assigned" value={s.assetsAssigned} icon={Package} accent="cyan" sub={`${s.assetsInStock} in stock`} />
@@ -177,15 +196,18 @@ export function DashboardModule() {
         animate="show"
       >
         <motion.div variants={item}>
-          <StatCard label="Avg Attendance" value={`${s.avgAttendance}%`} icon={Activity} accent="emerald" trend={{ value: "stable", up: true }} sub="Last 5 working days" />
+          <StatCard label="Avg Attendance" value={`${s.avgAttendance}%`} icon={Activity} accent="emerald" trend={{ value: "stable", up: true }} sub="Last 5 working days" spark={attendanceSpark} />
         </motion.div>
         <motion.div variants={item}>
           <StatCard label="Active Employees" value={s.activeEmployees} icon={TrendingUp} accent="cyan" sub={`of ${s.totalEmployees} total`} />
         </motion.div>
         <motion.div variants={item}>
-          <StatCard label="New This Month" value={s.newThisMonth} icon={UserPlus} accent="amber" trend={{ value: "joinees", up: true }} sub="Fresh hires" />
+          <StatCard label="New This Month" value={s.newThisMonth} icon={UserPlus} accent="amber" trend={{ value: "joinees", up: true }} sub="Fresh hires" spark={joiningsSpark} />
         </motion.div>
       </motion.div>
+
+      {/* Team Pulse — on leave today, birthdays, anniversaries */}
+      <TeamPulse data={data} setModule={setModule} />
 
       {/* Charts grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -409,6 +431,188 @@ export function DashboardModule() {
         </SectionCard>
       </div>
     </div>
+  )
+}
+
+// ---------- Team Pulse (on leave, birthdays, anniversaries) ----------
+function relativeDay(n: number): string {
+  if (n === 0) return "Today"
+  if (n === 1) return "Tomorrow"
+  if (n < 7) return `In ${n} days`
+  if (n < 14) return `Next week`
+  return `In ${n} days`
+}
+
+function TeamPulse({
+  data, setModule,
+}: {
+  data: DashboardData
+  setModule: (m: any, sub?: string | null) => void
+}) {
+  const onLeave = data.onLeaveTodayList
+  const birthdays = data.upcomingBirthdays
+  const anniversaries = data.upcomingAnniversaries
+
+  return (
+    <motion.div
+      className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+      variants={container}
+      initial="hidden"
+      animate="show"
+    >
+      {/* On Leave Today */}
+      <motion.div variants={item}>
+        <Card className="relative overflow-hidden border-border/60 shadow-soft h-full">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fuchsia-500 to-pink-400" />
+          <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-fuchsia-500/15 blur-2xl" />
+          <CardContent className="relative p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-fuchsia-500/15 text-fuchsia-600 dark:text-fuchsia-400">
+                  <Plane className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">On Leave Today</p>
+                  <p className="text-[11px] text-muted-foreground">{onLeave.length} out · returns shown</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setModule("leave")}>
+                View <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <div className="space-y-2 max-h-56 overflow-y-auto scrollbar-thin pr-1">
+              {onLeave.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-muted mb-2">
+                    <CalendarCheck className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Everyone's in today</p>
+                </div>
+              )}
+              {onLeave.map((p) => (
+                <div key={p.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/40 transition-colors">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-400 text-[11px] font-semibold">
+                      {initials(p.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground truncate">{p.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{p.designation}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] font-medium text-foreground">Returns</p>
+                    <p className="text-[10px] text-muted-foreground">{format(new Date(p.returnDate), "dd MMM")}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Upcoming Birthdays */}
+      <motion.div variants={item}>
+        <Card className="relative overflow-hidden border-border/60 shadow-soft h-full">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 to-orange-400" />
+          <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-500/15 blur-2xl" />
+          <CardContent className="relative p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                  <Cake className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Upcoming Birthdays</p>
+                  <p className="text-[11px] text-muted-foreground">Next 14 days</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setModule("employees")}>
+                View <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <div className="space-y-2 max-h-56 overflow-y-auto scrollbar-thin pr-1">
+              {birthdays.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-muted mb-2">
+                    <Cake className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">No birthdays coming up</p>
+                </div>
+              )}
+              {birthdays.map((b) => (
+                <div key={b.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/40 transition-colors">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[11px] font-semibold">
+                      {initials(b.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground truncate">{b.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{b.designation}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] font-medium text-amber-700 dark:text-amber-400">{format(new Date(b.nextDate), "dd MMM")}</p>
+                    <p className="text-[10px] text-muted-foreground">turns {b.ageTurning}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Work Anniversaries */}
+      <motion.div variants={item}>
+        <Card className="relative overflow-hidden border-border/60 shadow-soft h-full">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400" />
+          <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-emerald-500/15 blur-2xl" />
+          <CardContent className="relative p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                  <PartyPopper className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Work Anniversaries</p>
+                  <p className="text-[11px] text-muted-foreground">Next 30 days</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setModule("employees")}>
+                View <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <div className="space-y-2 max-h-56 overflow-y-auto scrollbar-thin pr-1">
+              {anniversaries.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-muted mb-2">
+                    <PartyPopper className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">No anniversaries coming up</p>
+                </div>
+              )}
+              {anniversaries.map((a) => (
+                <div key={a.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/40 transition-colors">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[11px] font-semibold">
+                      {initials(a.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground truncate">{a.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{a.designation}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400">{format(new Date(a.nextDate), "dd MMM")}</p>
+                    <p className="text-[10px] text-muted-foreground">{a.yearsCompleted} yr{a.yearsCompleted === 1 ? "" : "s"}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </motion.div>
   )
 }
 

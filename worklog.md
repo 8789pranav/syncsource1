@@ -2301,3 +2301,65 @@ Stage Summary:
 - The app is "Nexus HR" — an industry-grade HRMS (Zimyo/Keka/Darwinbox-like) with 30+ modules built across multiple prior development phases (see earlier worklog entries for full module history: org, employees, onboarding, offboarding, leave, attendance, payroll, documents with folder hierarchy, dynamic form engine, workflow engine).
 - Known pre-existing items (from prior worklog): ~65 out-of-scope tsc errors in shell.tsx/dashboard.tsx/dynamic-form.tsx/employees routes that don't block runtime (turbopack dev ignores them; next.config has ignoreBuildErrors:true).
 - Unresolved/next-phase: Continue per the recurring webDevReview cron — propose & build new features, refine styling, fix any QA issues found via agent-browser.
+
+---
+Task ID: webDevReview-1
+Agent: main (orchestrator)
+Task: Recurring webDevReview — assess project status, QA test via agent-browser, fix bugs or add features, improve styling & add functionality
+
+Work Log:
+- Reviewed worklog.md: project is "Nexus HR" HRMS with 30+ modules, stable, ~65 pre-existing tsc errors (non-blocking, ignoreBuildErrors:true).
+- Found dev server was DEAD at start of round (system auto-run had stopped). Restarted.
+- QA testing via agent-browser across ALL 22 sidebar modules (Dashboard, Employees, Onboarding, Offboarding, Announcements, Leave, Shifts, Roster, Attendance, Holidays, Payroll, Salary, Compliance, Arrear, Full & Final, Documents, Organization, Assets, Form Builder, Workflows, Audit Log, Settings): ALL loaded with ZERO page errors and ZERO console errors.
+- Tested interactive flows: employee profile opens (showed "Vihaan Rao" with 20+ tabs: Overview, Personal, Job, Contact, Family, Education, Experience, Bank, Statutory, Documents, Attendance, Leave, Payroll, Compensation, Performance, Skills...); profile tab switching (Bank Details) works.
+- Conclusion: app is STABLE with no runtime bugs. Selected work focus = STYLING IMPROVEMENT + NEW FEATURE (per mandatory requirements).
+- VLM analysis of dashboard screenshot identified weaknesses: plain cards lacking depth, dull palette, weak chart areas, generic icons, plain header.
+
+STYLING IMPROVEMENTS (mandatory):
+- Enhanced `StatCard` component (src/components/hrms/ui.tsx):
+  - Added colored top accent gradient bar (per-accent: emerald/amber/fuchsia/coral/cyan → matching gradient)
+  - Added decorative corner glow blob (blurred, accent-colored)
+  - Icon tile now has a soft glow ring behind it (blurred accent color) + ring border
+  - Hover lift animation: `hover:-translate-y-0.5` + `hover:shadow-card` transition
+  - Trend badge now has a colored background pill (emerald/rose tinted) instead of plain text
+  - NEW optional `spark` prop (number[]) renders a mini bar sparkline at the card bottom
+  - NEW exported `Sparkline` component (gradient-opacity bars)
+  - Refactored accent config into `STAT_ACCENTS` map (tile, bar, glow, spark color per accent)
+  - Backward compatible: all existing 68 callers using StatCard work unchanged.
+- Dashboard stat cards now include sparklines derived from real trend data:
+  - Total Employees → joiningsByMonth sparkline
+  - On Leave Today → leaveTrend sparkline
+  - Avg Attendance → attendanceTrend present sparkline
+  - New This Month → joiningsByMonth sparkline
+
+NEW FEATURE (mandatory) — "Team Pulse" widget on dashboard:
+- Extended GET /api/dashboard (src/app/api/dashboard/route.ts):
+  - Added `dateOfBirth` to employee select
+  - Built designation map earlier (shared by onLeaveTodayList + recentJoiners + birthdays + anniversaries)
+  - NEW `onLeaveTodayList`: employees on approved leave today, with return date + designation (de-duplicated by employee)
+  - NEW `upcomingBirthdays`: next 14 days, with ageTurning + daysUntil (computed via daysUntilNextAnniversary helper)
+  - NEW `upcomingAnniversaries`: next 30 days, yearsCompleted >= 1, with joiningDate + nextDate + daysUntil
+- Added `TeamPulse` component to dashboard (src/components/hrms/modules/dashboard.tsx):
+  - 3-column grid: On Leave Today (fuchsia) / Upcoming Birthdays (amber) / Work Anniversaries (emerald)
+  - Each card: top accent bar, corner glow, icon tile, header with count, scrollable avatar list (max-h-56), empty states ("Everyone's in today" / "No birthdays coming up" / "No anniversaries coming up")
+  - Avatars with initials, name, designation, date + context (returns / turns N / N yrs)
+  - "View" buttons navigate to relevant modules
+- Added types: OnLeaveTodayItem, UpcomingBirthday, UpcomingAnniversary; extended DashboardData.
+
+VERIFICATION:
+- Lint: `bun run lint` → 0 errors (1 pre-existing benign warning in dynamic-form.tsx).
+- API test (node fetch): onLeaveTodayList=0 items (empty state), upcomingBirthdays=1 (Aanya Joshi, turns 31, in 9d), upcomingAnniversaries=1 (Saanvi Nair, 1yr, in 20d). ✓
+- agent-browser UI test: Team Pulse renders — "On Leave Today" + "Everyone's in today", "Upcoming Birthdays" + "turns 31", "Work Anniversaries" all present. No page/console errors. ✓
+- Regression test: Leave module (20 stat cards render fine), Attendance module — both zero errors. Enhanced StatCard is backward compatible across all 68 callers. ✓
+- VLM before/after comparison: polish rating 5/10 → 8/10. Confirmed top accent bars, icon glow, hover depth, Team Pulse section, mini sparklines all visible. ✓
+- Screenshots: qa-review-dashboard-before.png, qa-review-dashboard-after.png, qa-review-leave-regression.png.
+
+Dev server: restarted with `setsid nohup` (survives sandbox process cleanup); confirmed ALIVE and serving (pid 5373, fresh 200s in dev.log).
+
+Stage Summary:
+- ✅ QA: all 22 modules + employee profile verified error-free.
+- ✅ Styling: StatCard dramatically enhanced (accent bars, glow, hover lift, sparklines). Polish 5→8/10.
+- ✅ New feature: Team Pulse widget (On Leave Today + Birthdays + Anniversaries) with full backend + frontend.
+- ✅ No regressions (Leave/Attendance confirmed).
+- ⚠️ Dev server kept dying under sandbox process cleanup; fixed via `setsid nohup`. If it dies again, restart with: `cd /home/z/my-project && setsid nohup bun run dev >dev.log 2>&1 & disown`.
+- Next-phase recommendations: (1) AI HR Assistant chatbot using LLM skill (draft emails, answer policy questions); (2) Command palette (Cmd+K) for global quick navigation; (3) Apply the same StatCard accent-bar/glow treatment to SectionCard for chart containers; (4) Fix the ~65 pre-existing tsc errors in shell.tsx/dashboard.tsx for cleaner type safety.
