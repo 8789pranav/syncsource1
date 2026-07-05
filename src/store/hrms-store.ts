@@ -10,6 +10,13 @@ interface HrmsState {
   sidebarOpen: boolean
   theme: "light" | "dark"
   searchQuery: string
+  // Permission-aware user simulation
+  currentUserId: string | null
+  currentUserName: string | null
+  currentUserRole: string | null // role code e.g. "HR_ADMIN", "EMPLOYEE"
+  allowedModules: ModuleId[] | null // null = not loaded yet = show all
+  setCurrentUser: (userId: string, userName: string, roleCode: string, allowedModules: ModuleId[]) => void
+  clearCurrentUser: () => void
   setModule: (m: ModuleId, sub?: string | null) => void
   setSubModule: (sub: string | null) => void
   toggleSidebar: () => void
@@ -26,6 +33,12 @@ export const useHrmsStore = create<HrmsState>()(
       sidebarOpen: true,
       theme: "light",
       searchQuery: "",
+      currentUserId: null,
+      currentUserName: null,
+      currentUserRole: null,
+      allowedModules: null,
+      setCurrentUser: (userId, userName, roleCode, allowedModules) => set({ currentUserId: userId, currentUserName: userName, currentUserRole: roleCode, allowedModules }),
+      clearCurrentUser: () => set({ currentUserId: null, currentUserName: null, currentUserRole: null, allowedModules: null }),
       setModule: (m, sub = null) => set({ activeModule: m, activeSubModule: sub }),
       setSubModule: (sub) => set({ activeSubModule: sub }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),

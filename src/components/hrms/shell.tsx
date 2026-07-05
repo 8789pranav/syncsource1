@@ -24,6 +24,26 @@ import {
 import { useHrmsStore } from "@/store/hrms-store"
 import { ModuleId, ModuleDef } from "@/lib/types"
 
+// Hook: loads current-user permissions on mount
+function usePermissionInit() {
+  const { currentUserId, allowedModules, setCurrentUser } = useHrmsStore()
+  React.useEffect(() => {
+    if (allowedModules !== null) return // already loaded
+    // Load default HR Admin permissions on first load
+    fetch("/api/roles-permissions/me")
+      .then(r => r.json())
+      .then(data => {
+        if (data?.allowedModules) {
+          setCurrentUser(data.userId || "default", data.userName || "HR Admin", data.roleCode || "HR_ADMIN", data.allowedModules)
+        }
+      })
+      .catch(() => {
+        // On error, allow everything
+        setCurrentUser("default", "HR Admin", "HR_ADMIN", ["dashboard","organization","employees","onboarding","offboarding","leave","shift","roster","attendance","holiday","payroll","documents","asset","announcements","forms","workflows","roles-permissions","audit","settings"])
+      })
+  }, [allowedModules, currentUserId, setCurrentUser])
+}
+
 type ShellModule = ModuleDef & { icon: any; payrollMenu?: string; isChild?: boolean }
 
 const MODULES: ShellModule[] = [
@@ -134,7 +154,17 @@ function NavItem({ m }: { m: ShellModule }) {
 }
 
 function Sidebar() {
-  const { sidebarOpen, setSidebar, toggleSidebar } = useHrmsStore()
+  const { sidebarOpen, setSidebar, toggleSidebar, allowedModules } = useHrmsStore()
+  // Filter modules by permission
+  const visibleModules = React.useMemo(() => {
+    if (!allowedModules) return MODULES // null = not loaded yet = show all
+    const set = new Set(allowedModules)
+    return MODULES.filter(m => {
+      // Always show payroll children if payroll is allowed
+      if (m.isChild && m.id === "payroll") return set.has("payroll")
+      return set.has(m.id as ModuleId)
+    })
+  }, [allowedModules])
   return (
     <aside
       className={cn(
@@ -152,7 +182,7 @@ function Sidebar() {
       <ScrollArea className="flex-1 min-h-0 px-2 py-3">
         <nav className="space-y-4">
           {GROUPS.map((g) => {
-            const items = MODULES.filter((m) => m.group === g.id)
+            const items = visibleModules.filter((m) => m.group === g.id)
             if (items.length === 0) return null
             return (
               <div key={g.id}>
@@ -280,6 +310,7 @@ function Footer() {
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
+  usePermissionInit() // Load current-user permissions on mount
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
