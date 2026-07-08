@@ -50,7 +50,7 @@ import {
   ENTITIES, SOURCE_MODULES, STATUS_COLORS,
   formatDate, formatDateTime, initials, avatarColor,
 } from "../shared"
-import { GENERATED_DOCUMENTS, DOCUMENT_TEMPLATES, DOCUMENT_LOGS } from "../data"
+import { apiFetch } from "@/lib/api-client"
 
 // =============================================================
 // Constants
@@ -73,7 +73,36 @@ const GENERATED_STATUSES: GeneratedDoc["status"][] = ["Generated", "Sent", "Down
 // =============================================================
 
 export function GeneratedDocumentsSection() {
-  const [docs, setDocs] = useState<GeneratedDoc[]>(GENERATED_DOCUMENTS)
+  const [docs, setDocs] = useState<GeneratedDoc[]>([])
+  const [templates, setTemplates] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Load generated documents + templates from backend
+  const loadData = React.useCallback(async () => {
+    setLoading(true)
+    try {
+      const [docsRes, tplRes] = await Promise.all([
+        apiFetch("/api/generated-documents?page_size=100", { cache: "no-store" }),
+        apiFetch("/api/document-templates?page_size=100", { cache: "no-store" }),
+      ])
+      if (docsRes.ok) {
+        const docsData = await docsRes.json()
+        setDocs(docsData.items || [])
+      }
+      if (tplRes.ok) {
+        const tplData = await tplRes.json()
+        setTemplates(tplData.items || [])
+      }
+    } catch {
+      toast.error("Failed to load generated documents")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    loadData()
+  }, [loadData])
 
   // Filters
   const [search, setSearch] = useState("")
@@ -128,17 +157,19 @@ export function GeneratedDocumentsSection() {
     return { total, thisMonth, eSigned, sent, downloaded, archived }
   }, [docs])
 
-  function handleAction(action: string, d: GeneratedDoc) {
+  async function handleAction(action: string, d: GeneratedDoc) {
     switch (action) {
       case "preview":
         setPreviewTarget(d); break
       case "download":
         toast.success(`Downloading PDF: ${d.documentName}`)
         setDocs(prev => prev.map(x => x.id === d.id ? { ...x, status: "Downloaded" as GeneratedDoc["status"] } : x))
+        apiFetch(`/api/generated-documents/${d.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Downloaded" }) })
         break
       case "email":
         toast.success(`Emailing ${d.documentName} to ${d.employeeName}`)
         setDocs(prev => prev.map(x => x.id === d.id ? { ...x, status: "Sent" as GeneratedDoc["status"] } : x))
+        apiFetch(`/api/generated-documents/${d.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Sent" }) })
         break
       case "regenerate":
         toast.info(`Regenerating ${d.documentName}...`)
@@ -146,10 +177,12 @@ export function GeneratedDocumentsSection() {
         break
       case "cancel":
         setDocs(prev => prev.map(x => x.id === d.id ? { ...x, status: "Cancelled" as GeneratedDoc["status"] } : x))
+        apiFetch(`/api/generated-documents/${d.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Cancelled" }) })
         toast.info(`Document cancelled: ${d.documentName}`)
         break
       case "archive":
         setDocs(prev => prev.map(x => x.id === d.id ? { ...x, status: "Archived" as GeneratedDoc["status"] } : x))
+        apiFetch(`/api/generated-documents/${d.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Archived" }) })
         toast.success(`Archived: ${d.documentName}`)
         break
       case "audit":
@@ -157,28 +190,28 @@ export function GeneratedDocumentsSection() {
     }
   }
 
-  function handleGenerate(input: { template: string; employeeName: string; employeeCode: string; source: SourceModule; entityName: string }) {
-    const tpl = DOCUMENT_TEMPLATES.find(t => t.name === input.template) || DOCUMENT_TEMPLATES[0]
-    const ent = ENTITIES.find(e => e.name === input.entityName) || ENTITIES[0]
-    const newDoc: GeneratedDoc = {
-      id: `gd-${Date.now()}`,
-      generatedId: `GEN-DOC-2024-${String(docs.length + 1).padStart(4, "0")}`,
-      documentName: `${tpl.name} — ${input.employeeName}`,
-      templateName: tpl.name,
-      employeeCode: input.employeeCode,
-      employeeName: input.employeeName,
-      entityId: ent.id,
-      entityName: ent.name,
-      generatedDate: new Date().toISOString(),
-      generatedBy: "Anita Desai",
-      sourceModule: input.source,
-      status: "Generated",
-      fileSize: "175 KB",
-      eSigned: tpl.eSignRequired,
+  async function handleGenerate(input: { template: string; employeeName: string; employeeCode: string; source: SourceModule; entityName: string }) {
+    try {
+      const tpl = templates.find((t: any) => t.name === input.template)
+      const res = await apiFetch("/api/documents/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateId: tpl?.id || null,
+          templateName: input.template,
+          employeeName: input.employeeName,
+          employeeCode: input.employeeCode,
+          sourceModule: input.source,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to generate document")
+      const newDoc = await res.json()
+      setDocs(prev => [newDoc, ...prev])
+      toast.success(`Generated: ${newDoc.documentName}`)
+      setGenerateOpen(false)
+    } catch {
+      toast.error("Failed to generate document")
     }
-    setDocs(prev => [newDoc, ...prev])
-    toast.success(`Generated: ${newDoc.documentName}`)
-    setGenerateOpen(false)
   }
 
   function handleBulkGenerate(input: { template: string; employees: string[]; source: SourceModule; entityName: string }) {
@@ -272,8 +305,8 @@ export function GeneratedDocumentsSection() {
       {/* Table */}
       <Card className="rounded-xl border-border/60 shadow-soft">
         <CardContent className="p-0">
-          <ScrollArea className="max-h-[640px] overflow-auto">
-            <Table>
+          <div className="max-h-[640px] overflow-auto rounded-lg">
+            <Table className="min-w-[1200px]">
               <TableHeader className="sticky top-0 z-10 bg-card">
                 <TableRow className="border-border/60 hover:bg-transparent">
                   <TH>Generated ID</TH>
@@ -366,13 +399,13 @@ export function GeneratedDocumentsSection() {
                 )}
               </TableBody>
             </Table>
-          </ScrollArea>
+          </div>
         </CardContent>
       </Card>
 
       {/* Dialogs */}
-      <GenerateDialog open={generateOpen} onClose={() => setGenerateOpen(false)} onSubmit={handleGenerate} />
-      <BulkGenerateDialog open={bulkOpen} onClose={() => setBulkOpen(false)} onSubmit={handleBulkGenerate} />
+      <GenerateDialog open={generateOpen} onClose={() => setGenerateOpen(false)} onSubmit={handleGenerate} templates={templates} />
+      <BulkGenerateDialog open={bulkOpen} onClose={() => setBulkOpen(false)} onSubmit={handleBulkGenerate} templates={templates} />
       <PreviewDialog doc={previewTarget} onClose={() => setPreviewTarget(null)} onAction={handleAction} />
       <AuditDialog doc={auditTarget} onClose={() => setAuditTarget(null)} />
     </div>
@@ -448,13 +481,14 @@ function TH({ children, className }: { children: React.ReactNode; className?: st
 // =============================================================
 
 function GenerateDialog({
-  open, onClose, onSubmit,
+  open, onClose, onSubmit, templates,
 }: {
   open: boolean
   onClose: () => void
   onSubmit: (input: { template: string; employeeName: string; employeeCode: string; source: SourceModule; entityName: string }) => void
+  templates: any[]
 }) {
-  const [template, setTemplate] = useState(DOCUMENT_TEMPLATES[0].name)
+  const [template, setTemplate] = useState(templates[0]?.name || "")
   const [employeeName, setEmployeeName] = useState("Aarav Sharma")
   const [employeeCode, setEmployeeCode] = useState("EMP-001")
   const [entityName, setEntityName] = useState(ENTITIES[0].name)
@@ -462,7 +496,7 @@ function GenerateDialog({
   const [confirmStep, setConfirmStep] = useState(false)
 
   function reset() {
-    setTemplate(DOCUMENT_TEMPLATES[0].name); setEmployeeName("Aarav Sharma")
+    setTemplate(templates[0]?.name || ""); setEmployeeName("Aarav Sharma")
     setEmployeeCode("EMP-001"); setEntityName(ENTITIES[0].name)
     setSource("Manual"); setConfirmStep(false)
   }
@@ -472,7 +506,7 @@ function GenerateDialog({
     reset()
   }
 
-  const tpl = DOCUMENT_TEMPLATES.find(t => t.name === template)
+  const tpl = templates.find(t => t.name === template)
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && (onClose(), reset())}>
@@ -492,7 +526,7 @@ function GenerateDialog({
               <Select value={template} onValueChange={setTemplate}>
                 <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {DOCUMENT_TEMPLATES.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
+                  {templates.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
                 </SelectContent>
               </Select>
               {tpl && (
@@ -580,13 +614,14 @@ const BULK_EMPLOYEES = [
 ]
 
 function BulkGenerateDialog({
-  open, onClose, onSubmit,
+  open, onClose, onSubmit, templates,
 }: {
   open: boolean
   onClose: () => void
   onSubmit: (input: { template: string; employees: string[]; source: SourceModule; entityName: string }) => void
+  templates: any[]
 }) {
-  const [template, setTemplate] = useState(DOCUMENT_TEMPLATES[0].name)
+  const [template, setTemplate] = useState(templates[0]?.name || "")
   const [entityName, setEntityName] = useState(ENTITIES[0].name)
   const [source, setSource] = useState<SourceModule>("Bulk Generation")
   const [selected, setSelected] = useState<string[]>([BULK_EMPLOYEES[0], BULK_EMPLOYEES[1], BULK_EMPLOYEES[2]])
@@ -619,7 +654,7 @@ function BulkGenerateDialog({
               <Select value={template} onValueChange={setTemplate}>
                 <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {DOCUMENT_TEMPLATES.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
+                  {templates.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -814,10 +849,14 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 // =============================================================
 
 function AuditDialog({ doc, onClose }: { doc: GeneratedDoc | null; onClose: () => void }) {
-  const auditLogs = useMemo(() => {
-    if (!doc) return []
-    return DOCUMENT_LOGS.filter(l => l.documentId === doc.id || l.documentName === doc.documentName)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  const [apiLogs, setApiLogs] = useState<any[]>([])
+
+  React.useEffect(() => {
+    if (!doc) { setApiLogs([]); return }
+    apiFetch(`/api/document-logs?page_size=50`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(d => setApiLogs((d.items || []).filter((l: any) => l.documentId === doc.id || l.documentName === doc.documentName)))
+      .catch(() => setApiLogs([]))
   }, [doc])
 
   // Build a synthetic timeline even if logs are sparse
@@ -841,14 +880,14 @@ function AuditDialog({ doc, onClose }: { doc: GeneratedDoc | null; onClose: () =
     if (doc.status === "Cancelled") {
       t.push({ action: "Cancelled", actor: doc.generatedBy, time: new Date(new Date(doc.generatedDate).getTime() + 7200000).toISOString(), details: `Document cancelled` })
     }
-    // Add extra logs from DOCUMENT_LOGS
-    auditLogs.forEach(l => {
+    // Add extra logs from API
+    apiLogs.forEach(l => {
       if (!t.find(x => x.action === l.action)) {
         t.push({ action: l.action, actor: l.performedBy, time: l.timestamp, details: l.details })
       }
     })
     return t.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-  }, [doc, auditLogs])
+  }, [doc, apiLogs])
 
   if (!doc) return null
   return (

@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/collapsible"
 import { EmptyState } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -119,7 +120,7 @@ export default function TimelineTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/timeline`)
+      const res = await apiFetch(`/api/employees/${employeeId}/timeline`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load timeline")
       setItems(data?.items || [])
@@ -338,7 +339,7 @@ function AddEventDialog({
     }
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/timeline`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/timeline`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

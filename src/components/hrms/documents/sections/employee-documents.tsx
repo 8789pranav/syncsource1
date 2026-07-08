@@ -1,5 +1,7 @@
 "use client"
 
+import { apiFetch } from "@/lib/api-client"
+
 // ============================================================================
 //  Documents — Employee Documents (Task ID 4-emp-docs)
 // ----------------------------------------------------------------------------
@@ -774,7 +776,7 @@ export function EmployeeDocumentsSection() {
       if (empDept) params.set("departmentId", empDept)
       if (empEntity) params.set("entityId", empEntity)
       const qs = params.toString()
-      const res = await fetch(`/api/employees/with-doc-counts${qs ? `?${qs}` : ""}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/employees/with-doc-counts${qs ? `?${qs}` : ""}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setEmployees(data.items || [])
@@ -795,8 +797,8 @@ export function EmployeeDocumentsSection() {
     ;(async () => {
       try {
         const [dRes, eRes] = await Promise.all([
-          fetch("/api/departments", { cache: "no-store" }),
-          fetch("/api/entities", { cache: "no-store" }),
+          apiFetch("/api/departments", { cache: "no-store" }),
+          apiFetch("/api/entities", { cache: "no-store" }),
         ])
         const dJson = await dRes.json()
         const eJson = await eRes.json()
@@ -817,7 +819,7 @@ export function EmployeeDocumentsSection() {
     if (!selectedEmployee) return
     setDocsLoading(true)
     try {
-      const res = await fetch(`/api/employees/${selectedEmployee.id}/documents`, { cache: "no-store" })
+      const res = await apiFetch(`/api/employees/${selectedEmployee.id}/documents`, { cache: "no-store" })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setDocuments(data.items || [])
@@ -833,7 +835,7 @@ export function EmployeeDocumentsSection() {
     if (!selectedEmployee) return
     setFoldersLoading(true)
     try {
-      const res = await fetch(`/api/employees/${selectedEmployee.id}/document-folders`, { cache: "no-store" })
+      const res = await apiFetch(`/api/employees/${selectedEmployee.id}/document-folders`, { cache: "no-store" })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setFolders(data.items || [])
@@ -902,7 +904,7 @@ export function EmployeeDocumentsSection() {
         status: "Uploaded",
       }
       if (selectedFolderId) payload.folderId = selectedFolderId
-      const res = await fetch(`/api/employees/${selectedEmployee.id}/documents`, {
+      const res = await apiFetch(`/api/employees/${selectedEmployee.id}/documents`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -927,7 +929,7 @@ export function EmployeeDocumentsSection() {
     if (!selectedEmployee || !editTarget) return
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${selectedEmployee.id}/documents/${editTarget.id}`, {
+      const res = await apiFetch(`/api/employees/${selectedEmployee.id}/documents/${editTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -958,7 +960,7 @@ export function EmployeeDocumentsSection() {
     if (!selectedEmployee || !deleteDocTarget) return
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${selectedEmployee.id}/documents/${deleteDocTarget.id}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${selectedEmployee.id}/documents/${deleteDocTarget.id}`, { method: "DELETE" })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
         throw new Error(j.error || `HTTP ${res.status}`)
@@ -977,7 +979,7 @@ export function EmployeeDocumentsSection() {
     if (!selectedEmployee) return
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${selectedEmployee.id}/document-folders`, {
+      const res = await apiFetch(`/api/employees/${selectedEmployee.id}/document-folders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1005,7 +1007,7 @@ export function EmployeeDocumentsSection() {
     if (!selectedEmployee || !folderFormInitial) return
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${selectedEmployee.id}/document-folders/${folderFormInitial.id}`, {
+      const res = await apiFetch(`/api/employees/${selectedEmployee.id}/document-folders/${folderFormInitial.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1033,7 +1035,7 @@ export function EmployeeDocumentsSection() {
     if (!selectedEmployee || !deleteFolderTarget) return
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${selectedEmployee.id}/document-folders/${deleteFolderTarget.id}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${selectedEmployee.id}/document-folders/${deleteFolderTarget.id}`, { method: "DELETE" })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
         throw new Error(j.error || `HTTP ${res.status}`)

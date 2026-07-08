@@ -20,6 +20,7 @@ import { Eye, EyeOff, Lock, ShieldAlert } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { usePermissions } from "@/lib/use-permissions"
 import { maskValue } from "@/lib/permissions-constants"
+import { apiFetch } from "@/lib/api-client"
 
 interface MaskedValueProps {
   module: string
@@ -101,7 +102,7 @@ export function MaskedValue({
           // Best-effort audit log when revealing sensitive data
           if (next && value) {
             try {
-              fetch("/api/roles-permissions/logs", {
+              apiFetch("/api/roles-permissions/logs", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

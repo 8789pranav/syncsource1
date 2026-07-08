@@ -34,6 +34,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SectionCard, EmptyState, StatCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -102,7 +103,7 @@ export default function AttendanceTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/attendance?employeeId=${encodeURIComponent(employeeId)}&from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}`)
+      const res = await apiFetch(`/api/attendance?employeeId=${encodeURIComponent(employeeId)}&from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load attendance")
       setItems(data?.items || [])
@@ -456,7 +457,7 @@ function RegularizeDialog({
       // Auto-set flags
       payload.isLate = status === "Late"
       payload.isEarlyGoing = false
-      const res = await fetch(`/api/attendance/${rec.id}`, {
+      const res = await apiFetch(`/api/attendance/${rec.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

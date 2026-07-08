@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import { format, isToday, isTomorrow, differenceInCalendarDays } from "date-fns"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ============================================================
 // Types
@@ -107,7 +108,7 @@ export function HolidayModule() {
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/holidays")
+      const res = await apiFetch("/api/holidays")
       const data = await res.json()
       setItems(data?.items || [])
     } catch {
@@ -164,7 +165,7 @@ export function HolidayModule() {
     if (!deleteId) return
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/holidays/${deleteId}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/holidays/${deleteId}`, { method: "DELETE" })
       if (!res.ok) {
         const e = await res.json().catch(() => ({}))
         throw new Error(e.error || "Failed to delete")

@@ -44,6 +44,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SectionCard, EmptyState, StatCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -123,9 +124,9 @@ export default function AssetsTab({
     setLoading(true)
     try {
       const [aRes, rRes, cRes] = await Promise.all([
-        fetch(`/api/assets`),
-        fetch(`/api/asset-requests?employeeId=${encodeURIComponent(employeeId)}`),
-        fetch(`/api/asset-categories`),
+        apiFetch(`/api/assets`),
+        apiFetch(`/api/asset-requests?employeeId=${encodeURIComponent(employeeId)}`),
+        apiFetch(`/api/asset-categories`),
       ])
       const aData = await aRes.json()
       const rData = await rRes.json()
@@ -167,7 +168,7 @@ export default function AssetsTab({
   async function handleReturn() {
     if (!returnTarget) return
     try {
-      const res = await fetch(`/api/assets/${returnTarget.id}`, {
+      const res = await apiFetch(`/api/assets/${returnTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Returned" }),
@@ -494,7 +495,7 @@ function RequestAssetDialog({
   async function handleSubmit() {
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/asset-requests`, {
+      const res = await apiFetch(`/api/asset-requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

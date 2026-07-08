@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { EmptyState, SectionCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -88,7 +89,7 @@ export default function CustomFieldsTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/custom-fields`)
+      const res = await apiFetch(`/api/employees/${employeeId}/custom-fields`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load custom fields")
       setItems(data?.items || [])
@@ -115,7 +116,7 @@ export default function CustomFieldsTab({
   async function handleInlineSave(rec: CustomFieldRec) {
     if (!inlineEdit) return
     try {
-      const res = await fetch(`/api/employees/${employeeId}/custom-fields/${rec.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/custom-fields/${rec.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value: inlineEdit.value }),
@@ -133,7 +134,7 @@ export default function CustomFieldsTab({
   async function handleDelete() {
     if (!deleteTarget) return
     try {
-      const res = await fetch(`/api/employees/${employeeId}/custom-fields/${deleteTarget.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/custom-fields/${deleteTarget.id}`, {
         method: "DELETE",
       })
       const data = await res.json()
@@ -370,7 +371,7 @@ function FieldFormDialog({
         ? `/api/employees/${employeeId}/custom-fields/${editTarget.id}`
         : `/api/employees/${employeeId}/custom-fields`
       const method = editTarget ? "PATCH" : "POST"
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

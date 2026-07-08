@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
+import { apiFetch } from "@/lib/api-client"
 
 // ============================================================
 // Option type used by all pickers
@@ -41,7 +42,7 @@ export function MultiSelect({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(endpoint)
+      const res = await apiFetch(endpoint)
       const data = await res.json()
       const items: PickerOption[] = (data.items || []).map((it: any) => ({
         label: it.label || it.name || it.legalName || it.code || it.id,
@@ -154,7 +155,7 @@ export function SingleSelect({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(endpoint)
+      const res = await apiFetch(endpoint)
       const data = await res.json()
       const items: PickerOption[] = (data.items || []).map((it: any) => ({
         label: it.label || it.name || it.legalName || it.code || it.id,

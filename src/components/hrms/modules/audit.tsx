@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 interface AuditEntry {
   id: string
@@ -82,7 +83,7 @@ export function AuditModule() {
       const params = new URLSearchParams()
       if (module !== "all") params.set("module", module)
       params.set("limit", "200")
-      const res = await fetch(`/api/audit?${params.toString()}`)
+      const res = await apiFetch(`/api/audit?${params.toString()}`)
       const data = await res.json()
       setRows(data.items || [])
     } catch { toast.error("Failed to load audit log") }

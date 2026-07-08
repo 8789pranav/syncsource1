@@ -41,6 +41,7 @@ import {
 import { SectionCard, StatCard, EmptyState } from "@/components/hrms/ui"
 import { MaskedValue } from "@/components/hrms/permissions/masked-value"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- helpers ----------
 const fmtDate = (d?: string | Date | null) => {
@@ -121,8 +122,8 @@ export default function StatutoryTab({ employeeId, employee }: { employeeId: str
     setLoading(true)
     try {
       const [statRes, famRes] = await Promise.all([
-        fetch(`/api/employees/${employeeId}/statutory`),
-        fetch(`/api/employees/${employeeId}/family`),
+        apiFetch(`/api/employees/${employeeId}/statutory`),
+        apiFetch(`/api/employees/${employeeId}/family`),
       ])
       const stat = statRes.ok ? await statRes.json() : { items: [] }
       const fam = famRes.ok ? await famRes.json() : { items: [] }
@@ -159,7 +160,7 @@ export default function StatutoryTab({ employeeId, employee }: { employeeId: str
   const onSave = async () => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -196,7 +197,7 @@ export default function StatutoryTab({ employeeId, employee }: { employeeId: str
   const onAddHistory = async () => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/statutory`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/statutory`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -224,7 +225,7 @@ export default function StatutoryTab({ employeeId, employee }: { employeeId: str
     if (!deleteId) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/statutory/${deleteId}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${employeeId}/statutory/${deleteId}`, { method: "DELETE" })
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       toast.success("Statutory record removed")
       setDeleteId(null)

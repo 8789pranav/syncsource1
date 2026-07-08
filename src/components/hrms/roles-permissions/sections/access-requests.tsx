@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from "@/lib/api-client"
+
 import * as React from "react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
@@ -74,9 +76,9 @@ export function AccessRequestsSection() {
       if (filterType && filterType !== "__all__") params.set("requestType", filterType)
       if (tab === "pending") params.set("status", "PendingApproval")
       const [ar, ur, rr] = await Promise.all([
-        fetch(`/api/roles-permissions/access-requests?${params}`),
-        fetch(`/api/roles-permissions/users`),
-        fetch(`/api/roles-permissions/roles`),
+        apiFetch(`/api/roles-permissions/access-requests?${params}`),
+        apiFetch(`/api/roles-permissions/users`),
+        apiFetch(`/api/roles-permissions/roles`),
       ])
       if (ar.ok) setItems((await ar.json()).items)
       if (ur.ok) setEmployees((await ur.json()).items.map((u: any) => ({ id: u.id, employeeCode: u.employeeCode, firstName: u.firstName, lastName: u.lastName, displayName: u.displayName })))
@@ -95,7 +97,7 @@ export function AccessRequestsSection() {
     if (!form.requestedById || !form.reason) { toast.error("Requester and reason required"); return }
     setSaving(true)
     try {
-      const r = await fetch(`/api/roles-permissions/access-requests`, {
+      const r = await apiFetch(`/api/roles-permissions/access-requests`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       })
@@ -123,7 +125,7 @@ export function AccessRequestsSection() {
   }
 
   const revoke = async (r: AccessRequest) => {
-    const rr = await fetch(`/api/roles-permissions/access-requests/${r.id}/revoke`, { method: "POST" })
+    const rr = await apiFetch(`/api/roles-permissions/access-requests/${r.id}/revoke`, { method: "POST" })
     if (rr.ok) { toast.success("Revoked"); load() }
   }
 

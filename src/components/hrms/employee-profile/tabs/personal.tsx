@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { SectionCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- helpers ----------
 const fmtDate = (d?: string | Date | null) => {
@@ -106,7 +107,7 @@ export default function PersonalTab({ employeeId, employee }: { employeeId: stri
   const onPatch = async (payload: Record<string, any>) => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -135,7 +136,7 @@ export default function PersonalTab({ employeeId, employee }: { employeeId: stri
     }
     setReqSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/requests`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

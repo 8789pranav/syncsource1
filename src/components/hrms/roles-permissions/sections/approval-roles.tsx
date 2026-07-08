@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from "@/lib/api-client"
+
 import * as React from "react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
@@ -70,7 +72,7 @@ export function ApprovalRolesSection() {
       const params = new URLSearchParams()
       if (search) params.set("q", search)
       if (filterModule && filterModule !== "__all__") params.set("module", filterModule)
-      const r = await fetch(`/api/roles-permissions/approval-roles?${params}`)
+      const r = await apiFetch(`/api/roles-permissions/approval-roles?${params}`)
       if (r.ok) setItems((await r.json()).items)
     } finally { setLoading(false) }
   }, [search, filterModule])
@@ -108,7 +110,7 @@ export function ApprovalRolesSection() {
   }
 
   const clone = async (r: ApprovalRole) => {
-    const r2 = await fetch(`/api/roles-permissions/approval-roles`, {
+    const r2 = await apiFetch(`/api/roles-permissions/approval-roles`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...r, name: `${r.name} (Copy)`, code: `${r.code}_COPY`, performedByName: "HR Admin" }),
     })
@@ -117,7 +119,7 @@ export function ApprovalRolesSection() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    const r = await fetch(`/api/roles-permissions/approval-roles/${deleteTarget.id}`, { method: "DELETE" })
+    const r = await apiFetch(`/api/roles-permissions/approval-roles/${deleteTarget.id}`, { method: "DELETE" })
     if (r.ok) { toast.success("Deleted"); setDeleteTarget(null); load() }
   }
 

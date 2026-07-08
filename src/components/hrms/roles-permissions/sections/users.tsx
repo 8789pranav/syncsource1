@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from "@/lib/api-client"
+
 import * as React from "react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
@@ -84,8 +86,8 @@ export function UsersSection() {
       if (search) params.set("q", search)
       if (filterHasRole && filterHasRole !== "__all__") params.set("hasRole", filterHasRole)
       const [ur, rr] = await Promise.all([
-        fetch(`/api/roles-permissions/users?${params}`),
-        fetch(`/api/roles-permissions/roles`),
+        apiFetch(`/api/roles-permissions/users?${params}`),
+        apiFetch(`/api/roles-permissions/roles`),
       ])
       if (ur.ok) setUsers((await ur.json()).items)
       if (rr.ok) setRoles((await rr.json()).items)
@@ -102,7 +104,7 @@ export function UsersSection() {
 
   const submitAssign = async () => {
     if (!assignTarget || !form.roleId) { toast.error("Select a role"); return }
-    const r = await fetch(`/api/roles-permissions/users/${assignTarget.id}/roles`, {
+    const r = await apiFetch(`/api/roles-permissions/users/${assignTarget.id}/roles`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, performedByName: "HR Admin" }),
@@ -118,7 +120,7 @@ export function UsersSection() {
   }
 
   const removeRole = async (userId: string, roleId: string, roleName: string) => {
-    const r = await fetch(`/api/roles-permissions/users/${userId}/roles/${roleId}`, { method: "DELETE" })
+    const r = await apiFetch(`/api/roles-permissions/users/${userId}/roles/${roleId}`, { method: "DELETE" })
     if (r.ok) {
       toast.success(`Role "${roleName}" removed`)
       load()
@@ -129,7 +131,7 @@ export function UsersSection() {
     setEffectiveTarget(u)
     setEffective(null)
     setEffectiveLoading(true)
-    const r = await fetch(`/api/roles-permissions/users/${u.id}/effective`)
+    const r = await apiFetch(`/api/roles-permissions/users/${u.id}/effective`)
     if (r.ok) setEffective(await r.json())
     setEffectiveLoading(false)
   }

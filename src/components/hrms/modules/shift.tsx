@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, Plus, Pencil, Trash2, Moon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 interface Shift {
   id: string
@@ -115,7 +116,7 @@ export function ShiftModule() {
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/shifts")
+      const res = await apiFetch("/api/shifts")
       const data = await res.json()
       setItems(data?.items || [])
     } catch {
@@ -162,7 +163,7 @@ export function ShiftModule() {
     if (!deleteId) return
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/shifts/${deleteId}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/shifts/${deleteId}`, { method: "DELETE" })
       if (!res.ok) {
         const e = await res.json().catch(() => ({}))
         throw new Error(e.error || "Failed to delete")

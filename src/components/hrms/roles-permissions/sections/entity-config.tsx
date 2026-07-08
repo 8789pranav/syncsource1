@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog"
 import { DATA_SCOPES, ROLE_TYPE_MAP } from "@/lib/permissions-constants"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ============================================================
 // Types
@@ -157,9 +158,9 @@ export function EntityConfigSection() {
     setLoading(true)
     try {
       const [cr, er, rr] = await Promise.all([
-        fetch("/api/roles-permissions/entity-configs"),
-        fetch("/api/entities"),
-        fetch("/api/roles-permissions/roles"),
+        apiFetch("/api/roles-permissions/entity-configs"),
+        apiFetch("/api/entities"),
+        apiFetch("/api/roles-permissions/roles"),
       ])
       if (cr.ok) {
         const data = await cr.json()
@@ -292,7 +293,7 @@ export function EntityConfigSection() {
           effectiveTo: form.effectiveTo || null,
           status: form.status,
         }
-        const r = await fetch(`/api/roles-permissions/entity-configs/${editing.id}`, {
+        const r = await apiFetch(`/api/roles-permissions/entity-configs/${editing.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -307,7 +308,7 @@ export function EntityConfigSection() {
         }
       } else {
         // CREATE — two-step: POST to create with entityId + useTenantDefault, then PATCH to set the rest
-        const createRes = await fetch(`/api/roles-permissions/entity-configs`, {
+        const createRes = await apiFetch(`/api/roles-permissions/entity-configs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ entityId: form.entityId, useTenantDefault: form.useTenantDefault }),
@@ -344,7 +345,7 @@ export function EntityConfigSection() {
           effectiveTo: form.effectiveTo || null,
           status: form.status,
         }
-        const pr = await fetch(`/api/roles-permissions/entity-configs/${newId}`, {
+        const pr = await apiFetch(`/api/roles-permissions/entity-configs/${newId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(patchPayload),
@@ -368,7 +369,7 @@ export function EntityConfigSection() {
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
-      const r = await fetch(`/api/roles-permissions/entity-configs/${deleteTarget.id}`, { method: "DELETE" })
+      const r = await apiFetch(`/api/roles-permissions/entity-configs/${deleteTarget.id}`, { method: "DELETE" })
       if (r.ok) {
         toast.success("Configuration deleted")
         setDeleteTarget(null)
@@ -386,7 +387,7 @@ export function EntityConfigSection() {
     // Optimistic update
     setConfigs(prev => prev.map(x => x.id === c.id ? { ...x, status: newStatus } : x))
     try {
-      const r = await fetch(`/api/roles-permissions/entity-configs/${c.id}`, {
+      const r = await apiFetch(`/api/roles-permissions/entity-configs/${c.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),

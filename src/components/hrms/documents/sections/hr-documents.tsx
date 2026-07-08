@@ -1,5 +1,7 @@
 "use client"
 
+import { apiFetch } from "@/lib/api-client"
+
 // ============================================================================
 //  Documents — HR Documents (Task ID 4-hr-docs)
 // ----------------------------------------------------------------------------
@@ -587,8 +589,8 @@ export function HRDocumentsSection() {
     setLoading(true)
     try {
       const [fRes, dRes] = await Promise.all([
-        fetch("/api/hr-documents/folders"),
-        fetch(`/api/hr-documents?folderId=${selectedFolderId === null ? "root" : selectedFolderId || "root"}`),
+        apiFetch("/api/hr-documents/folders"),
+        apiFetch(`/api/hr-documents?folderId=${selectedFolderId === null ? "root" : selectedFolderId || "root"}`),
       ])
       if (fRes.ok) {
         const fjson = await fRes.json()
@@ -635,7 +637,7 @@ export function HRDocumentsSection() {
   // ---------- handlers ----------
   const onSaveFolder = async (data: { name: string; description: string; color: string }) => {
     if (folderDialog.initial) {
-      const res = await fetch(`/api/hr-documents/folders/${folderDialog.initial.id}`, {
+      const res = await apiFetch(`/api/hr-documents/folders/${folderDialog.initial.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -643,7 +645,7 @@ export function HRDocumentsSection() {
       if (!res.ok) throw new Error("Failed to rename folder")
       toast.success("Folder updated", { description: data.name })
     } else {
-      const res = await fetch("/api/hr-documents/folders", {
+      const res = await apiFetch("/api/hr-documents/folders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, createdBy: "HR Admin" }),
@@ -657,7 +659,7 @@ export function HRDocumentsSection() {
   const onSaveDoc = async (data: Partial<HRDoc> & { name: string }) => {
     const payload = { ...data, folderId: selectedFolderId }
     if (docDialog.initial) {
-      const res = await fetch(`/api/hr-documents/${docDialog.initial.id}`, {
+      const res = await apiFetch(`/api/hr-documents/${docDialog.initial.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -665,7 +667,7 @@ export function HRDocumentsSection() {
       if (!res.ok) throw new Error("Failed to update document")
       toast.success("Document updated", { description: data.name })
     } else {
-      const res = await fetch("/api/hr-documents", {
+      const res = await apiFetch("/api/hr-documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -679,7 +681,7 @@ export function HRDocumentsSection() {
   const onDeleteFolder = async () => {
     if (!deleteFolder) return
     try {
-      const res = await fetch(`/api/hr-documents/folders/${deleteFolder.id}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/hr-documents/folders/${deleteFolder.id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Failed to delete folder")
       const json = await res.json()
       toast.success("Folder deleted", {
@@ -698,7 +700,7 @@ export function HRDocumentsSection() {
   const onDeleteDoc = async () => {
     if (!deleteDoc) return
     try {
-      const res = await fetch(`/api/hr-documents/${deleteDoc.id}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/hr-documents/${deleteDoc.id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Failed to delete document")
       toast.success("Document deleted", { description: deleteDoc.name })
       setDeleteDoc(null)

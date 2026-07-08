@@ -29,6 +29,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { DELEGATION_TYPES, APPROVAL_MODULES } from "@/lib/permissions-constants"
+import { apiFetch } from "@/lib/api-client"
 
 interface Employee { id: string; employeeCode: string; firstName?: string; lastName?: string; displayName?: string }
 interface Delegation {
@@ -78,8 +79,8 @@ export function DelegationSection() {
       if (filterType && filterType !== "__all__") params.set("delegationType", filterType)
       if (search) params.set("q", search)
       const [dr, er] = await Promise.all([
-        fetch(`/api/roles-permissions/delegations?${params}`),
-        fetch(`/api/roles-permissions/users`),
+        apiFetch(`/api/roles-permissions/delegations?${params}`),
+        apiFetch(`/api/roles-permissions/users`),
       ])
       if (dr.ok) setItems((await dr.json()).items)
       if (er.ok) {
@@ -115,7 +116,7 @@ export function DelegationSection() {
 
   const revoke = async () => {
     if (!revokeTarget) return
-    const r = await fetch(`/api/roles-permissions/delegations/${revokeTarget.id}/revoke`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ performedByName: "HR Admin" }) })
+    const r = await apiFetch(`/api/roles-permissions/delegations/${revokeTarget.id}/revoke`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ performedByName: "HR Admin" }) })
     if (r.ok) { toast.success("Delegation revoked"); setRevokeTarget(null); load() }
   }
 

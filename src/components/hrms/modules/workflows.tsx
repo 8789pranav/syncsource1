@@ -24,6 +24,7 @@ import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 const uid = (p: string) => `${p}-${Math.random().toString(36).slice(2, 9)}`
 
@@ -83,7 +84,7 @@ export function WorkflowsModule() {
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/workflows")
+      const res = await apiFetch("/api/workflows")
       const data = await res.json()
       setRows((data.items || []).map((w: any) => ({ ...w, steps: w.steps || [] })))
     } catch { toast.error("Failed to load workflows") }
@@ -96,7 +97,7 @@ export function WorkflowsModule() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this workflow?")) return
-    const res = await fetch(`/api/workflows/${id}`, { method: "DELETE" })
+    const res = await apiFetch(`/api/workflows/${id}`, { method: "DELETE" })
     if (res.ok) { toast.success("Workflow deleted"); load() }
     else toast.error("Delete failed")
   }
@@ -491,7 +492,7 @@ function Connector() {
 function EmployeePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [options, setOptions] = React.useState<{ label: string; value: string }[]>([])
   React.useEffect(() => {
-    fetch("/api/employees/picker")
+    apiFetch("/api/employees/picker")
       .then((r) => r.json())
       .then((d) => setOptions(d.items || []))
       .catch(() => {})

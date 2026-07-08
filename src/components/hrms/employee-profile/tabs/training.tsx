@@ -39,6 +39,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SectionCard, EmptyState, StatCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -99,7 +100,7 @@ export default function TrainingTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/training`)
+      const res = await apiFetch(`/api/employees/${employeeId}/training`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load training")
       setItems(data?.items || [])
@@ -123,7 +124,7 @@ export default function TrainingTab({
 
   async function patchStatus(rec: TrainingRec, payload: Record<string, unknown>, msg: string) {
     try {
-      const res = await fetch(`/api/employees/${employeeId}/training/${rec.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/training/${rec.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -140,7 +141,7 @@ export default function TrainingTab({
   async function handleDelete() {
     if (!deleteTarget) return
     try {
-      const res = await fetch(`/api/employees/${employeeId}/training/${deleteTarget.id}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${employeeId}/training/${deleteTarget.id}`, { method: "DELETE" })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to delete")
       toast.success("Training deleted")
@@ -447,7 +448,7 @@ function TrainingDialog({
       }
       const url = isEdit ? `/api/employees/${employeeId}/training/${existing!.id}` : `/api/employees/${employeeId}/training`
       const method = isEdit ? "PATCH" : "POST"
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      const res = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to save training")
       toast.success(isEdit ? "Training updated" : "Training assigned")

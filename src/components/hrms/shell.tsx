@@ -29,6 +29,7 @@ import { ViewAsBanner } from "@/components/hrms/permissions/view-as-banner"
 import { AccessDenied } from "@/components/hrms/permissions/access-denied"
 import { MyPermissionsDialog } from "@/components/hrms/permissions/my-permissions-dialog"
 import { usePermissions } from "@/lib/use-permissions"
+import { apiFetch } from "@/lib/api-client"
 
 // Hook: loads current-user permissions on mount
 function usePermissionInit() {
@@ -36,7 +37,7 @@ function usePermissionInit() {
   React.useEffect(() => {
     if (permissionsLoaded) return // already loaded
     // Load default HR Admin permissions on first load
-    fetch("/api/roles-permissions/me")
+    apiFetch("/api/roles-permissions/me")
       .then(r => r.json())
       .then(data => {
         const d = data?.data || data

@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 const uid = (p: string) => `${p}-${Math.random().toString(36).slice(2, 9)}`
 
@@ -124,7 +125,7 @@ export function FormsModule() {
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/forms")
+      const res = await apiFetch("/api/forms")
       const data = await res.json()
       setRows(data.items || [])
     } catch { toast.error("Failed to load forms") }
@@ -137,7 +138,7 @@ export function FormsModule() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this form schema?")) return
-    const res = await fetch(`/api/forms/${id}`, { method: "DELETE" })
+    const res = await apiFetch(`/api/forms/${id}`, { method: "DELETE" })
     if (res.ok) { toast.success("Form deleted"); load() }
     else toast.error("Delete failed")
   }

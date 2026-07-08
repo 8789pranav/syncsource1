@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from "@/lib/api-client"
+
 import * as React from "react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
@@ -48,7 +50,7 @@ export function PermissionMatrixSection() {
       const params = new URLSearchParams()
       if (filterRoleType && filterRoleType !== "__all__") params.set("roleType", filterRoleType)
       if (filterGroup && filterGroup !== "__all__") params.set("group", filterGroup)
-      const r = await fetch(`/api/roles-permissions/matrix?${params}`)
+      const r = await apiFetch(`/api/roles-permissions/matrix?${params}`)
       if (r.ok) setData(await r.json())
     } finally { setLoading(false) }
   }, [filterRoleType, filterGroup])
@@ -71,7 +73,7 @@ export function PermissionMatrixSection() {
   const updateCell = async (roleId: string, module: string, accessLevel: string) => {
     setSaving(true)
     try {
-      const r = await fetch("/api/roles-permissions/matrix/cell", {
+      const r = await apiFetch("/api/roles-permissions/matrix/cell", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roleId, module, accessLevel, performedByName: "HR Admin" }),

@@ -30,6 +30,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { EmptyState, SectionCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -108,7 +109,7 @@ export default function AuditTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/audit`)
+      const res = await apiFetch(`/api/employees/${employeeId}/audit`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load audit log")
       setItems(data?.items || [])

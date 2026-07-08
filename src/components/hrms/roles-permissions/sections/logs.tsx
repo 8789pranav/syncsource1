@@ -20,6 +20,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog"
 import { AUDIT_ACTIONS } from "@/lib/permissions-constants"
+import { apiFetch } from "@/lib/api-client"
 
 interface AuditLog {
   id: string; action: string; entityType: string | null; entityId: string | null;
@@ -82,8 +83,8 @@ export function LogsSection() {
       if (filterStatus && filterStatus !== "__all__") params.set("status", filterStatus)
       params.set("take", "200")
       const [lr, sr] = await Promise.all([
-        fetch(`/api/roles-permissions/logs?${params}`),
-        fetch(`/api/roles-permissions/logs/stats`),
+        apiFetch(`/api/roles-permissions/logs?${params}`),
+        apiFetch(`/api/roles-permissions/logs/stats`),
       ])
       if (lr.ok) setItems((await lr.json()).items)
       if (sr.ok) setStats(await sr.json())

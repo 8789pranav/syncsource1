@@ -34,6 +34,7 @@ import { SectionCard, EmptyState, StatCard } from "@/components/hrms/ui"
 import { usePermissions } from "@/lib/use-permissions"
 import { MaskedValue } from "@/components/hrms/permissions/masked-value"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -134,7 +135,7 @@ export default function CompensationTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/compensation`)
+      const res = await apiFetch(`/api/employees/${employeeId}/compensation`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load compensation history")
       setItems(data?.items || [])
@@ -165,7 +166,7 @@ export default function CompensationTab({
   async function handleDelete() {
     if (!deleteTarget) return
     try {
-      const res = await fetch(`/api/employees/${employeeId}/compensation/${deleteTarget.id}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${employeeId}/compensation/${deleteTarget.id}`, { method: "DELETE" })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to delete")
       toast.success("Revision deleted")
@@ -503,7 +504,7 @@ function RevisionDialog({
         ? `/api/employees/${employeeId}/compensation/${existing!.id}`
         : `/api/employees/${employeeId}/compensation`
       const method = isEdit ? "PATCH" : "POST"
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

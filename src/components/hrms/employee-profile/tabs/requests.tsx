@@ -36,6 +36,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SectionCard, EmptyState, StatCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -120,7 +121,7 @@ export default function RequestsTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/requests`)
+      const res = await apiFetch(`/api/employees/${employeeId}/requests`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load requests")
       setItems(data?.items || [])
@@ -156,7 +157,7 @@ export default function RequestsTab({
 
   async function patchStatus(rec: RequestRec, status: string, successMsg: string) {
     try {
-      const res = await fetch(`/api/employees/${employeeId}/requests/${rec.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/requests/${rec.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -173,7 +174,7 @@ export default function RequestsTab({
   async function handleDelete() {
     if (!deleteTarget) return
     try {
-      const res = await fetch(`/api/employees/${employeeId}/requests/${deleteTarget.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/requests/${deleteTarget.id}`, {
         method: "DELETE",
       })
       const data = await res.json()
@@ -490,7 +491,7 @@ function CreateRequestDialog({
     }
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/requests`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

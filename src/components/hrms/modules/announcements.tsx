@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 interface Announcement {
   id: string
@@ -54,7 +55,7 @@ export function AnnouncementsModule() {
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/announcements")
+      const res = await apiFetch("/api/announcements")
       const data = await res.json()
       setRows(data.items || [])
     } catch { toast.error("Failed to load announcements") }
@@ -82,7 +83,7 @@ export function AnnouncementsModule() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this announcement?")) return
-    const res = await fetch(`/api/announcements/${id}`, { method: "DELETE" })
+    const res = await apiFetch(`/api/announcements/${id}`, { method: "DELETE" })
     if (res.ok) { toast.success("Announcement deleted"); load() }
     else toast.error("Delete failed")
   }

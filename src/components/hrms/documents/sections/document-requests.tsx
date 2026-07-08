@@ -48,7 +48,7 @@ import {
   ENTITIES, STATUS_COLORS, APPROVER_TYPES,
   formatDate, formatDateTime, initials, avatarColor,
 } from "../shared"
-import { DOCUMENT_REQUESTS } from "../data"
+import { apiFetch } from "@/lib/api-client"
 
 // =============================================================
 // Constants
@@ -71,7 +71,27 @@ const SLA_STATUSES = ["All", "On Track", "Overdue"] as const
 // =============================================================
 
 export function DocumentRequestsSection() {
-  const [requests, setRequests] = useState<DocumentRequest[]>(DOCUMENT_REQUESTS)
+  const [requests, setRequests] = useState<DocumentRequest[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const loadRequests = React.useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await apiFetch("/api/document-requests?page_size=100", { cache: "no-store" })
+      if (res.ok) {
+        const data = await res.json()
+        setRequests(data.items || [])
+      }
+    } catch {
+      toast.error("Failed to load document requests")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    loadRequests()
+  }, [loadRequests])
 
   // Filters
   const [search, setSearch] = useState("")
@@ -131,7 +151,7 @@ export function DocumentRequestsSection() {
     return { total, pendingHR, approved, rejected, generated, overdue }
   }, [requests])
 
-  function handleAction(action: string, r: DocumentRequest) {
+  async function handleAction(action: string, r: DocumentRequest) {
     switch (action) {
       case "view":
         setViewTarget(r); break
@@ -140,59 +160,87 @@ export function DocumentRequestsSection() {
       case "reject":
         setRejectTarget(r); break
       case "generate":
-        toast.success(`Document generated for ${r.employeeName} — ${r.documentType}`)
-        setRequests(prev => prev.map(x => x.id === r.id ? { ...x, status: "Generated" as DocumentStatus, pendingWith: "System (Generated)" } : x))
+        try {
+          const res = await apiFetch("/api/documents/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ employeeName: r.employeeName, employeeCode: r.employeeCode, templateName: r.documentType, sourceModule: "Employee Request" }),
+          })
+          if (res.ok) {
+            toast.success(`Document generated for ${r.employeeName} — ${r.documentType}`)
+            setRequests(prev => prev.map(x => x.id === r.id ? { ...x, status: "Generated" as DocumentStatus, pendingWith: "System (Generated)" } : x))
+            await apiFetch(`/api/document-requests/${r.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Generated", pendingWith: "System (Generated)" }) })
+          } else { toast.error("Failed to generate document") }
+        } catch { toast.error("Failed to generate document") }
         break
       case "preview":
         toast.info(`Previewing ${r.documentType} for ${r.employeeName}`)
         break
       case "send":
-        toast.success(`Sent ${r.documentType} to ${r.employeeName}`)
-        setRequests(prev => prev.map(x => x.id === r.id ? { ...x, status: "Sent to Employee" as DocumentStatus } : x))
+        try {
+          await apiFetch(`/api/document-requests/${r.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Sent to Employee" }) })
+          toast.success(`Sent ${r.documentType} to ${r.employeeName}`)
+          setRequests(prev => prev.map(x => x.id === r.id ? { ...x, status: "Sent to Employee" as DocumentStatus } : x))
+        } catch { toast.error("Failed to send") }
         break
       case "download":
         toast.success(`Downloading ${r.documentType} for ${r.employeeName}`)
         break
       case "close":
-        setRequests(prev => prev.map(x => x.id === r.id ? { ...x, status: "Closed" as DocumentStatus, pendingWith: "Closed" } : x))
-        toast.info(`Request ${r.requestId} closed`)
+        try {
+          await apiFetch(`/api/document-requests/${r.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Closed", pendingWith: "Closed" }) })
+          setRequests(prev => prev.map(x => x.id === r.id ? { ...x, status: "Closed" as DocumentStatus, pendingWith: "Closed" } : x))
+          toast.info(`Request ${r.requestId} closed`)
+        } catch { toast.error("Failed to close request") }
         break
     }
   }
 
-  function handleApprove(comments: string) {
+  async function handleApprove(comments: string) {
     if (!approveTarget) return
-    setRequests(prev => prev.map(x => x.id === approveTarget.id ? { ...x, status: "Approved" as DocumentStatus, pendingWith: "Approved — Ready to Generate" } : x))
-    toast.success(`Request approved for ${approveTarget.employeeName}${comments ? ` — ${comments}` : ""}`)
+    try {
+      await apiFetch(`/api/document-requests/${approveTarget.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Approved", pendingWith: "Approved — Ready to Generate" }) })
+      setRequests(prev => prev.map(x => x.id === approveTarget.id ? { ...x, status: "Approved" as DocumentStatus, pendingWith: "Approved — Ready to Generate" } : x))
+      toast.success(`Request approved for ${approveTarget.employeeName}${comments ? ` — ${comments}` : ""}`)
+    } catch { toast.error("Failed to approve request") }
     setApproveTarget(null)
   }
-  function handleReject(comments: string) {
+  async function handleReject(comments: string) {
     if (!rejectTarget) return
-    setRequests(prev => prev.map(x => x.id === rejectTarget.id ? { ...x, status: "Rejected" as DocumentStatus, pendingWith: "Rejected" } : x))
-    toast.error(`Request rejected for ${rejectTarget.employeeName}${comments ? ` — ${comments}` : ""}`)
+    try {
+      await apiFetch(`/api/document-requests/${rejectTarget.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Rejected", pendingWith: "Rejected" }) })
+      setRequests(prev => prev.map(x => x.id === rejectTarget.id ? { ...x, status: "Rejected" as DocumentStatus, pendingWith: "Rejected" } : x))
+      toast.error(`Request rejected for ${rejectTarget.employeeName}${comments ? ` — ${comments}` : ""}`)
+    } catch { toast.error("Failed to reject request") }
     setRejectTarget(null)
   }
-  function handleNew(req: Partial<DocumentRequest>) {
-    const newReq: DocumentRequest = {
-      id: `dr-${Date.now()}`,
-      requestId: `REQ-DOC-2024-${String(requests.length + 1).padStart(3, "0")}`,
-      employeeCode: req.employeeCode || "EMP-NEW",
-      employeeName: req.employeeName || "New Employee",
-      documentType: req.documentType || REQUESTABLE_DOC_TYPES[0],
-      entityId: req.entityId || "ent-1",
-      entityName: req.entityName || ENTITIES[0].name,
-      reason: req.reason || "—",
-      addressedTo: req.addressedTo,
-      purpose: req.purpose,
-      requestedDate: new Date().toISOString(),
-      pendingWith: "Anita Desai (HR Manager)",
-      status: "Pending HR Approval",
-      attachment: req.attachment || false,
-      slaDays: 3,
-      slaRemaining: 3,
-    }
-    setRequests(prev => [newReq, ...prev])
-    toast.success(`New request submitted — ${newReq.requestId}`)
+  async function handleNew(req: Partial<DocumentRequest>) {
+    try {
+      const res = await apiFetch("/api/document-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeCode: req.employeeCode || "EMP-NEW",
+          employeeName: req.employeeName || "New Employee",
+          documentType: req.documentType || REQUESTABLE_DOC_TYPES[0],
+          entityId: req.entityId || "ent-1",
+          entityName: req.entityName || ENTITIES[0].name,
+          reason: req.reason || "—",
+          addressedTo: req.addressedTo,
+          purpose: req.purpose,
+          pendingWith: "Anita Desai (HR Manager)",
+          status: "Pending HR Approval",
+          attachment: req.attachment || false,
+          slaDays: 3,
+          slaRemaining: 3,
+        }),
+      })
+      if (res.ok) {
+        const newReq = await res.json()
+        setRequests(prev => [newReq, ...prev])
+        toast.success(`New request submitted — ${newReq.requestId || "REQ-NEW"}`)
+      } else { toast.error("Failed to create request") }
+    } catch { toast.error("Failed to create request") }
     setNewOpen(false)
   }
 

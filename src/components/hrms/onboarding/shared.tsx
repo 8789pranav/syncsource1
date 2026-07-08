@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- Types ----------
 export interface OnboardingStage {
@@ -179,7 +180,7 @@ export function useFetch<T>(url: string | null, deps: any[] = []) {
     const doFetch = async () => {
       try {
         if (active) setLoading(true)
-        const r = await fetch(url)
+        const r = await apiFetch(url)
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         const json = await r.json()
         if (active) {

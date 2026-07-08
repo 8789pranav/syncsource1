@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { SectionCard, StatCard, EmptyState } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- helpers ----------
 const fmtDate = (d?: string | Date | null) => {
@@ -114,7 +115,7 @@ export default function ExperienceTab({ employeeId }: { employeeId: string; empl
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/experience`)
+      const res = await apiFetch(`/api/employees/${employeeId}/experience`)
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       const data = await res.json()
       setItems(data.items || [])
@@ -176,7 +177,7 @@ export default function ExperienceTab({ employeeId }: { employeeId: string; empl
         ? `/api/employees/${employeeId}/experience/${editing.id}`
         : `/api/employees/${employeeId}/experience`
       const method = editing ? "PATCH" : "POST"
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -198,7 +199,7 @@ export default function ExperienceTab({ employeeId }: { employeeId: string; empl
   const onVerify = async (x: ExpRec) => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/experience/${x.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/experience/${x.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ verificationStatus: "Verified" }),
@@ -217,7 +218,7 @@ export default function ExperienceTab({ employeeId }: { employeeId: string; empl
     if (!deleteId) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/experience/${deleteId}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${employeeId}/experience/${deleteId}`, { method: "DELETE" })
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       toast.success("Experience removed")
       setDeleteId(null)

@@ -72,7 +72,7 @@ import {
   HR_DOC_CATEGORIES, EMPLOYEE_DOC_CATEGORIES, COMMON_EMPLOYEE_DOCS,
   STATUS_COLORS, initials, avatarColor, formatDate,
 } from "../shared"
-import { ENTITY_DOCUMENT_CONFIGS } from "../data"
+import { apiFetch } from "@/lib/api-client"
 
 // ============================================================================
 //  Constants
@@ -865,13 +865,13 @@ function EntityConfigWizard({
 }) {
   const [step, setStep] = React.useState(1)
   const [completed, setCompleted] = React.useState<number[]>([])
-  const [form, setForm] = React.useState<WizardForm>(() => editConfig ? { ...editConfig } : { ...ENTITY_DOCUMENT_CONFIGS[0] })
+  const [form, setForm] = React.useState<WizardForm>(() => editConfig ? { ...editConfig } : {} as WizardForm)
 
   React.useEffect(() => {
     if (open) {
       setStep(1)
       setCompleted([])
-      setForm(editConfig ? { ...editConfig } : { ...ENTITY_DOCUMENT_CONFIGS[0] })
+      setForm(editConfig ? { ...editConfig } : {} as WizardForm)
     }
   }, [open, editConfig])
 
@@ -930,7 +930,18 @@ function EntityConfigWizard({
             {step === 9 && (
               <>
                 <Button variant="outline" size="sm" onClick={() => toast.success("Draft saved")}>Save Draft</Button>
-                <Button size="sm" className="bg-violet-600 hover:bg-violet-700" onClick={() => { toast.success("Configuration published successfully"); onClose() }}>
+                <Button size="sm" className="bg-violet-600 hover:bg-violet-700" onClick={async () => {
+                  try {
+                    const payload = { ...form }
+                    if (editConfig) {
+                      await apiFetch(`/api/entity-document-configs/${editConfig.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+                    } else {
+                      await apiFetch("/api/entity-document-configs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+                    }
+                    toast.success("Configuration published successfully")
+                    onClose()
+                  } catch { toast.error("Failed to save configuration") }
+                }}>
                   <CheckCircle2 className="h-4 w-4 mr-1" /> Publish
                 </Button>
               </>
@@ -1031,8 +1042,27 @@ function EntityConfigurationTab() {
   const [viewConfig, setViewConfig] = React.useState<EntityDocumentConfig | null>(null)
   const [historyConfig, setHistoryConfig] = React.useState<EntityDocumentConfig | null>(null)
   const [deleteConfig, setDeleteConfig] = React.useState<EntityDocumentConfig | null>(null)
+  const [configs, setConfigs] = React.useState<EntityDocumentConfig[]>([])
+  const [loading, setLoading] = React.useState(true)
 
-  const filtered = ENTITY_DOCUMENT_CONFIGS.filter(c => {
+  const loadConfigs = React.useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await apiFetch("/api/entity-document-configs?page_size=100", { cache: "no-store" })
+      if (res.ok) {
+        const data = await res.json()
+        setConfigs(data.items || [])
+      }
+    } catch {
+      toast.error("Failed to load entity configurations")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => { loadConfigs() }, [loadConfigs])
+
+  const filtered = configs.filter(c => {
     if (search && !c.entityName.toLowerCase().includes(search.toLowerCase())) return false
     if (countryFilter !== "all" && c.country !== countryFilter) return false
     if (statusFilter !== "all" && c.status !== statusFilter) return false
@@ -1042,11 +1072,11 @@ function EntityConfigurationTab() {
   })
 
   const stats = {
-    total: ENTITY_DOCUMENT_CONFIGS.length,
-    active: ENTITY_DOCUMENT_CONFIGS.filter(c => c.status === "Active").length,
-    tenantDefault: ENTITY_DOCUMENT_CONFIGS.filter(c => c.useTenantDefault).length,
-    override: ENTITY_DOCUMENT_CONFIGS.filter(c => !c.useTenantDefault).length,
-    requestEnabled: ENTITY_DOCUMENT_CONFIGS.filter(c => c.enableDocumentRequest).length,
+    total: configs.length,
+    active: configs.filter(c => c.status === "Active").length,
+    tenantDefault: configs.filter(c => c.useTenantDefault).length,
+    override: configs.filter(c => !c.useTenantDefault).length,
+    requestEnabled: configs.filter(c => c.enableDocumentRequest).length,
   }
 
   const openNewWizard = () => { setEditConfig(null); setWizardKey(k => k + 1); setWizardOpen(true) }
@@ -1218,7 +1248,15 @@ function EntityConfigurationTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={() => { toast.success("Configuration deleted"); setDeleteConfig(null) }}>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={async () => {
+              if (!deleteConfig) return
+              try {
+                await apiFetch(`/api/entity-document-configs/${deleteConfig.id}`, { method: "DELETE" })
+                toast.success("Configuration deleted")
+                setConfigs(prev => prev.filter(c => c.id !== deleteConfig.id))
+              } catch { toast.error("Failed to delete configuration") }
+              setDeleteConfig(null)
+            }}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

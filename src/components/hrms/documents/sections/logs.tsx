@@ -45,7 +45,7 @@ import {
   DocumentLog,
   ENTITIES, initials, avatarColor, formatDateTime,
 } from "../shared"
-import { DOCUMENT_LOGS } from "../data"
+import { apiFetch } from "@/lib/api-client"
 
 // =============================================================
 // Constants
@@ -91,7 +91,14 @@ const CRITICAL_ACTIONS: ActionType[] = ["Delete", "Reject"]
 // =============================================================
 
 export function DocumentsLogsSection() {
-  const [logs, setLogs] = useState<DocumentLog[]>(DOCUMENT_LOGS)
+  const [logs, setLogs] = useState<DocumentLog[]>([])
+
+  React.useEffect(() => {
+    apiFetch("/api/document-logs?page_size=100", { cache: "no-store" })
+      .then(r => r.json())
+      .then(d => setLogs(d.items || []))
+      .catch(() => toast.error("Failed to load document logs"))
+  }, [])
 
   // Filters
   const [search, setSearch] = useState("")

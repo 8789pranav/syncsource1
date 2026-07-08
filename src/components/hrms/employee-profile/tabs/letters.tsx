@@ -35,6 +35,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { EmptyState } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -117,7 +118,7 @@ export default function LettersTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/letters`)
+      const res = await apiFetch(`/api/employees/${employeeId}/letters`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load letters")
       setItems(data?.items || [])
@@ -138,7 +139,7 @@ export default function LettersTab({
 
   async function patchStatus(rec: LetterRec, status: string, successMsg: string) {
     try {
-      const res = await fetch(`/api/employees/${employeeId}/letters/${rec.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/letters/${rec.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -155,7 +156,7 @@ export default function LettersTab({
   async function handleDelete() {
     if (!deleteTarget) return
     try {
-      const res = await fetch(`/api/employees/${employeeId}/letters/${deleteTarget.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/letters/${deleteTarget.id}`, {
         method: "DELETE",
       })
       const data = await res.json()
@@ -461,7 +462,7 @@ function LetterFormDialog({
         payload.issuedDate = new Date().toISOString()
         payload.issuedBy = "HR Admin"
       }
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

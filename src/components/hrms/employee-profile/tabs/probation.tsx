@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select"
 import { EmptyState, SectionCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -91,7 +92,7 @@ export default function ProbationTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/probation`)
+      const res = await apiFetch(`/api/employees/${employeeId}/probation`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load probation records")
       setItems(data?.items || [])
@@ -112,7 +113,7 @@ export default function ProbationTab({
 
   async function patchProbation(rec: ProbationRec, payload: any, successMsg: string) {
     try {
-      const res = await fetch(`/api/employees/${employeeId}/probation/${rec.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/probation/${rec.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -399,7 +400,7 @@ function AddProbationDialog({
     }
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/probation`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/probation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

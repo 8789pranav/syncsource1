@@ -41,6 +41,7 @@ import { DynamicForm } from "@/components/dynamic-form/dynamic-form"
 import { leaveApplicationFormSchema } from "@/lib/form-schemas"
 import type { FormValues } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -128,8 +129,8 @@ export default function LeaveTab({
     setLoading(true)
     try {
       const [appsRes, typesRes] = await Promise.all([
-        fetch(`/api/leave-applications?employeeId=${encodeURIComponent(employeeId)}`),
-        fetch(`/api/leave-types`),
+        apiFetch(`/api/leave-applications?employeeId=${encodeURIComponent(employeeId)}`),
+        apiFetch(`/api/leave-types`),
       ])
       const appsData = await appsRes.json()
       const typesData = await typesRes.json()
@@ -181,7 +182,7 @@ export default function LeaveTab({
 
   async function patchStatus(rec: LeaveAppRec, status: string, msg: string) {
     try {
-      const res = await fetch(`/api/leave-applications/${rec.id}`, {
+      const res = await apiFetch(`/api/leave-applications/${rec.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -502,7 +503,7 @@ function ApplyLeaveDialog({
     if (to < from) { toast.error("To Date cannot be before From Date"); return }
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/leave-applications`, {
+      const res = await apiFetch(`/api/leave-applications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

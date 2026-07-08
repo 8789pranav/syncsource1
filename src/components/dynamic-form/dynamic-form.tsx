@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
+import { apiFetch } from "@/lib/api-client"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -65,7 +66,7 @@ function usePickerOptions(endpoint?: string) {
     if (!endpoint) return
     if (pickerCache.has(endpoint)) { setOptions(pickerCache.get(endpoint)!); return }
     let alive = true
-    fetch(endpoint)
+    apiFetch(endpoint)
       .then((r) => r.json())
       .then((data) => {
         const items = (data?.items || data || []).map((d: any) => ({

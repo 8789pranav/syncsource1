@@ -23,6 +23,7 @@ import { useHrmsStore } from "@/store/hrms-store"
 import { ROLE_TYPE_MAP, RISK_LEVEL_MAP } from "@/lib/permissions-constants"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { apiFetch } from "@/lib/api-client"
 
 interface RoleOption {
   id: string
@@ -45,7 +46,7 @@ export function ViewAsRoleDropdown() {
   const loadRoles = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/roles-permissions/roles?pageSize=100")
+      const res = await apiFetch("/api/roles-permissions/roles?pageSize=100")
       const j = await res.json()
       setRoles(j?.data?.items || j?.items || [])
     } catch {
@@ -71,7 +72,7 @@ export function ViewAsRoleDropdown() {
     setOpen(false) // close dropdown immediately
     setSwitching(true)
     try {
-      const res = await fetch(`/api/roles-permissions/me?roleId=${encodeURIComponent(roleId)}`)
+      const res = await apiFetch(`/api/roles-permissions/me?roleId=${encodeURIComponent(roleId)}`)
       const j = await res.json()
       const d = j?.data || j  // API returns data directly (ok() helper)
       if (!d) throw new Error("Failed")
@@ -105,7 +106,7 @@ export function ViewAsRoleDropdown() {
     setSwitching(true)
     try {
       // Reload default HR Admin permissions
-      const res = await fetch("/api/roles-permissions/me")
+      const res = await apiFetch("/api/roles-permissions/me")
       const j = await res.json()
       const d = j?.data || j
       if (d) {

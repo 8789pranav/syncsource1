@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select"
 import { SENSITIVE_FIELDS } from "@/lib/permissions-constants"
 import { EntityConfigSection } from "./entity-config"
+import { apiFetch } from "@/lib/api-client"
 
 interface Settings {
   allowCustomRoles: boolean; allowMultipleRolesPerUser: boolean; allowTemporaryRoles: boolean;
@@ -62,7 +63,7 @@ export function SettingsSection() {
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const r = await fetch(`/api/roles-permissions/settings`)
+      const r = await apiFetch(`/api/roles-permissions/settings`)
       if (r.ok) setSettings(await r.json())
     } finally { setLoading(false) }
   }, [])
@@ -73,7 +74,7 @@ export function SettingsSection() {
     if (!settings) return
     setSaving(true)
     try {
-      const r = await fetch(`/api/roles-permissions/settings`, {
+      const r = await apiFetch(`/api/roles-permissions/settings`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...settings, performedByName: "HR Admin" }),
       })

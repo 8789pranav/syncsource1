@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { apiFetch } from "@/lib/api-client"
 
 const uid = (p: string) => `${p}-${Math.random().toString(36).slice(2, 9)}`
 
@@ -133,7 +134,7 @@ function AssetsTab() {
       if (statusFilter !== "all") params.set("status", statusFilter)
       if (catFilter !== "all") params.set("category", catFilter)
       if (search) params.set("q", search)
-      const res = await fetch(`/api/assets?${params.toString()}`)
+      const res = await apiFetch(`/api/assets?${params.toString()}`)
       const data = await res.json()
       setRows(data.items || [])
     } catch {
@@ -145,7 +146,7 @@ function AssetsTab() {
 
   const loadCategories = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/asset-categories")
+      const res = await apiFetch("/api/asset-categories")
       const data = await res.json()
       setCategories(data.items || [])
     } catch {}
@@ -184,7 +185,7 @@ function AssetsTab() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this asset?")) return
-    const res = await fetch(`/api/assets/${id}`, { method: "DELETE" })
+    const res = await apiFetch(`/api/assets/${id}`, { method: "DELETE" })
     if (res.ok) { toast.success("Asset deleted"); setDetail(null); load() }
     else toast.error("Delete failed")
   }
@@ -380,7 +381,7 @@ function CategoriesTab() {
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/asset-categories")
+      const res = await apiFetch("/api/asset-categories")
       const data = await res.json()
       setRows(data.items || [])
     } catch { toast.error("Failed to load categories") }
@@ -406,7 +407,7 @@ function CategoriesTab() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this category?")) return
-    const res = await fetch(`/api/asset-categories/${id}`, { method: "DELETE" })
+    const res = await apiFetch(`/api/asset-categories/${id}`, { method: "DELETE" })
     if (res.ok) { toast.success("Category deleted"); load() }
     else toast.error("Delete failed")
   }
@@ -484,7 +485,7 @@ function RequestsTab() {
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/asset-requests")
+      const res = await apiFetch("/api/asset-requests")
       const data = await res.json()
       setRows(data.items || [])
     } catch { toast.error("Failed to load requests") }
@@ -495,7 +496,7 @@ function RequestsTab() {
 
   const handleSave = async (values: any) => {
     await run(async () => {
-      const res = await fetch("/api/asset-requests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) })
+      const res = await apiFetch("/api/asset-requests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || "Save failed")
@@ -506,7 +507,7 @@ function RequestsTab() {
   }
 
   const decide = async (id: string, status: "Approved" | "Rejected") => {
-    const res = await fetch(`/api/asset-requests/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) })
+    const res = await apiFetch(`/api/asset-requests/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) })
     if (res.ok) { toast.success(`Request ${status.toLowerCase()}`); load() }
     else toast.error("Action failed")
   }

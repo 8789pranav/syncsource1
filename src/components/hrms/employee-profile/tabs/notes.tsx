@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { EmptyState } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -119,7 +120,7 @@ export default function NotesTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/notes`)
+      const res = await apiFetch(`/api/employees/${employeeId}/notes`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load notes")
       setItems(data?.items || [])
@@ -137,7 +138,7 @@ export default function NotesTab({
   async function handleDelete() {
     if (!deleteTarget) return
     try {
-      const res = await fetch(`/api/employees/${employeeId}/notes/${deleteTarget.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/notes/${deleteTarget.id}`, {
         method: "DELETE",
       })
       const data = await res.json()
@@ -375,7 +376,7 @@ function NoteFormDialog({
         attachmentUrl: form.attachmentUrl || undefined,
       }
       if (!editTarget) payload.createdBy = CURRENT_USER
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

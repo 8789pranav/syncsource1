@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge"
 import { CalendarRange, Plus, Pencil, Trash2, Eye, ArrowLeft, Send, CalendarOff, X } from "lucide-react"
 import { format, eachDayOfInterval, isWeekend, isSameDay } from "date-fns"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ============================================================
 // Types
@@ -102,7 +103,7 @@ export function RosterModule() {
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/rosters")
+      const res = await apiFetch("/api/rosters")
       const data = await res.json()
       setRosters(data?.items || [])
     } catch {
@@ -149,7 +150,7 @@ export function RosterModule() {
     if (!deleteId) return
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/rosters/${deleteId}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/rosters/${deleteId}`, { method: "DELETE" })
       if (!res.ok) {
         const e = await res.json().catch(() => ({}))
         throw new Error(e.error || "Failed to delete")
@@ -167,7 +168,7 @@ export function RosterModule() {
   async function handlePublish(r: Roster) {
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/rosters/${r.id}`, {
+      const res = await apiFetch(`/api/rosters/${r.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Published" }),
@@ -326,9 +327,9 @@ function RosterDetailView({ roster, onBack }: { roster: Roster; onBack: () => vo
     setLoading(true)
     try {
       const [empRes, shiftRes, rosterRes] = await Promise.all([
-        fetch("/api/employees").catch(() => null),
-        fetch("/api/shifts"),
-        fetch(`/api/rosters/${roster.id}`),
+        apiFetch("/api/employees").catch(() => null),
+        apiFetch("/api/shifts"),
+        apiFetch(`/api/rosters/${roster.id}`),
       ])
       if (empRes && empRes.ok) {
         const ed = await empRes.json()
@@ -372,7 +373,7 @@ function RosterDetailView({ roster, onBack }: { roster: Roster; onBack: () => vo
   async function assignShift(empId: string, date: Date, shiftId: string | null, isWeeklyOff: boolean) {
     setSaving(true)
     try {
-      const res = await fetch(`/api/rosters/${roster.id}/entries`, {
+      const res = await apiFetch(`/api/rosters/${roster.id}/entries`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -420,7 +421,7 @@ function RosterDetailView({ roster, onBack }: { roster: Roster; onBack: () => vo
   async function publish() {
     setSaving(true)
     try {
-      const res = await fetch(`/api/rosters/${roster.id}`, {
+      const res = await apiFetch(`/api/rosters/${roster.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Published" }),

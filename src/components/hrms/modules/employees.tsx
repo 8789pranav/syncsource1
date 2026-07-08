@@ -26,6 +26,7 @@ import { DynamicForm } from "@/components/dynamic-form/dynamic-form"
 import { employeeFormSchema } from "@/lib/form-schemas"
 import type { FormValues } from "@/lib/types"
 import { EmployeeProfile } from "@/components/hrms/employee-profile/employee-profile"
+import { apiFetch } from "@/lib/api-client"
 
 // ============================================================
 // Utilities
@@ -110,7 +111,7 @@ export function EmployeesModule() {
       if (departmentFilter) params.set("departmentId", departmentFilter)
       if (statusFilter) params.set("status", statusFilter)
       const url = `/api/employees${params.toString() ? "?" + params.toString() : ""}`
-      const res = await fetch(url, { cache: "no-store" })
+      const res = await apiFetch(url, { cache: "no-store" })
       if (!res.ok) throw new Error("Request failed")
       const data = await res.json()
       setRows(data.items || [])
@@ -127,7 +128,7 @@ export function EmployeesModule() {
 
   // Load departments for filter
   React.useEffect(() => {
-    fetch("/api/departments", { cache: "no-store" })
+    apiFetch("/api/departments", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => setDepartments(data.items || []))
       .catch(() => {})
@@ -154,7 +155,7 @@ export function EmployeesModule() {
       const isEdit = !!editing
       const url = isEdit ? `/api/employees/${editing.id}` : "/api/employees"
       const method = isEdit ? "PATCH" : "POST"
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
@@ -177,7 +178,7 @@ export function EmployeesModule() {
   const onConfirmDelete = async () => {
     if (!deletingId) return
     try {
-      const res = await fetch(`/api/employees/${deletingId}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${deletingId}`, { method: "DELETE" })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || "Failed to delete")

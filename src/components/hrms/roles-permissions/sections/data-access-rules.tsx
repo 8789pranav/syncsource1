@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
 import { DATA_SCOPES, STATUS_OPTIONS, parseJsonArray } from "@/lib/permissions-constants"
+import { apiFetch } from "@/lib/api-client"
 
 interface Rule {
   id: string; name: string; code: string; description: string | null;
@@ -82,7 +83,7 @@ export function DataAccessRulesSection() {
       const params = new URLSearchParams()
       if (search) params.set("q", search)
       if (filterStatus && filterStatus !== "__all__") params.set("status", filterStatus)
-      const r = await fetch(`/api/roles-permissions/data-access-rules?${params}`)
+      const r = await apiFetch(`/api/roles-permissions/data-access-rules?${params}`)
       if (r.ok) setRules((await r.json()).items)
     } finally { setLoading(false) }
   }, [search, filterStatus])
@@ -133,7 +134,7 @@ export function DataAccessRulesSection() {
   }
 
   const clone = async (r: Rule) => {
-    const r2 = await fetch(`/api/roles-permissions/data-access-rules`, {
+    const r2 = await apiFetch(`/api/roles-permissions/data-access-rules`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...r, name: `${r.name} (Copy)`, code: `${r.code}_COPY`, performedByName: "HR Admin" }),
     })
@@ -142,13 +143,13 @@ export function DataAccessRulesSection() {
 
   const viewPreview = async (r: Rule) => {
     setPreviewRule(r); setPreviewData(null)
-    const pr = await fetch(`/api/roles-permissions/data-access-rules/${r.id}/preview`)
+    const pr = await apiFetch(`/api/roles-permissions/data-access-rules/${r.id}/preview`)
     if (pr.ok) setPreviewData(await pr.json())
   }
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    const r = await fetch(`/api/roles-permissions/data-access-rules/${deleteTarget.id}`, { method: "DELETE" })
+    const r = await apiFetch(`/api/roles-permissions/data-access-rules/${deleteTarget.id}`, { method: "DELETE" })
     if (r.ok) { toast.success("Rule deleted"); setDeleteTarget(null); load() }
     else { const e = await r.json(); toast.error(e.error || "Failed") }
   }

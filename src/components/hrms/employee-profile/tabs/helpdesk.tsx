@@ -39,6 +39,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SectionCard, EmptyState, StatCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -145,7 +146,7 @@ export default function HelpdeskTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/tickets`)
+      const res = await apiFetch(`/api/employees/${employeeId}/tickets`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load tickets")
       setItems(data?.items || [])
@@ -188,7 +189,7 @@ export default function HelpdeskTab({
 
   async function patchTicket(rec: TicketRec, payload: Record<string, unknown>, msg: string) {
     try {
-      const res = await fetch(`/api/employees/${employeeId}/tickets/${rec.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/tickets/${rec.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -205,7 +206,7 @@ export default function HelpdeskTab({
   async function handleDelete() {
     if (!deleteTarget) return
     try {
-      const res = await fetch(`/api/employees/${employeeId}/tickets/${deleteTarget.id}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${employeeId}/tickets/${deleteTarget.id}`, { method: "DELETE" })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to delete")
       toast.success("Ticket deleted")
@@ -572,7 +573,7 @@ function CreateTicketDialog({
     if (!form.subject.trim()) { toast.error("Subject is required"); return }
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/tickets`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/tickets`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

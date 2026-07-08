@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { SectionCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- main ----------
 export default function ContactTab({ employeeId, employee }: { employeeId: string; employee: any }) {
@@ -75,7 +76,7 @@ export default function ContactTab({ employeeId, employee }: { employeeId: strin
   const onPatch = async (payload: Record<string, any>, successMsg = "Contact details updated") => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

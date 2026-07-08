@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { EmptyState, SectionCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -90,7 +91,7 @@ export default function LoginAccessTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/login-access`)
+      const res = await apiFetch(`/api/employees/${employeeId}/login-access`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load login access")
       setItems(data?.items || [])
@@ -107,7 +108,7 @@ export default function LoginAccessTab({
 
   async function patch(rec: LoginAccessRec, payload: any, successMsg: string, extraToast?: string) {
     try {
-      const res = await fetch(`/api/employees/${employeeId}/login-access/${rec.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/login-access/${rec.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -366,7 +367,7 @@ function CreateLoginDialog({
     }
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/login-access`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/login-access`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

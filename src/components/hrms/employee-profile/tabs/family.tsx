@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { SectionCard, StatCard, EmptyState } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- helpers ----------
 const fmtDate = (d?: string | Date | null) => {
@@ -91,7 +92,7 @@ export default function FamilyTab({ employeeId, employee }: { employeeId: string
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/family`)
+      const res = await apiFetch(`/api/employees/${employeeId}/family`)
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       const data = await res.json()
       setItems(data.items || [])
@@ -150,7 +151,7 @@ export default function FamilyTab({ employeeId, employee }: { employeeId: string
         ? `/api/employees/${employeeId}/family/${editing.id}`
         : `/api/employees/${employeeId}/family`
       const method = editing ? "PATCH" : "POST"
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -173,7 +174,7 @@ export default function FamilyTab({ employeeId, employee }: { employeeId: string
     if (!deleteId) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/family/${deleteId}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${employeeId}/family/${deleteId}`, { method: "DELETE" })
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       toast.success("Family member removed")
       setDeleteId(null)

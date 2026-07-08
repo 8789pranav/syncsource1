@@ -46,6 +46,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SectionCard, EmptyState, StatCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -153,8 +154,8 @@ export default function PerformanceTab({
     setLoading(true)
     try {
       const [gRes, rRes] = await Promise.all([
-        fetch(`/api/employees/${employeeId}/goals`),
-        fetch(`/api/employees/${employeeId}/reviews`),
+        apiFetch(`/api/employees/${employeeId}/goals`),
+        apiFetch(`/api/employees/${employeeId}/reviews`),
       ])
       const gData = await gRes.json()
       const rData = await rRes.json()
@@ -192,7 +193,7 @@ export default function PerformanceTab({
       const url = kind === "goal"
         ? `/api/employees/${employeeId}/goals/${rec.id}`
         : `/api/employees/${employeeId}/reviews/${rec.id}`
-      const res = await fetch(url, { method: "DELETE" })
+      const res = await apiFetch(url, { method: "DELETE" })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to delete")
       toast.success(`${kind === "goal" ? "Goal" : "Review"} deleted`)
@@ -615,7 +616,7 @@ function GoalDialog({
       }
       const url = isEdit ? `/api/employees/${employeeId}/goals/${existing!.id}` : `/api/employees/${employeeId}/goals`
       const method = isEdit ? "PATCH" : "POST"
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      const res = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to save goal")
       toast.success(isEdit ? "Goal updated" : "Goal added")
@@ -777,7 +778,7 @@ function ReviewDialog({
       }
       const url = isEdit ? `/api/employees/${employeeId}/reviews/${existing!.id}` : `/api/employees/${employeeId}/reviews`
       const method = isEdit ? "PATCH" : "POST"
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      const res = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to save review")
       toast.success(isEdit ? "Review updated" : "Review added")

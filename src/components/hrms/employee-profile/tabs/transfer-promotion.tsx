@@ -28,6 +28,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { EmptyState, SectionCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -113,8 +114,8 @@ export default function TransferPromotionTab({
     setLoading(true)
     try {
       const [tRes, pRes] = await Promise.all([
-        fetch(`/api/employees/${employeeId}/transfers`),
-        fetch(`/api/employees/${employeeId}/promotions`),
+        apiFetch(`/api/employees/${employeeId}/transfers`),
+        apiFetch(`/api/employees/${employeeId}/promotions`),
       ])
       const tData = await tRes.json()
       const pData = await pRes.json()
@@ -439,7 +440,7 @@ function InitiateTransferDialog({
       const oldManager = resolveName(employee?.reportingManager)
       const oldEntity = resolveName(employee?.entity)
 
-      const res = await fetch(`/api/employees/${employeeId}/transfers`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/transfers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -464,7 +465,7 @@ function InitiateTransferDialog({
       if (form.newManager) patch.reportingManagerId = form.newManager
       if (form.newEntity) patch.entityId = form.newEntity
       if (Object.keys(patch).length > 0) {
-        const empRes = await fetch(`/api/employees/${employeeId}`, {
+        const empRes = await apiFetch(`/api/employees/${employeeId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(patch),
@@ -582,7 +583,7 @@ function InitiatePromotionDialog({
     }
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/promotions`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/promotions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -610,7 +611,7 @@ function InitiatePromotionDialog({
         patch.hra = Math.round(Number(form.newCtc) / 12 * 0.2)
       }
       if (Object.keys(patch).length > 0) {
-        const empRes = await fetch(`/api/employees/${employeeId}`, {
+        const empRes = await apiFetch(`/api/employees/${employeeId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(patch),

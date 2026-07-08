@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { useHrmsStore } from "@/store/hrms-store"
 import { ROLE_TYPE_MAP, RISK_LEVEL_MAP } from "@/lib/permissions-constants"
+import { apiFetch } from "@/lib/api-client"
 
 export function ViewAsBanner() {
   const { isViewAs, currentRoleName, currentRoleType, currentRiskLevel, allowedModules, deniedModules, fieldAccess } = useHrmsStore()
@@ -38,7 +39,7 @@ export function ViewAsBanner() {
   const handleExit = async () => {
     // Reload default permissions
     try {
-      const res = await fetch("/api/roles-permissions/me")
+      const res = await apiFetch("/api/roles-permissions/me")
       const j = await res.json()
       const d = j?.data || j
       if (d) {

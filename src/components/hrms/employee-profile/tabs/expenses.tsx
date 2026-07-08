@@ -42,6 +42,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SectionCard, EmptyState, StatCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -138,7 +139,7 @@ export default function ExpensesTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/expenses`)
+      const res = await apiFetch(`/api/employees/${employeeId}/expenses`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load expenses")
       setItems(data?.items || [])
@@ -180,7 +181,7 @@ export default function ExpensesTab({
 
   async function patchStatus(rec: ExpenseRec, status: string, msg: string, extra?: Record<string, unknown>) {
     try {
-      const res = await fetch(`/api/employees/${employeeId}/expenses/${rec.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/expenses/${rec.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status, ...extra }),
@@ -197,7 +198,7 @@ export default function ExpensesTab({
   async function handleDelete() {
     if (!deleteTarget) return
     try {
-      const res = await fetch(`/api/employees/${employeeId}/expenses/${deleteTarget.id}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${employeeId}/expenses/${deleteTarget.id}`, { method: "DELETE" })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to delete")
       toast.success("Expense deleted")
@@ -545,7 +546,7 @@ function ExpenseDialog({
       }
       const url = isEdit ? `/api/employees/${employeeId}/expenses/${existing!.id}` : `/api/employees/${employeeId}/expenses`
       const method = isEdit ? "PATCH" : "POST"
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      const res = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to save expense")
       toast.success(isEdit ? "Expense updated" : "Expense created")

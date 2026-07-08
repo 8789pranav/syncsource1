@@ -39,6 +39,7 @@ import {
 import { SectionCard, StatCard, EmptyState, StatusBadge } from "@/components/hrms/ui"
 import { MaskedValue } from "@/components/hrms/permissions/masked-value"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- helpers ----------
 const fmtDate = (d?: string | Date | null) => {
@@ -107,7 +108,7 @@ export default function BankTab({ employeeId, employee }: { employeeId: string; 
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/bank`)
+      const res = await apiFetch(`/api/employees/${employeeId}/bank`)
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       const data = await res.json()
       setItems(data.items || [])
@@ -160,7 +161,7 @@ export default function BankTab({ employeeId, employee }: { employeeId: string; 
         ? `/api/employees/${employeeId}/bank/${editing.id}`
         : `/api/employees/${employeeId}/bank`
       const method = editing ? "PATCH" : "POST"
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -182,7 +183,7 @@ export default function BankTab({ employeeId, employee }: { employeeId: string; 
   const onVerify = async (b: BankRec) => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/bank/${b.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/bank/${b.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ verified: true }),
@@ -201,7 +202,7 @@ export default function BankTab({ employeeId, employee }: { employeeId: string; 
     if (!deleteId) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/bank/${deleteId}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${employeeId}/bank/${deleteId}`, { method: "DELETE" })
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       toast.success("Bank account removed")
       setDeleteId(null)

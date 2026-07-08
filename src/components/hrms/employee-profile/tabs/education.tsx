@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { SectionCard, StatCard, EmptyState } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 interface EducationRecord {
   id: string
@@ -74,7 +75,7 @@ export default function EducationTab({ employeeId, employee }: { employeeId: str
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/education`)
+      const res = await apiFetch(`/api/employees/${employeeId}/education`)
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       const data = await res.json()
       setItems(data.items || [])
@@ -135,7 +136,7 @@ export default function EducationTab({ employeeId, employee }: { employeeId: str
         ? `/api/employees/${employeeId}/education/${editing.id}`
         : `/api/employees/${employeeId}/education`
       const method = editing ? "PATCH" : "POST"
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -158,7 +159,7 @@ export default function EducationTab({ employeeId, employee }: { employeeId: str
     if (!deleteId) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/education/${deleteId}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${employeeId}/education/${deleteId}`, { method: "DELETE" })
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       toast.success("Education record removed")
       setDeleteId(null)

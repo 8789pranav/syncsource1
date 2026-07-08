@@ -11,6 +11,31 @@ datasource db {
 }
 
 // ============================================================
+// AUTHENTICATION — User accounts for login / API access
+// ============================================================
+
+model User {
+  id             String    @id @default(cuid())
+  tenantId       String
+  email          String
+  passwordHash   String
+  name           String
+  role           String    @default("admin") // admin | hr | manager | employee
+  employeeId     String?   // link to Employee record if applicable
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
+  lastLoginIp    String?
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([email])
+}
+
+// ============================================================
 // TENANT / ORGANIZATION FOUNDATION
 // ============================================================
 
@@ -410,6 +435,13 @@ model Employee {
   payslips            Payslip[]
 
   @@unique([tenantId, employeeCode])
+  @@index([tenantId, employeeStatus])
+  @@index([tenantId, departmentId])
+  @@index([tenantId, designationId])
+  @@index([tenantId, branchId])
+  @@index([tenantId, locationId])
+  @@index([tenantId, reportingManagerId])
+  @@index([tenantId, createdAt])
 }
 
 model ProfileUpdateRequest {
@@ -1344,6 +1376,11 @@ model LeaveApplication {
   days_log      LeaveApplicationDay[]
   approvals     LeaveApproval[]
   ledgerEntries LeaveLedger[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, employeeId])
+  @@index([tenantId, fromDate])
+  @@index([tenantId, appliedAt])
 }
 
 // Per-day breakdown (half-day, sandwich, holiday inclusion, etc.)
@@ -1677,6 +1714,9 @@ model Attendance {
   updatedAt            DateTime  @updatedAt
 
   @@unique([employeeId, date])
+  @@index([tenantId, date])
+  @@index([tenantId, employeeId])
+  @@index([tenantId, status])
 }
 
 // --- ATTENDANCE RULE / POLICY ---------------------------------
@@ -2085,6 +2125,9 @@ model AuditLog {
   details   String? // JSON
   ip        String?
   createdAt DateTime @default(now())
+
+  @@index([tenantId, module])
+  @@index([tenantId, createdAt])
 }
 
 // ============================================================

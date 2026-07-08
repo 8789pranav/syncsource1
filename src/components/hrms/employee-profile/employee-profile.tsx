@@ -92,6 +92,7 @@ import LoginAccessTab from "./tabs/login-access"
 import RolesTab from "./tabs/roles"
 import CustomFieldsTab from "./tabs/custom-fields"
 import FormsTab from "./tabs/forms"
+import { apiFetch } from "@/lib/api-client"
 
 const TAB_COMPONENTS: Record<string, React.ComponentType<{ employeeId: string; employee: any }>> = {
   overview: OverviewTab,
@@ -283,7 +284,7 @@ export function EmployeeProfile({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/employees/${employeeId}`, { cache: "no-store" })
       if (!res.ok) throw new Error("Request failed")
       const data = await res.json()
       setEmployee(data)
@@ -324,7 +325,7 @@ export function EmployeeProfile({
   const onSubmitEdit = async (values: FormValues) => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),

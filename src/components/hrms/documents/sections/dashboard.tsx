@@ -44,10 +44,7 @@ import {
   ENTITIES, STATUS_COLORS, EMPLOYEE_DOC_CATEGORIES, formatDate, formatDateTime,
   daysUntil, initials, avatarColor,
 } from "../shared"
-import {
-  EMPLOYEE_DOCUMENTS, HR_DOCUMENTS, DOCUMENT_TEMPLATES, GENERATED_DOCUMENTS,
-  DOCUMENT_REQUESTS, DOCUMENT_LOGS, DASHBOARD_STATS,
-} from "../data"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- Palette ----------
 const VIOLET = "#8b5cf6"
@@ -138,16 +135,35 @@ export function DocumentsDashboardSection() {
   })
   const setF = (k: string, v: string) => setFilters(f => ({ ...f, [k]: v }))
 
+  // ---------- API data ----------
+  const [stats, setStats] = React.useState<any>(null)
+  const [empDocs, setEmpDocs] = React.useState<any[]>([])
+  const [hrDocs, setHrDocs] = React.useState<any[]>([])
+  const [templates, setTemplates] = React.useState<any[]>([])
+  const [generatedDocs, setGeneratedDocs] = React.useState<any[]>([])
+  const [requests, setRequests] = React.useState<any[]>([])
+  const [logs, setLogs] = React.useState<any[]>([])
+
+  React.useEffect(() => {
+    apiFetch("/api/documents/dashboard", { cache: "no-store" }).then(r => r.json()).then(d => setStats(d)).catch(() => {})
+    apiFetch("/api/employee-documents?page_size=100", { cache: "no-store" }).then(r => r.json()).then(d => setEmpDocs(d.items || [])).catch(() => {})
+    apiFetch("/api/hr-documents?page_size=100", { cache: "no-store" }).then(r => r.json()).then(d => setHrDocs(d.items || [])).catch(() => {})
+    apiFetch("/api/document-templates?page_size=100", { cache: "no-store" }).then(r => r.json()).then(d => setTemplates(d.items || [])).catch(() => {})
+    apiFetch("/api/generated-documents?page_size=100", { cache: "no-store" }).then(r => r.json()).then(d => setGeneratedDocs(d.items || [])).catch(() => {})
+    apiFetch("/api/document-requests?page_size=100", { cache: "no-store" }).then(r => r.json()).then(d => setRequests(d.items || [])).catch(() => {})
+    apiFetch("/api/document-logs?page_size=100", { cache: "no-store" }).then(r => r.json()).then(d => setLogs(d.items || [])).catch(() => {})
+  }, [])
+
   // ---------- Derived stats ----------
-  const s = DASHBOARD_STATS
+  const s = stats || { stats: { totalEmployeeDocs: 0, totalHRDocs: 0, totalTemplates: 0, totalGenerated: 0, totalRequests: 0, pendingRequests: 0, totalLogs: 0 } }
 
   // ---------- Distribution donut (category) ----------
   const categoryDist = React.useMemo(() => ([
-    { name: "Employee Docs", value: EMPLOYEE_DOCUMENTS.length, color: VIOLET },
-    { name: "HR Docs", value: HR_DOCUMENTS.length, color: FUCHSIA },
-    { name: "Templates", value: DOCUMENT_TEMPLATES.length, color: SKY },
-    { name: "Generated", value: GENERATED_DOCUMENTS.length, color: AMBER },
-  ]), [])
+    { name: "Employee Docs", value: s.stats?.totalEmployeeDocs ?? empDocs.length, color: VIOLET },
+    { name: "HR Docs", value: s.stats?.totalHRDocs ?? hrDocs.length, color: FUCHSIA },
+    { name: "Templates", value: s.stats?.totalTemplates ?? templates.length, color: SKY },
+    { name: "Generated", value: s.stats?.totalGenerated ?? generatedDocs.length, color: AMBER },
+  ]), [s, empDocs, hrDocs, templates, generatedDocs])
   const distTotal = categoryDist.reduce((acc, d) => acc + d.value, 0)
 
   // ---------- Monthly generated trend (6 months) ----------
@@ -166,31 +182,34 @@ export function DocumentsDashboardSection() {
   // ---------- Entity-wise doc count ----------
   const entityCounts = React.useMemo(() => {
     const map = new Map<string, number>()
-    EMPLOYEE_DOCUMENTS.forEach(d => map.set(d.entityName, (map.get(d.entityName) || 0) + 1))
-    HR_DOCUMENTS.forEach(d => map.set(d.entityName, (map.get(d.entityName) || 0) + 1))
-    GENERATED_DOCUMENTS.forEach(d => map.set(d.entityName, (map.get(d.entityName) || 0) + 1))
+    empDocs.forEach(d => map.set(d.entityName || d.entity_name || "Unknown", (map.get(d.entityName || d.entity_name || "Unknown") || 0) + 1))
+    hrDocs.forEach(d => map.set(d.entityName || d.entity_name || "Unknown", (map.get(d.entityName || d.entity_name || "Unknown") || 0) + 1))
+    generatedDocs.forEach(d => map.set(d.entityName || d.entity_name || "Unknown", (map.get(d.entityName || d.entity_name || "Unknown") || 0) + 1))
     return Array.from(map.entries())
       .map(([name, value]) => ({ name: name.replace("ACME ", "").replace(" Pvt Ltd", "").replace(" Pte Ltd", "").replace(" FZE", "").replace(" Inc", ""), value }))
       .sort((a, b) => b.value - a.value)
-  }, [])
+  }, [empDocs, hrDocs, generatedDocs])
 
   // ---------- Upcoming expiries (top 5 employee docs) ----------
   const upcomingExpiries = React.useMemo(() => {
-    return EMPLOYEE_DOCUMENTS
-      .filter(d => d.expiryDate && daysUntil(d.expiryDate) >= 0 && daysUntil(d.expiryDate) <= 90)
-      .sort((a, b) => daysUntil(a.expiryDate!) - daysUntil(b.expiryDate!))
+    return empDocs
+      .filter(d => {
+        const exp = d.expiryDate || d.expiry_date
+        return exp && daysUntil(exp) >= 0 && daysUntil(exp) <= 90
+      })
+      .sort((a, b) => daysUntil(a.expiryDate || a.expiry_date!) - daysUntil(b.expiryDate || b.expiry_date!))
       .slice(0, 5)
-      .map(d => ({ ...d, days: daysUntil(d.expiryDate!) }))
-  }, [])
+      .map(d => ({ ...d, days: daysUntil(d.expiryDate || d.expiry_date!) }))
+  }, [empDocs])
 
   // ---------- Recent activity (6 latest logs) ----------
   const recentLogs = React.useMemo(() =>
-    [...DOCUMENT_LOGS].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 6)
-  , [])
+    [...logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 6)
+  , [logs])
 
   // ---------- Pending approvals ----------
-  const pendingHRReqs = React.useMemo(() => DOCUMENT_REQUESTS.filter(r => r.status === "Pending HR Approval").slice(0, 4), [])
-  const pendingVerify = React.useMemo(() => EMPLOYEE_DOCUMENTS.filter(d => d.status === "Pending Verification").slice(0, 4), [])
+  const pendingHRReqs = React.useMemo(() => requests.filter(r => r.status === "Pending HR Approval").slice(0, 4), [requests])
+  const pendingVerify = React.useMemo(() => empDocs.filter(d => d.status === "Pending Verification").slice(0, 4), [empDocs])
 
   // ---------- Handlers ----------
   const onAction = (label: string) => toast.success(label)
@@ -269,18 +288,18 @@ export function DocumentsDashboardSection() {
         className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3"
         variants={gridContainer} initial="hidden" animate="show"
       >
-        <motion.div variants={gridItem}><DashStat label="Total Documents" value={s.totalDocs} icon={FileStack} accent="violet" sub="All categories" /></motion.div>
-        <motion.div variants={gridItem}><DashStat label="Employee Docs" value={s.employeeDocsCount} icon={UserSquare} accent="purple" sub="Across employees" /></motion.div>
-        <motion.div variants={gridItem}><DashStat label="HR Documents" value={s.hrDocsCount} icon={Building2} accent="fuchsia" sub="Policies & circulars" /></motion.div>
-        <motion.div variants={gridItem}><DashStat label="Templates" value={s.templatesCount} icon={Library} accent="sky" sub="Reusable letters" /></motion.div>
-        <motion.div variants={gridItem}><DashStat label="Generated Letters" value={s.generatedCount} icon={FileCheck} accent="amber" sub="Lifetime" trend={{ up: true, value: "12%" }} /></motion.div>
-        <motion.div variants={gridItem}><DashStat label="Pending Requests" value={s.pendingRequests} icon={Inbox} accent="violet" sub="Awaiting action" /></motion.div>
-        <motion.div variants={gridItem}><DashStat label="Pending HR Approval" value={s.pendingHRApproval} icon={Clock} accent="amber" sub="Request queue" /></motion.div>
-        <motion.div variants={gridItem}><DashStat label="Pending Employee Upload" value={s.pendingEmployeeUpload} icon={Upload} accent="sky" sub="Onboarding gaps" /></motion.div>
-        <motion.div variants={gridItem}><DashStat label="Expiring Documents" value={s.expiringDocs} icon={AlertTriangle} accent="amber" sub="Next 30 days" /></motion.div>
-        <motion.div variants={gridItem}><DashStat label="Expired Documents" value={s.expiredDocs} icon={FileX2} accent="rose" sub="Need renewal" /></motion.div>
-        <motion.div variants={gridItem}><DashStat label="Rejected Documents" value={s.rejectedDocs} icon={ShieldX} accent="rose" sub="Requests + uploads" /></motion.div>
-        <motion.div variants={gridItem}><DashStat label="Favourite Templates" value={s.favouriteTemplates} icon={Star} accent="emerald" sub="Quick access" /></motion.div>
+        <motion.div variants={gridItem}><DashStat label="Total Documents" value={(s.stats?.totalEmployeeDocs ?? 0) + (s.stats?.totalHRDocs ?? 0) + (s.stats?.totalGenerated ?? 0)} icon={FileStack} accent="violet" sub="All categories" /></motion.div>
+        <motion.div variants={gridItem}><DashStat label="Employee Docs" value={s.stats?.totalEmployeeDocs ?? 0} icon={UserSquare} accent="purple" sub="Across employees" /></motion.div>
+        <motion.div variants={gridItem}><DashStat label="HR Documents" value={s.stats?.totalHRDocs ?? 0} icon={Building2} accent="fuchsia" sub="Policies & circulars" /></motion.div>
+        <motion.div variants={gridItem}><DashStat label="Templates" value={s.stats?.totalTemplates ?? 0} icon={Library} accent="sky" sub="Reusable letters" /></motion.div>
+        <motion.div variants={gridItem}><DashStat label="Generated Letters" value={s.stats?.totalGenerated ?? 0} icon={FileCheck} accent="amber" sub="Lifetime" trend={{ up: true, value: "12%" }} /></motion.div>
+        <motion.div variants={gridItem}><DashStat label="Pending Requests" value={s.stats?.pendingRequests ?? 0} icon={Inbox} accent="violet" sub="Awaiting action" /></motion.div>
+        <motion.div variants={gridItem}><DashStat label="Pending HR Approval" value={pendingHRReqs.length} icon={Clock} accent="amber" sub="Request queue" /></motion.div>
+        <motion.div variants={gridItem}><DashStat label="Pending Employee Upload" value={pendingVerify.length} icon={Upload} accent="sky" sub="Onboarding gaps" /></motion.div>
+        <motion.div variants={gridItem}><DashStat label="Expiring Documents" value={upcomingExpiries.length} icon={AlertTriangle} accent="amber" sub="Next 30 days" /></motion.div>
+        <motion.div variants={gridItem}><DashStat label="Expired Documents" value={0} icon={FileX2} accent="rose" sub="Need renewal" /></motion.div>
+        <motion.div variants={gridItem}><DashStat label="Rejected Documents" value={0} icon={ShieldX} accent="rose" sub="Requests + uploads" /></motion.div>
+        <motion.div variants={gridItem}><DashStat label="Favourite Templates" value={templates.filter((t: any) => t.isFavourite).length} icon={Star} accent="emerald" sub="Quick access" /></motion.div>
       </motion.div>
 
       {/* ---------- Charts row 1 ---------- */}

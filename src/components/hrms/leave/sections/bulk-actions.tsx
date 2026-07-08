@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from "@/lib/api-client"
+
 import * as React from "react"
 import { toast } from "sonner"
 import {
@@ -281,7 +283,7 @@ function BulkDialogBody({
         await sendJson("/api/leave-bulk", { action: "assignPolicy", ids: [], payload: { policyId } })
         toast.success("Policy assigned to applicable employees")
       } else if (action === "export") {
-        const r = await fetch("/api/leave-reports?type=balance&format=csv")
+        const r = await apiFetch("/api/leave-reports?type=balance&format=csv")
         if (!r.ok) throw new Error("Export failed")
         const blob = await r.blob()
         const url = URL.createObjectURL(blob)

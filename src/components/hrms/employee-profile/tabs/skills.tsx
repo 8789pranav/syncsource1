@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { SectionCard, EmptyState, StatCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -131,8 +132,8 @@ export default function SkillsTab({
     setLoading(true)
     try {
       const [sRes, cRes] = await Promise.all([
-        fetch(`/api/employees/${employeeId}/skills`),
-        fetch(`/api/employees/${employeeId}/certifications`),
+        apiFetch(`/api/employees/${employeeId}/skills`),
+        apiFetch(`/api/employees/${employeeId}/certifications`),
       ])
       const sData = await sRes.json()
       const cData = await cRes.json()
@@ -172,7 +173,7 @@ export default function SkillsTab({
       const url = kind === "skill"
         ? `/api/employees/${employeeId}/skills/${rec.id}`
         : `/api/employees/${employeeId}/certifications/${rec.id}`
-      const res = await fetch(url, { method: "DELETE" })
+      const res = await apiFetch(url, { method: "DELETE" })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to delete")
       toast.success(`${kind === "skill" ? "Skill" : "Certification"} deleted`)
@@ -480,7 +481,7 @@ function SkillDialog({
       }
       const url = isEdit ? `/api/employees/${employeeId}/skills/${existing!.id}` : `/api/employees/${employeeId}/skills`
       const method = isEdit ? "PATCH" : "POST"
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      const res = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to save skill")
       toast.success(isEdit ? "Skill updated" : "Skill added")
@@ -608,7 +609,7 @@ function CertDialog({
       }
       const url = isEdit ? `/api/employees/${employeeId}/certifications/${existing!.id}` : `/api/employees/${employeeId}/certifications`
       const method = isEdit ? "PATCH" : "POST"
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      const res = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to save certification")
       toast.success(isEdit ? "Certification updated" : "Certification added")

@@ -64,7 +64,7 @@ import {
   ORIENTATIONS, formatDate, initials, avatarColor,
   DocumentTemplate, TemplateCategory,
 } from "../shared"
-import { DOCUMENT_TEMPLATES } from "../data"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- motion ----------
 const gridContainer = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } }
@@ -697,16 +697,54 @@ function CreateWizardDialog({ open, onClose }: { open: boolean; onClose: () => v
     insertFnRef.current(token)
   }
 
-  const save = (publish: boolean) => {
+  const save = async (publish: boolean) => {
     if (missing.length > 0) {
       toast.error("Please fill required fields", { description: missing.map(m => m.label).join(", ") })
       setStep(1)
       return
     }
-    toast.success(publish ? "Template published" : "Template saved as draft", {
-      description: `${w.name} (${w.code || "AUTO-CODE"})`,
-    })
-    onClose()
+    try {
+      const payload: Record<string, unknown> = {
+        name: w.name,
+        code: w.code || undefined,
+        category: w.category,
+        entityName: w.entity,
+        status: publish ? "Active" : "Draft",
+        version: "v1.0",
+        availableForRequest: w.availableForRequest,
+        availableForHR: w.availableForHR,
+        availableForOnboarding: w.availableForOnboarding,
+        availableForOffboarding: w.availableForOffboarding,
+        availableForPayroll: w.availableForPayroll,
+        approvalRequired: w.approvalRequired,
+        eSignRequired: w.eSignRequired,
+        acknowledgmentRequired: w.acknowledgmentRequired,
+        allowDownload: w.allowDownload,
+        allowEmail: w.allowEmail,
+        allowPrint: w.allowPrint,
+        description: w.description,
+        headerTemplate: w.headerContent,
+        footerTemplate: w.footerContent,
+        bodyTemplate: w.bodyContent,
+        pageSize: w.pageSize,
+        orientation: w.orientation,
+      }
+      const res = await apiFetch("/api/document-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      if (res.ok) {
+        toast.success(publish ? "Template published" : "Template saved as draft", {
+          description: `${w.name} (${w.code || "AUTO-CODE"})`,
+        })
+        onClose()
+      } else {
+        toast.error("Failed to save template")
+      }
+    } catch {
+      toast.error("Failed to save template")
+    }
   }
 
   const next = () => setStep(s => Math.min(4, s + 1))
@@ -1160,6 +1198,7 @@ function CreateWizardDialog({ open, onClose }: { open: boolean; onClose: () => v
 //  Main component
 // ============================================================================
 export function DocumentLibrarySection() {
+  const [templates, setTemplates] = React.useState<DocumentTemplate[]>([])
   const [filters, setFilters] = React.useState({
     entity: "all", status: "all", search: "", favouritesOnly: false,
     category: "all" as "all" | TemplateCategory,
@@ -1167,12 +1206,28 @@ export function DocumentLibrarySection() {
   const [view, setView] = React.useState<"grid" | "list">("grid")
   const [wizardOpen, setWizardOpen] = React.useState(false)
 
+  const loadTemplates = React.useCallback(async () => {
+    try {
+      const res = await apiFetch("/api/document-templates?page_size=100", { cache: "no-store" })
+      if (res.ok) {
+        const data = await res.json()
+        setTemplates(data.items || [])
+      }
+    } catch {
+      toast.error("Failed to load templates")
+    }
+  }, [])
+
+  React.useEffect(() => {
+    loadTemplates()
+  }, [loadTemplates])
+
   const setF = <K extends keyof typeof filters>(k: K, v: (typeof filters)[K]) => setFilters(f => ({ ...f, [k]: v }))
 
-  const entities = React.useMemo(() => Array.from(new Set(DOCUMENT_TEMPLATES.map(t => t.entityName))), [])
+  const entities = React.useMemo(() => Array.from(new Set(templates.map(t => t.entityName))), [templates])
 
   const filtered = React.useMemo(() => {
-    let list = DOCUMENT_TEMPLATES
+    let list = templates
     if (filters.entity !== "all") list = list.filter(t => t.entityName === filters.entity)
     if (filters.status !== "all") list = list.filter(t => t.status === filters.status)
     if (filters.category !== "all") list = list.filter(t => t.category === filters.category)
@@ -1182,18 +1237,51 @@ export function DocumentLibrarySection() {
       list = list.filter(t => t.name.toLowerCase().includes(q) || t.code.toLowerCase().includes(q) || t.category.toLowerCase().includes(q))
     }
     return list
-  }, [filters])
+  }, [templates, filters])
 
   const stats = {
-    total: DOCUMENT_TEMPLATES.length,
-    active: DOCUMENT_TEMPLATES.filter(t => t.status === "Active").length,
-    draft: DOCUMENT_TEMPLATES.filter(t => t.status === "Draft").length,
-    favourites: DOCUMENT_TEMPLATES.filter(t => t.isFavourite).length,
-    avgVersions: (DOCUMENT_TEMPLATES.reduce((s, t) => s + parseFloat(t.version.replace("v", "")), 0) / Math.max(1, DOCUMENT_TEMPLATES.length)).toFixed(1),
+    total: templates.length,
+    active: templates.filter(t => t.status === "Active").length,
+    draft: templates.filter(t => t.status === "Draft").length,
+    favourites: templates.filter(t => t.isFavourite).length,
+    avgVersions: (templates.reduce((s, t) => s + parseFloat(t.version.replace("v", "")), 0) / Math.max(1, templates.length)).toFixed(1),
   }
 
-  const onAction = (action: string, t: DocumentTemplate) => {
-    toast.success(action, { description: `${t.name} (${t.code})` })
+  const onAction = async (action: string, t: DocumentTemplate) => {
+    switch (action) {
+      case "Publish":
+        try {
+          await apiFetch(`/api/document-templates/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Active" }) })
+          setTemplates(prev => prev.map(x => x.id === t.id ? { ...x, status: "Active" as DocumentTemplate["status"] } : x))
+          toast.success("Template published", { description: `${t.name} (${t.code})` })
+        } catch { toast.error("Failed to publish template") }
+        break
+      case "Deactivate":
+        try {
+          await apiFetch(`/api/document-templates/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Inactive" }) })
+          setTemplates(prev => prev.map(x => x.id === t.id ? { ...x, status: "Inactive" as DocumentTemplate["status"] } : x))
+          toast.success("Template deactivated", { description: `${t.name} (${t.code})` })
+        } catch { toast.error("Failed to deactivate template") }
+        break
+      case "Delete":
+        try {
+          await apiFetch(`/api/document-templates/${t.id}`, { method: "DELETE" })
+          setTemplates(prev => prev.filter(x => x.id !== t.id))
+          toast.success("Template deleted", { description: `${t.name} (${t.code})` })
+        } catch { toast.error("Failed to delete template") }
+        break
+      case "Mark as Favourite":
+      case "Remove from Favourites":
+        try {
+          const newVal = action === "Mark as Favourite"
+          await apiFetch(`/api/document-templates/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isFavourite: newVal }) })
+          setTemplates(prev => prev.map(x => x.id === t.id ? { ...x, isFavourite: newVal } : x))
+          toast.success(action, { description: `${t.name} (${t.code})` })
+        } catch { toast.error("Failed to update favourite") }
+        break
+      default:
+        toast.success(action, { description: `${t.name} (${t.code})` })
+    }
   }
 
   return (

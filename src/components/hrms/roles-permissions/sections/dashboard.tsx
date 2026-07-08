@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from "@/lib/api-client"
+
 import * as React from "react"
 import { motion } from "framer-motion"
 import { useHrmsStore } from "@/store/hrms-store"
@@ -56,7 +58,7 @@ export function DashboardSection() {
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const r = await fetch("/api/roles-permissions/dashboard")
+      const r = await apiFetch("/api/roles-permissions/dashboard")
       if (r.ok) setData(await r.json())
     } finally { setLoading(false) }
   }, [])

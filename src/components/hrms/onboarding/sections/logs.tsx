@@ -1,5 +1,7 @@
 "use client"
 
+import { apiFetch } from "@/lib/api-client"
+
 // =============================================================
 // Onboarding Logs Section — spec #25 (audit trail)
 // Task ID: 8-F
@@ -253,7 +255,7 @@ function useLogTypeCounts(): Record<string, number> {
     Promise.all(
       LOG_TYPES.map(async (t) => {
         try {
-          const r = await fetch(`/api/onboarding-logs?logType=${encodeURIComponent(t.value)}&pageSize=1`)
+          const r = await apiFetch(`/api/onboarding-logs?logType=${encodeURIComponent(t.value)}&pageSize=1`)
           if (!r.ok) return { type: t.value, count: 0 }
           const j = await r.json()
           return { type: t.value, count: j.total || 0 }

@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog"
 import { SectionCard, StatCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- helpers ----------
 
@@ -385,7 +386,7 @@ function ReviseSalaryDialog({
     }
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

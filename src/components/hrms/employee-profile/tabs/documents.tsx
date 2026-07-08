@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/table"
 import { SectionCard, StatCard, EmptyState } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- helpers ----------
 const fmtDate = (d?: string | Date | null) => {
@@ -126,7 +127,7 @@ export default function DocumentsTab({ employeeId }: { employeeId: string; emplo
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/documents`)
+      const res = await apiFetch(`/api/employees/${employeeId}/documents`)
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       const data = await res.json()
       setItems(data.items || [])
@@ -189,7 +190,7 @@ export default function DocumentsTab({ employeeId }: { employeeId: string; emplo
         ? `/api/employees/${employeeId}/documents/${editing.id}`
         : `/api/employees/${employeeId}/documents`
       const method = editing ? "PATCH" : "POST"
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -211,7 +212,7 @@ export default function DocumentsTab({ employeeId }: { employeeId: string; emplo
   const onApprove = async (d: DocRec) => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/documents/${d.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/documents/${d.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Approved", approvedBy: "HR Admin", approvedAt: new Date().toISOString() }),
@@ -230,7 +231,7 @@ export default function DocumentsTab({ employeeId }: { employeeId: string; emplo
     if (!rejectTarget) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/documents/${rejectTarget.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/documents/${rejectTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Rejected", approvedBy: "HR Admin", approvedAt: new Date().toISOString(), remarks: rejectRemarks || "Rejected" }),
@@ -251,7 +252,7 @@ export default function DocumentsTab({ employeeId }: { employeeId: string; emplo
     if (!deleteId) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/documents/${deleteId}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${employeeId}/documents/${deleteId}`, { method: "DELETE" })
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       toast.success("Document deleted")
       setDeleteId(null)

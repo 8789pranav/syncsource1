@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/table"
 import { SectionCard, StatCard, EmptyState } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- helpers ----------
 const fmtDate = (d?: string | Date | null) => {
@@ -160,7 +161,7 @@ export default function FormsTab({ employeeId }: { employeeId: string; employee:
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/forms`)
+      const res = await apiFetch(`/api/employees/${employeeId}/forms`)
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       const data = await res.json()
       setItems(data.items || [])
@@ -203,7 +204,7 @@ export default function FormsTab({ employeeId }: { employeeId: string; employee:
     setSaving(true)
     try {
       const formMeta = FORM_CODES.find((c) => c.code === selectedFormCode)
-      const res = await fetch(`/api/employees/${employeeId}/forms`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/forms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -234,7 +235,7 @@ export default function FormsTab({ employeeId }: { employeeId: string; employee:
   const onApprove = async (f: FormRec) => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/forms/${f.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/forms/${f.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Approved", approvedBy: "HR Admin", approvedAt: new Date().toISOString() }),
@@ -253,7 +254,7 @@ export default function FormsTab({ employeeId }: { employeeId: string; employee:
     if (!rejectTarget) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/forms/${rejectTarget.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/forms/${rejectTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Rejected", approvedBy: "HR Admin", approvedAt: new Date().toISOString(), remarks: rejectRemarks || "Rejected" }),
@@ -274,7 +275,7 @@ export default function FormsTab({ employeeId }: { employeeId: string; employee:
     if (!deleteId) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/forms/${deleteId}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/employees/${employeeId}/forms/${deleteId}`, { method: "DELETE" })
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       toast.success("Form deleted")
       setDeleteId(null)

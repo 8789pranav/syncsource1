@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog"
 import { EmptyState, SectionCard } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- types ----------
 
@@ -111,7 +112,7 @@ export default function ExitTab({
   const load = React.useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/exit`)
+      const res = await apiFetch(`/api/employees/${employeeId}/exit`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to load exit record")
       setItems(data?.items || [])
@@ -130,7 +131,7 @@ export default function ExitTab({
 
   async function patchExit(rec: ExitRec, payload: any, successMsg: string) {
     try {
-      const res = await fetch(`/api/employees/${employeeId}/exit/${rec.id}`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/exit/${rec.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -496,7 +497,7 @@ function SubmitResignationDialog({
     }
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/employees/${employeeId}/exit`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/exit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

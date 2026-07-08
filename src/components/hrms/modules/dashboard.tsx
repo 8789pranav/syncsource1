@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { useHrmsStore } from "@/store/hrms-store"
+import { apiFetch } from "@/lib/api-client"
 
 // ---- types ----
 type Stats = {
@@ -119,7 +120,7 @@ export function DashboardModule() {
   React.useEffect(() => {
     let cancelled = false
     setLoading(true)
-    fetch("/api/dashboard")
+    apiFetch("/api/dashboard")
       .then(async (r) => {
         if (!r.ok) throw new Error("HTTP " + r.status)
         return r.json()
@@ -148,7 +149,7 @@ export function DashboardModule() {
           <p className="text-sm text-muted-foreground">
             Please ensure the database has been seeded.{" "}
             <Button variant="link" className="h-auto p-0" onClick={() => {
-              fetch("/api/seed").then(() => window.location.reload())
+              apiFetch("/api/seed").then(() => window.location.reload())
             }}>Seed data now</Button>
           </p>
         </SectionCard>

@@ -31,6 +31,7 @@ import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SectionCard, StatCard, StatusBadge } from "@/components/hrms/ui"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ---------- helpers ----------
 const fmtDate = (d?: string | Date | null) => {
@@ -119,11 +120,11 @@ export default function OverviewTab({ employeeId, employee }: { employeeId: stri
     const today = new Date()
     const todayStr = today.toISOString().slice(0, 10)
     Promise.allSettled([
-      fetch(`/api/attendance?employeeId=${employeeId}&from=${todayStr}&to=${todayStr}`).then((r) => r.json()),
-      fetch(`/api/employees/${employeeId}/timeline`).then((r) => r.json()),
-      fetch(`/api/employees/${employeeId}/requests`).then((r) => r.json()),
-      fetch(`/api/holidays?upcoming=1`).then((r) => r.json()),
-      fetch(`/api/leave-applications?employeeId=${employeeId}`).then((r) => r.json()),
+      apiFetch(`/api/attendance?employeeId=${employeeId}&from=${todayStr}&to=${todayStr}`).then((r) => r.json()),
+      apiFetch(`/api/employees/${employeeId}/timeline`).then((r) => r.json()),
+      apiFetch(`/api/employees/${employeeId}/requests`).then((r) => r.json()),
+      apiFetch(`/api/holidays?upcoming=1`).then((r) => r.json()),
+      apiFetch(`/api/leave-applications?employeeId=${employeeId}`).then((r) => r.json()),
     ]).then((results) => {
       if (!alive) return
       const att = results[0].status === "fulfilled" ? results[0].value : null

@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from "@/lib/api-client"
+
 import * as React from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
@@ -115,7 +117,7 @@ export function RolesSection() {
       if (filterType && filterType !== "__all__") params.set("roleType", filterType)
       if (filterStatus && filterStatus !== "__all__") params.set("status", filterStatus)
       if (filterRisk && filterRisk !== "__all__") params.set("riskLevel", filterRisk)
-      const r = await fetch(`/api/roles-permissions/roles?${params}`)
+      const r = await apiFetch(`/api/roles-permissions/roles?${params}`)
       if (r.ok) {
         const data = await r.json()
         setRoles(data.items)
@@ -135,7 +137,7 @@ export function RolesSection() {
 
   const openClone = async (role: Role) => {
     // Fetch full permissions
-    const r = await fetch(`/api/roles-permissions/roles/${role.id}/permissions`)
+    const r = await apiFetch(`/api/roles-permissions/roles/${role.id}/permissions`)
     if (r.ok) {
       const full = await r.json()
       const mp: Record<string, string> = {}
@@ -177,7 +179,7 @@ export function RolesSection() {
       })
       const dataScopes = [{ scopeType: wizardData.scopeType }]
 
-      const r = await fetch("/api/roles-permissions/roles", {
+      const r = await apiFetch("/api/roles-permissions/roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -203,7 +205,7 @@ export function RolesSection() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    const r = await fetch(`/api/roles-permissions/roles/${deleteTarget.id}`, { method: "DELETE" })
+    const r = await apiFetch(`/api/roles-permissions/roles/${deleteTarget.id}`, { method: "DELETE" })
     if (r.ok) {
       toast.success(`Role "${deleteTarget.name}" deleted`)
       setDeleteTarget(null)
@@ -219,7 +221,7 @@ export function RolesSection() {
       toast.error("Pick two different roles to compare")
       return
     }
-    const r = await fetch(`/api/roles-permissions/roles/compare?a=${compareA}&b=${compareB}`)
+    const r = await apiFetch(`/api/roles-permissions/roles/compare?a=${compareA}&b=${compareB}`)
     if (r.ok) {
       setCompareResult(await r.json())
     }
