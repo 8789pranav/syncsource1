@@ -204,31 +204,31 @@ export function useFetch<T>(url: string | null, deps: any[] = []) {
 
 // ---------- API helpers ----------
 export async function apiPost(url: string, body: any) {
-  const r = await fetch(url, {
+  const r = await apiFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
   const json = await r.json()
-  if (!r.ok) throw new Error(json.error || `HTTP ${r.status}`)
+  if (!r.ok) throw new Error(json.error || json.detail || `HTTP ${r.status}`)
   return json
 }
 
 export async function apiPatch(url: string, body: any) {
-  const r = await fetch(url, {
+  const r = await apiFetch(url, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
   const json = await r.json()
-  if (!r.ok) throw new Error(json.error || `HTTP ${r.status}`)
+  if (!r.ok) throw new Error(json.error || json.detail || `HTTP ${r.status}`)
   return json
 }
 
 export async function apiDelete(url: string) {
-  const r = await fetch(url, { method: "DELETE" })
+  const r = await apiFetch(url, { method: "DELETE" })
   const json = await r.json()
-  if (!r.ok) throw new Error(json.error || `HTTP ${r.status}`)
+  if (!r.ok) throw new Error(json.error || json.detail || `HTTP ${r.status}`)
   return json
 }
 

@@ -52,7 +52,7 @@ async def employee_picker(
         ))
     stmt = stmt.limit(limit)
     result = await db.execute(stmt)
-    return [{"id": e.id, "label": e.display_name or f"{e.first_name} {e.last_name or ''}".strip(), "code": e.employee_code} for e in result.scalars().all()]
+    return [{"id": e.id, "value": e.id, "label": e.display_name or f"{e.first_name} {e.last_name or ''}".strip(), "code": e.employee_code} for e in result.scalars().all()]
 
 
 @router.get("/with-doc-counts")

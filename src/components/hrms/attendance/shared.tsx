@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api-client"
 
 // ============================================================
 // Types — mirror the API contract / Prisma models
@@ -223,7 +224,7 @@ export async function fetchJson<T = any>(
   url: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(url, {
+  const res = await apiFetch(url, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
   })

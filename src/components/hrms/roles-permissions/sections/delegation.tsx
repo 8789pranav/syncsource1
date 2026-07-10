@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from "@/lib/api-client"
+
 import * as React from "react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
@@ -106,7 +108,7 @@ export function DelegationSection() {
     try {
       const url = editing ? `/api/roles-permissions/delegations/${editing.id}` : `/api/roles-permissions/delegations`
       const method = editing ? "PATCH" : "POST"
-      const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, module: form.module === "__all__" ? "" : form.module, performedByName: "HR Admin" }) })
+      const r = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, module: form.module === "__all__" ? "" : form.module, performedByName: "HR Admin" }) })
       if (r.ok) {
         toast.success(editing ? "Delegation updated" : "Delegation created")
         setEditOpen(false); load()

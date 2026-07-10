@@ -101,7 +101,7 @@ export function ApprovalRolesSection() {
     try {
       const url = editing ? `/api/roles-permissions/approval-roles/${editing.id}` : `/api/roles-permissions/approval-roles`
       const method = editing ? "PATCH" : "POST"
-      const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, performedByName: "HR Admin" }) })
+      const r = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, performedByName: "HR Admin" }) })
       if (r.ok) {
         toast.success(editing ? "Approval role updated" : "Approval role created")
         setEditOpen(false); load()

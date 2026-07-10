@@ -366,9 +366,15 @@ class LeaveBalance(Base):
     year: Mapped[int] = mapped_column(Integer)
     opening: Mapped[float] = mapped_column(Float, default=0)
     accrued: Mapped[float] = mapped_column(Float, default=0)
+    granted: Mapped[float] = mapped_column(Float, default=0)
+    adjusted: Mapped[float] = mapped_column(Float, default=0)
+    carry_forward: Mapped[float] = mapped_column(Float, default=0)
     used: Mapped[float] = mapped_column(Float, default=0)
     pending: Mapped[float] = mapped_column(Float, default=0)
-    carry_forward: Mapped[float] = mapped_column(Float, default=0)
+    encashed: Mapped[float] = mapped_column(Float, default=0)
+    lapsed: Mapped[float] = mapped_column(Float, default=0)
+    expired: Mapped[float] = mapped_column(Float, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (UniqueConstraint("employee_id", "leave_type_id", "year", name="uq_lb_emp_type_year"),)
 
@@ -450,6 +456,25 @@ class WeeklyOffCalendar(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (UniqueConstraint("tenant_id", "code", name="uq_wo_tenant_code"),)
+
+
+class CompOffCredit(Base):
+    __tablename__ = "comp_off_credits"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=cuid)
+    tenant_id: Mapped[str] = mapped_column(String(36), index=True)
+    employee_id: Mapped[str] = mapped_column(String(36), index=True)
+    source: Mapped[str] = mapped_column(String(50), default="Manual")
+    source_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    earned_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    hours: Mapped[float] = mapped_column(Float, default=0)
+    days: Mapped[float] = mapped_column(Float, default=0)
+    expiry_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="Available")
+    approved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 # ============================================================

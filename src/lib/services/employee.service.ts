@@ -52,9 +52,10 @@ export const employeeService = {
     if (!rec) return null
 
     const mgrSelect = { id: true, firstName: true, lastName: true, employeeCode: true, displayName: true } as const
-    let reportingManager = null
-    let functionalManager = null
-    let hrManager = null
+    type MgrType = { id: string; displayName: string | null; employeeCode: string; firstName: string; lastName: string | null } | null
+    let reportingManager: MgrType = null
+    let functionalManager: MgrType = null
+    let hrManager: MgrType = null
 
     if (rec.reportingManagerId) {
       reportingManager = await db.employee.findFirst({ where: { id: rec.reportingManagerId, tenantId }, select: mgrSelect })

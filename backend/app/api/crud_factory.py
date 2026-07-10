@@ -60,7 +60,7 @@ def create_crud_router(
         request: Request,
         parent_id: str = None if not parent_id_field else None,
         page: int = Query(1, ge=1),
-        page_size: int = Query(50, ge=1, le=100),
+        page_size: int = Query(50, ge=1, le=100, alias="pageSize"),
         q: Optional[str] = None,
         db: AsyncSession = Depends(get_db),
         user: User = Depends(get_current_user),
@@ -79,10 +79,16 @@ def create_crud_router(
             if conditions:
                 stmt = stmt.where(or_(*conditions))
 
-        # Apply filter fields from query params
+        # Apply filter fields from query params (check both snake_case and camelCase)
         if filter_fields:
             for ff in filter_fields:
                 val = request.query_params.get(ff)
+                if val is None:
+                    camel_ff = "".join(
+                        word.capitalize() if i > 0 else word
+                        for i, word in enumerate(ff.split("_"))
+                    )
+                    val = request.query_params.get(camel_ff)
                 if val:
                     col = getattr(model, ff, None)
                     if col is not None:

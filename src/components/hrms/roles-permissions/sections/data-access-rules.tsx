@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from "@/lib/api-client"
+
 import * as React from "react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
@@ -122,7 +124,7 @@ export function DataAccessRulesSection() {
       }
       const url = editing ? `/api/roles-permissions/data-access-rules/${editing.id}` : `/api/roles-permissions/data-access-rules`
       const method = editing ? "PATCH" : "POST"
-      const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      const r = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
       if (r.ok) {
         toast.success(editing ? "Rule updated" : "Rule created")
         setEditOpen(false)

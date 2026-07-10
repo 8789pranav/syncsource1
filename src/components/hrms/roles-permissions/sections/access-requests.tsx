@@ -113,7 +113,7 @@ export function AccessRequestsSection() {
     setSaving(true)
     try {
       const url = `/api/roles-permissions/access-requests/${approveTarget.id}/${approveMode}`
-      const r = await fetch(url, {
+      const r = await apiFetch(url, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approverComments: comments, approvedByName: "HR Admin" }),
       })
